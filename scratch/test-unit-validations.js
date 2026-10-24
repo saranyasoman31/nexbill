@@ -8,10 +8,14 @@ console.log('----------------------------------------------------');
 console.log('🧪 RUNNING TEST SUITE: UNIT CODE & NAME DUPLICATION & REFERENTIAL INTEGRITY');
 console.log('----------------------------------------------------');
 
+const fixtureProducts = [
+  { id: 'PROD-001', name: 'Cable', uom: 'PCS', unit: 'Pieces' }
+];
+
 // Mock in-memory database
 const db = {
   units: JSON.parse(JSON.stringify(INITIAL_UNITS)),
-  products: JSON.parse(JSON.stringify(INITIAL_PRODUCTS)),
+  products: INITIAL_PRODUCTS.length > 0 ? JSON.parse(JSON.stringify(INITIAL_PRODUCTS)) : fixtureProducts,
 };
 
 // 1. Validation Logic Helper (mirrors MasterEntitiesView.jsx)

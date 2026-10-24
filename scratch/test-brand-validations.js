@@ -8,9 +8,18 @@ let passCount = 0;
 const totalTests = 6;
 
 // Mock database state
+const fixtureBrands = [
+  { id: 'BRD-01', code: 'RH', name: 'Royal Heritage', manufacturer: 'Heritage Grains', country: 'India', active: true },
+  { id: 'BRD-02', code: 'PURA', name: 'PuraVita', manufacturer: 'Organic Foods', country: 'India', active: true },
+  { id: 'BRD-04', code: 'AMUL', name: 'Amul', manufacturer: 'GCMMF', country: 'India', active: true },
+];
+const fixtureProducts = [
+  { id: 'PROD-001', name: 'Royal Heritage Basmati Rice', brand: 'Royal Heritage', brandId: 'BRD-01' }
+];
+
 const db = {
-  brands: JSON.parse(JSON.stringify(INITIAL_BRANDS)),
-  products: JSON.parse(JSON.stringify(INITIAL_PRODUCTS)),
+  brands: INITIAL_BRANDS.length > 0 ? JSON.parse(JSON.stringify(INITIAL_BRANDS)) : fixtureBrands,
+  products: INITIAL_PRODUCTS.length > 0 ? JSON.parse(JSON.stringify(INITIAL_PRODUCTS)) : fixtureProducts,
 };
 
 // Validation function matching MasterEntitiesView.jsx handleSave logic

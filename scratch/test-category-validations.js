@@ -8,10 +8,22 @@ let passCount = 0;
 const totalTests = 5;
 
 // Mock database state
+const fixtureCategories = [
+  { id: 'CAT-01', mainCategoryId: 'MCAT-01', name: 'Rice & Grains', code: 'RICE', active: true },
+  { id: 'CAT-02', mainCategoryId: 'MCAT-01', name: 'Cooking Oils & Ghee', code: 'OILS', active: true },
+];
+const fixtureMainCategories = [
+  { id: 'MCAT-01', name: 'Grocery & Staples', code: 'GROC', active: true },
+  { id: 'MCAT-05', name: 'Snacks & Confectionery', code: 'SNCK', active: true },
+];
+const fixtureProducts = [
+  { id: 'PROD-002', name: 'Sunflower Oil', category: 'Cooking Oils & Ghee', categoryId: 'CAT-02' }
+];
+
 const db = {
-  mainCategories: JSON.parse(JSON.stringify(INITIAL_MAIN_CATEGORIES)),
-  categories: JSON.parse(JSON.stringify(INITIAL_CATEGORIES)),
-  products: JSON.parse(JSON.stringify(INITIAL_PRODUCTS)),
+  mainCategories: fixtureMainCategories,
+  categories: fixtureCategories,
+  products: fixtureProducts,
 };
 
 // Validation function matching MasterEntitiesView.jsx handleSave logic

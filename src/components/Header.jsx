@@ -124,19 +124,21 @@ export default function Header() {
               </span>
             </div>
 
-            {/* Quick Demo Role Switcher */}
-            <select
-              value={currentUserId}
-              onChange={(e) => setCurrentUserId(e.target.value)}
-              className="bg-slate-900 border border-slate-700/80 text-indigo-200 text-[11px] rounded-lg px-1.5 py-0.5 focus:outline-none focus:border-indigo-500 cursor-pointer ml-1 font-medium"
-              title="Switch Active Operator / Role"
-            >
-              {db.users.map((u) => (
-                <option key={u.id} value={u.id} className="bg-slate-900 text-slate-100">
-                  {u.name} — [{u.role.replace(/_/g, ' ')}]
-                </option>
-              ))}
-            </select>
+            {/* User Switcher (only shown if multiple staff users exist) */}
+            {db.users && db.users.length > 1 && (
+              <select
+                value={currentUserId}
+                onChange={(e) => setCurrentUserId(e.target.value)}
+                className="bg-slate-900 border border-slate-700/80 text-indigo-200 text-[11px] rounded-lg px-1.5 py-0.5 focus:outline-none focus:border-indigo-500 cursor-pointer ml-1 font-medium"
+                title="Switch Active Operator / Role"
+              >
+                {db.users.map((u) => (
+                  <option key={u.id} value={u.id} className="bg-slate-900 text-slate-100">
+                    {u.name} — [{u.role.replace(/_/g, ' ')}]
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* IP Address */}

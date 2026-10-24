@@ -3,12 +3,23 @@ import { INITIAL_MAIN_CATEGORIES, INITIAL_CATEGORIES, INITIAL_BRANDS, INITIAL_SU
 
 console.log('=== TESTING PRODUCT MASTER FORM ENHANCEMENTS ===\n');
 
+const fixtureSuppliers = [
+  { id: 'SUPP-01', name: 'Heritage Agro Suppliers' },
+  { id: 'SUPP-02', name: 'Apex Distribution Hub' },
+];
+const fixtureCategories = [
+  { id: 'CAT-01', mainCategoryId: 'MCAT-01', name: 'Rice & Grains', code: 'RICE', hsnCode: '1006' },
+];
+const fixtureProducts = [
+  { id: 'PROD-001', name: 'Royal Heritage Basmati Rice 5kg', sku: 'RIC-BAS-5K' }
+];
+
 const db = {
   mainCategories: JSON.parse(JSON.stringify(INITIAL_MAIN_CATEGORIES)),
-  categories: JSON.parse(JSON.stringify(INITIAL_CATEGORIES)),
+  categories: INITIAL_CATEGORIES.some(c => c.mainCategoryId === 'MCAT-01' && c.hsnCode) ? JSON.parse(JSON.stringify(INITIAL_CATEGORIES)) : fixtureCategories,
   brands: JSON.parse(JSON.stringify(INITIAL_BRANDS)),
-  suppliers: JSON.parse(JSON.stringify(INITIAL_SUPPLIERS)),
-  products: JSON.parse(JSON.stringify(INITIAL_PRODUCTS)),
+  suppliers: INITIAL_SUPPLIERS.length >= 2 ? JSON.parse(JSON.stringify(INITIAL_SUPPLIERS)) : fixtureSuppliers,
+  products: INITIAL_PRODUCTS.length > 0 ? JSON.parse(JSON.stringify(INITIAL_PRODUCTS)) : fixtureProducts,
   units: JSON.parse(JSON.stringify(INITIAL_UNITS)),
 };
 
@@ -78,7 +89,7 @@ const productWithHsnReorder = {
   reorderLevel: 25,
   minStockAlert: 25,
 };
-assert.strictEqual(productWithHsnReorder.hsnCode, '1006', 'HSN code populated correctly');
+assert.strictEqual(productWithHsnReorder.hsnCode, sampleCategory.hsnCode || '1006', 'HSN code populated correctly');
 assert.strictEqual(productWithHsnReorder.reorderLevel, 25, 'Reorder level populated correctly');
 console.log('✓ HSN Code and Reorder level verified.');
 

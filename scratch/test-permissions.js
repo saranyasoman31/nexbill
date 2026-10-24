@@ -23,12 +23,12 @@ const expectedMenuOrder = [
   'brand',
   'supplier',
   'unit',
+  'company',
   'product',
   'staff',
   'payment_mode',
   'tax',
   'branch',
-  'company',
   'purchase_order',
   'purchase',
   'purchase_return',
@@ -126,8 +126,11 @@ console.log(`  ✓ Created custom role: "${savedRole.name}" with custom credit_c
 
 // Test 6: Assigning User Role
 console.log('\n[Test 6] Simulating User Role Assignment');
-const cashierUser = db.users.find(u => u.id === 'USR-01');
-if (!cashierUser) throw new Error('USR-01 not found');
+let cashierUser = db.users.find(u => u.id === 'USR-01');
+if (!cashierUser) {
+  cashierUser = { id: 'USR-TEST-01', name: 'Test Staff', username: 'teststaff', roleId: 'ROLE_CASHIER', role: 'CASHIER' };
+  db.users.push(cashierUser);
+}
 cashierUser.roleId = customRoleId;
 cashierUser.role = customRole.code;
 if (cashierUser.roleId !== customRoleId) throw new Error('Failed to assign custom role to user');
@@ -136,16 +139,16 @@ console.log(`  ✓ User ${cashierUser.name} (${cashierUser.id}) successfully ass
 // Test 7: Submenus for Reports and Settings
 console.log('\n[Test 7] Verifying Reports & Settings Submenus Configuration');
 const reportsConfig = SYSTEM_MENUS_CONFIG.find(m => m.id === 'reports');
-if (!reportsConfig || !reportsConfig.submenus || reportsConfig.submenus.length !== 6) {
-  throw new Error(`Expected 6 submenus for reports, got ${reportsConfig?.submenus?.length}`);
+if (!reportsConfig || !reportsConfig.submenus || reportsConfig.submenus.length !== 7) {
+  throw new Error(`Expected 7 submenus for reports, got ${reportsConfig?.submenus?.length}`);
 }
-const expectedReportSubs = ['report_sales', 'report_purchases', 'report_stock', 'report_gst', 'report_tally', 'report_audit'];
+const expectedReportSubs = ['report_sales', 'report_purchases', 'report_stock', 'report_gst', 'report_tally', 'report_backlog', 'report_audit'];
 expectedReportSubs.forEach(id => {
   if (!reportsConfig.submenus.some(s => s.id === id)) {
     throw new Error(`Missing expected report submenu: ${id}`);
   }
 });
-console.log(`  ✓ Reports submenus verified (6): ${reportsConfig.submenus.map(s => s.label).join(', ')}`);
+console.log(`  ✓ Reports submenus verified (7): ${reportsConfig.submenus.map(s => s.label).join(', ')}`);
 
 const settingsConfig = SYSTEM_MENUS_CONFIG.find(m => m.id === 'settings');
 if (!settingsConfig || !settingsConfig.submenus || settingsConfig.submenus.length !== 4) {

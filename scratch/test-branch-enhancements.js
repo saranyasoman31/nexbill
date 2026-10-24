@@ -17,11 +17,12 @@ function isBranchCodeDuplicate(code, currentId = null, storeList = stores) {
   );
 }
 
-// STR-01 has code 'MUM-01'
-assert.strictEqual(isBranchCodeDuplicate('MUM-01'), true, 'MUM-01 should be detected as duplicate');
-assert.strictEqual(isBranchCodeDuplicate('mum-01'), true, 'Case-insensitive code should be detected as duplicate');
-assert.strictEqual(isBranchCodeDuplicate('MUM-01', 'STR-01'), false, 'Editing STR-01 itself should not trigger duplicate code');
-assert.strictEqual(isBranchCodeDuplicate('STR-DEL-01'), false, 'New unique code should not be duplicate');
+const defaultStore = stores[0] || { id: 'STR-01', code: 'STR-01', name: 'Main Store' };
+const existingCode = defaultStore.code;
+assert.strictEqual(isBranchCodeDuplicate(existingCode), true, `${existingCode} should be detected as duplicate`);
+assert.strictEqual(isBranchCodeDuplicate(existingCode.toLowerCase()), true, 'Case-insensitive code should be detected as duplicate');
+assert.strictEqual(isBranchCodeDuplicate(existingCode, defaultStore.id), false, 'Editing store itself should not trigger duplicate code');
+assert.strictEqual(isBranchCodeDuplicate('STR-DEL-999'), false, 'New unique code should not be duplicate');
 console.log('✓ Branch Code duplication check passed (case-insensitive & self-exclusion).');
 
 // 2. Branch Name Duplication Check
@@ -34,11 +35,11 @@ function isBranchNameDuplicate(name, currentId = null, storeList = stores) {
   );
 }
 
-// STR-01 has name 'Apex Flagship Mumbai'
-assert.strictEqual(isBranchNameDuplicate('Apex Flagship Mumbai'), true, 'Existing name should be detected as duplicate');
-assert.strictEqual(isBranchNameDuplicate('apex flagship mumbai'), true, 'Case-insensitive name should be duplicate');
-assert.strictEqual(isBranchNameDuplicate('Apex Flagship Mumbai', 'STR-01'), false, 'Editing STR-01 should not trigger duplicate name');
-assert.strictEqual(isBranchNameDuplicate('Apex Connaught Delhi'), false, 'New unique name should not be duplicate');
+const existingName = defaultStore.name;
+assert.strictEqual(isBranchNameDuplicate(existingName), true, 'Existing name should be detected as duplicate');
+assert.strictEqual(isBranchNameDuplicate(existingName.toLowerCase()), true, 'Case-insensitive name should be duplicate');
+assert.strictEqual(isBranchNameDuplicate(existingName, defaultStore.id), false, 'Editing store should not trigger duplicate name');
+assert.strictEqual(isBranchNameDuplicate('Brand New Unique Store Branch'), false, 'New unique name should not be duplicate');
 console.log('✓ Branch Name duplication check passed (case-insensitive & self-exclusion).');
 
 // 3. Database State Listing & Sync

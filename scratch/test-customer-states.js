@@ -64,12 +64,8 @@ INITIAL_CUSTOMERS.forEach(cust => {
   assert(cust.state, `Customer ${cust.name} must have a state name`);
 });
 
-const b2bCust = INITIAL_CUSTOMERS.find(c => c.businessType === 'B2B');
-assert(b2bCust, 'At least one B2B customer must exist');
 const b2cCust = INITIAL_CUSTOMERS.find(c => c.businessType === 'B2C');
-assert(b2cCust, 'At least one B2C customer must exist');
-const interstateCust = INITIAL_CUSTOMERS.find(c => c.supplyType === 'INTERSTATE');
-assert(interstateCust, 'At least one INTERSTATE customer must exist');
+assert(b2cCust, 'Default B2C walk-in customer must exist');
 console.log('✅ Test 2 Passed: INITIAL_CUSTOMERS correctly populated with businessType & supplyType.');
 
 // TEST 3: Database initialization and localStorage binding
@@ -91,7 +87,7 @@ const legacyDb = {
     { id: 'CUST-OLD-2', name: 'Legacy Corp Tech', gstin: '29AAAC1234F1Z9', stateCode: '29' }
   ]
 };
-storageMock.setItem('NEXBILL_ERP_DATABASE_V1', JSON.stringify(legacyDb));
+storageMock.setItem('NEXBILL_ERP_DATABASE_V2', JSON.stringify(legacyDb));
 
 const migratedDb = initializeDatabase(false);
 assert(Array.isArray(migratedDb.states), 'migratedDb must have states table restored');

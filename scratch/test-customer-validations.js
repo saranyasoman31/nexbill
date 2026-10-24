@@ -66,6 +66,15 @@ console.log('✅ Test 2 Passed: Email format validation verified for both valid 
 console.log('\nTest 3: Testing mobile number duplication against customer database...');
 const db = initializeDatabase(true);
 assert(db.customers.length > 0, 'Customer database initialized');
+if (!db.customers.some(c => c.id === 'CUST-002')) {
+  db.customers.push({
+    id: 'CUST-002',
+    name: 'Arun Verma',
+    phone: '9876543210',
+    email: 'arun.verma@example.com',
+    active: true,
+  });
+}
 
 // Customer 2 has phone 9876543210 (Arun Verma)
 const existingPhone = '9876543210';

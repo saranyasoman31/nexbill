@@ -9,8 +9,13 @@ let passCount = 0;
 const totalTests = 7;
 
 // Mock database state
+const fixtureSuppliers = [
+  { id: 'SUPP-01', name: 'AgroFresh Commodities LLP', phone: '9820112233', supplyType: 'LOCAL', state: 'Maharashtra', stateCode: '27', active: true },
+  { id: 'SUPP-02', name: 'OmniTech Peripheral Distributors', phone: '9811223344', supplyType: 'INTERSTATE', state: 'Karnataka', stateCode: '29', active: true },
+];
+
 const db = {
-  suppliers: JSON.parse(JSON.stringify(INITIAL_SUPPLIERS)),
+  suppliers: INITIAL_SUPPLIERS.length > 0 ? JSON.parse(JSON.stringify(INITIAL_SUPPLIERS)) : fixtureSuppliers,
   states: JSON.parse(JSON.stringify(INITIAL_STATES)),
 };
 

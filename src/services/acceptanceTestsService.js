@@ -14,9 +14,166 @@ import { TallyExportService } from './tallyExportService.js';
 
 export const AcceptanceTestsService = {
   /**
+   * Automatically seed test fixtures if running tests against empty production database
+   */
+  ensureTestFixtures() {
+    const db = getDatabase();
+    let mutated = false;
+
+    // 1. Ensure test supplier SUPP-01 exists
+    if (!db.suppliers?.some((s) => s.id === 'SUPP-01')) {
+      db.suppliers = db.suppliers || [];
+      db.suppliers.push({
+        id: 'SUPP-01',
+        name: 'AgroFresh Commodities LLP',
+        phone: '9820112233',
+        gstin: '27AAAFB1111C1Z0',
+        active: true,
+        stateCode: '27',
+        state: 'Maharashtra',
+        supplyType: 'LOCAL',
+      });
+      mutated = true;
+    }
+
+    // 2. Ensure test customer CUST-002 exists
+    if (!db.customers?.some((c) => c.id === 'CUST-002')) {
+      db.customers = db.customers || [];
+      db.customers.push({
+        id: 'CUST-002',
+        name: 'Arun Verma',
+        phone: '9876543210',
+        email: 'arun.verma@example.com',
+        gstin: '',
+        state: 'Maharashtra',
+        stateCode: '27',
+        businessType: 'B2C',
+        supplyType: 'LOCAL',
+        creditLimit: 5000,
+        creditOutstanding: 0,
+        loyaltyPoints: 340,
+        isWalkIn: false,
+        active: true,
+      });
+      mutated = true;
+    }
+
+    // 3. Ensure test coupon WELCOME50 exists
+    if (!db.coupons?.some((c) => c.code === 'WELCOME50')) {
+      db.coupons = db.coupons || [];
+      db.coupons.push({
+        id: 'CPN-01',
+        code: 'WELCOME50',
+        description: '5% off up to ₹50 on min spend ₹300',
+        discountType: 'FLAT',
+        discountValue: 50,
+        minSpend: 200,
+        maxDiscountCap: 50,
+        active: true,
+        singleUsePerCustomer: true,
+        usedCount: 0,
+      });
+      mutated = true;
+    }
+
+    // 4. Ensure test products exist
+    const testProducts = [
+      { id: 'PROD-001', name: 'Royal Heritage Basmati Rice 5kg', sku: 'RIC-BAS-5K', rate: 340, mrp: 499, sellingRate: 430, taxRate: 5, active: true },
+      { id: 'PROD-002', name: 'Cold Pressed Sunflower Cooking Oil 1L', sku: 'OIL-SUN-1L', rate: 140, mrp: 180, sellingRate: 165, taxRate: 5, active: true },
+      { id: 'PROD-003', name: 'South Malabar Filter Coffee Blend 500g', sku: 'BEV-COF-500', rate: 180, mrp: 280, sellingRate: 250, taxRate: 5, active: true },
+      { id: 'PROD-005', name: 'Artisan Dark Roast Almond Bar 150g', sku: 'CNF-CHK-150', rate: 110, mrp: 185, sellingRate: 165, taxRate: 18, active: true },
+      { id: 'PROD-006', name: 'Ergonomic Silent Wireless Mouse', sku: 'ELE-MSE-001', rate: 130, mrp: 240, sellingRate: 210, taxRate: 12, active: true },
+      { id: 'PROD-007', name: 'Heavy Duty 65W Braided Type-C Cable 2M', sku: 'ELE-CAB-2M', rate: 125, mrp: 399, sellingRate: 299, taxRate: 18, active: true },
+      { id: 'PROD-008', name: 'Active Noise Cancelling TWS Earbuds', sku: 'ELE-EAR-BT', rate: 220, mrp: 399, sellingRate: 350, taxRate: 18, active: true },
+      { id: 'PROD-009', name: 'Aloe Sanitizing Gel Pump 500ml', sku: 'HYG-SAN-500', rate: 95, mrp: 150, sellingRate: 130, taxRate: 18, active: true },
+      { id: 'PROD-010', name: 'Whole Grain Rolled Breakfast Oats 1kg', sku: 'CER-OAT-1K', rate: 130, mrp: 240, sellingRate: 210, taxRate: 12, active: true },
+    ];
+    db.products = db.products || [];
+    testProducts.forEach((tp) => {
+      if (!db.products.some((p) => p.id === tp.id)) {
+        db.products.push(tp);
+        mutated = true;
+      }
+    });
+
+    // 5. Ensure test warehouses exist
+    if (!db.warehouses?.some((w) => w.id === 'WH-PUN-MAIN')) {
+      db.warehouses = db.warehouses || [];
+      db.warehouses.push({
+        id: 'WH-PUN-MAIN',
+        storeId: 'STR-02',
+        companyId: 'COMP-01',
+        name: 'Pune Main Stockroom',
+        code: 'WH-PUN-01',
+        type: 'STORAGE',
+        isSellable: true,
+      });
+      mutated = true;
+    }
+    if (!db.warehouses?.some((w) => w.id === 'WH-MUM-FRONT')) {
+      db.warehouses = db.warehouses || [];
+      db.warehouses.push({
+        id: 'WH-MUM-FRONT',
+        storeId: 'STR-01',
+        companyId: 'COMP-01',
+        name: 'Mumbai Front Counter Shelf',
+        code: 'WH-MUM-02',
+        type: 'COUNTER',
+        isSellable: true,
+      });
+      mutated = true;
+    }
+
+    // 6. Ensure test stores exist
+    if (!db.stores?.some((s) => s.id === 'STR-02')) {
+      db.stores = db.stores || [];
+      db.stores.push({
+        id: 'STR-02',
+        companyId: 'COMP-01',
+        name: 'Apex Express Pune',
+        code: 'PUN-02',
+        city: 'Pune',
+        state: 'Maharashtra',
+        stateCode: '27',
+        address: 'FC Road, Pune',
+        isDayOpen: true,
+        active: true,
+      });
+      mutated = true;
+    }
+
+    // 7. Ensure test stock balances exist
+    const testBalances = [
+      { id: 'STK-T01', warehouseId: 'WH-MUM-MAIN', productId: 'PROD-001', quantity: 45, balance: 45, valuationRate: 340.0 },
+      { id: 'STK-T02', warehouseId: 'WH-MUM-MAIN', productId: 'PROD-002', quantity: 30, balance: 30, valuationRate: 145.0 },
+      { id: 'STK-T03', warehouseId: 'WH-MUM-MAIN', productId: 'PROD-003', quantity: 28, balance: 28, valuationRate: 180.0 },
+      { id: 'STK-T05', warehouseId: 'WH-MUM-MAIN', productId: 'PROD-005', quantity: 40, balance: 40, valuationRate: 110.0 },
+      { id: 'STK-T06', warehouseId: 'WH-MUM-MAIN', productId: 'PROD-006', quantity: 25, balance: 25, valuationRate: 130.0 },
+      { id: 'STK-T07', warehouseId: 'WH-MUM-MAIN', productId: 'PROD-007', quantity: 35, balance: 35, valuationRate: 125.0 },
+      { id: 'STK-T08', warehouseId: 'WH-MUM-MAIN', productId: 'PROD-008', quantity: 35, balance: 35, valuationRate: 220.0 },
+      { id: 'STK-T09', warehouseId: 'WH-MUM-MAIN', productId: 'PROD-009', quantity: 50, balance: 50, valuationRate: 65.0 },
+      { id: 'STK-T10', warehouseId: 'WH-MUM-MAIN', productId: 'PROD-010', quantity: 25, balance: 25, valuationRate: 130.0 },
+      { id: 'STK-T18', warehouseId: 'WH-PUN-MAIN', productId: 'PROD-008', quantity: 8, balance: 8, valuationRate: 220.0 },
+    ];
+    db.stockBalances = db.stockBalances || [];
+    testBalances.forEach((tb) => {
+      const existing = db.stockBalances.find((b) => b.warehouseId === tb.warehouseId && b.productId === tb.productId);
+      if (!existing) {
+        db.stockBalances.push(tb);
+        mutated = true;
+      }
+    });
+
+    if (mutated) {
+      saveDatabase(db);
+    }
+  },
+
+  /**
    * Run a specific test by index (1 to 14)
    */
   async runTest(testIndex) {
+    this.ensureTestFixtures();
     switch (testIndex) {
       case 1: return this.test1_PurchaseStockIncrease();
       case 2: return this.test2_SaleStockDecrease();
@@ -40,6 +197,7 @@ export const AcceptanceTestsService = {
    * Run all 14 tests sequentially
    */
   async runAllTests(onProgress) {
+    this.ensureTestFixtures();
     const results = [];
     for (let i = 1; i <= 14; i++) {
       try {

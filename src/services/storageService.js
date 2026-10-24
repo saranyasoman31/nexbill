@@ -23,7 +23,7 @@ import {
   DEFAULT_PO_TERMS,
 } from '../data/initialData.js';
 
-const STORAGE_KEY = 'NEXBILL_ERP_DATABASE_V1';
+const STORAGE_KEY = 'NEXBILL_ERP_DATABASE_V2';
 
 export function initializeDatabase(forceReset = false) {
   if (!forceReset) {
@@ -68,16 +68,10 @@ export function initializeDatabase(forceReset = false) {
         if (!parsed.states || parsed.states.length === 0) { parsed.states = INITIAL_STATES; mutated = true; }
 
         // Ensure all companies have code, mfg, contact, address
-        if (parsed.companies) {
-          const compCodeMap = {
-            'COMP-01': 'CMP-001',
-            'COMP-02': 'CMP-002',
-            'COMP-03': 'CMP-003',
-            'COMP-04': 'CMP-004',
-          };
+        if (parsed.companies && parsed.companies.length > 0) {
           parsed.companies.forEach((comp, idx) => {
             if (!comp.code) {
-              comp.code = compCodeMap[comp.id] || `CMP-${String(idx + 1).padStart(3, '0')}`;
+              comp.code = `CMP-${String(idx + 1).padStart(3, '0')}`;
               mutated = true;
             }
             if (!comp.mfg) {
@@ -93,39 +87,9 @@ export function initializeDatabase(forceReset = false) {
               mutated = true;
             }
           });
-          INITIAL_COMPANIES.forEach((initComp) => {
-            if (!parsed.companies.some((c) => c.id === initComp.id || c.name === initComp.name)) {
-              parsed.companies.push(initComp);
-              mutated = true;
-            }
-          });
         } else {
           parsed.companies = INITIAL_COMPANIES;
           mutated = true;
-        }
-
-        // Ensure sample products have company assigned if not set
-        if (parsed.products) {
-          parsed.products.forEach((p) => {
-            if (p.id === 'PROD-001' && !p.companyId) {
-              p.companyId = 'COMP-01';
-              p.company = 'Apex Retail Enterprises Ltd';
-              p.companyCode = 'CMP-001';
-              mutated = true;
-            }
-            if (p.id === 'PROD-002' && !p.companyId) {
-              p.companyId = 'COMP-01';
-              p.company = 'Apex Retail Enterprises Ltd';
-              p.companyCode = 'CMP-001';
-              mutated = true;
-            }
-            if (p.id === 'PROD-004' && !p.companyId) {
-              p.companyId = 'COMP-03';
-              p.company = 'Sun Pharma & FMCG Industries';
-              p.companyCode = 'CMP-003';
-              mutated = true;
-            }
-          });
         }
 
         // Ensure all brands have a valid code
@@ -264,10 +228,6 @@ export function initializeDatabase(forceReset = false) {
     }
   }
 
-  // Generate initial state with sample posted invoices & movements
-  const sampleInvoiceNumber = 'INV-2026-0001';
-  const sampleInvoiceDate = new Date(Date.now() - 3600000 * 2).toISOString();
-
   const initialDb = {
     companies: INITIAL_COMPANIES,
     stores: INITIAL_STORES,
@@ -286,172 +246,15 @@ export function initializeDatabase(forceReset = false) {
     taxes: INITIAL_TAXES,
     purchaseOrders: INITIAL_PURCHASE_ORDERS,
     initialStocks: INITIAL_INITIAL_STOCKS,
-    stockMovements: [
-      {
-        id: 'SMOV-0001',
-        timestamp: new Date(Date.now() - 86400000 * 2).toISOString(),
-        docType: 'INITIAL_STOCK',
-        docId: 'INIT-2026-MUM',
-        docNumber: 'INIT-2026-MUM',
-        warehouseId: 'WH-MUM-MAIN',
-        productId: 'PROD-001',
-        qtyChange: 48,
-        balanceAfter: 48,
-        costRate: 340.0,
-        reason: 'Fiscal year opening stock cutover',
-        userId: 'USR-04',
-      },
-      {
-        id: 'SMOV-0002',
-        timestamp: sampleInvoiceDate,
-        docType: 'SALE_OUT',
-        docId: 'INV-SAMPLE-1',
-        docNumber: sampleInvoiceNumber,
-        warehouseId: 'WH-MUM-MAIN',
-        productId: 'PROD-001',
-        qtyChange: -3,
-        balanceAfter: 45,
-        costRate: 340.0,
-        reason: 'Customer retail sale',
-        userId: 'USR-01',
-      }
-    ],
-    invoices: [
-      {
-        id: 'INV-SAMPLE-1',
-        docNumber: sampleInvoiceNumber,
-        companyId: 'COMP-01',
-        storeId: 'STR-01',
-        warehouseId: 'WH-MUM-MAIN',
-        customerId: 'CUST-002',
-        customerName: 'Arun Verma',
-        date: sampleInvoiceDate,
-        status: 'POSTED',
-        idempotencyToken: 'IDEMP-SAMPLE-0001',
-        lines: [
-          {
-            lineId: 'LINE-1',
-            productId: 'PROD-001',
-            sku: 'RIC-BAS-5K',
-            name: 'Royal Heritage Basmati Rice 5kg',
-            barcode: '8901234001012',
-            hsnCode: '10063020',
-            uom: 'Pcs',
-            qty: 3,
-            returnedQty: 0,
-            remainingReturnableQty: 3,
-            rate: 430.0,
-            mrp: 499.0,
-            discountPercent: 0,
-            discountAmount: 0,
-            taxRate: 5,
-            taxAmount: 61.43,
-            taxableAmount: 1228.57,
-            lineTotal: 1290.0,
-          }
-        ],
-        subtotal: 1290.0,
-        lineDiscountTotal: 0,
-        couponCode: null,
-        couponDiscount: 0,
-        pointsRedeemed: 0,
-        pointsDiscountAmount: 0,
-        pointsEarned: 12,
-        taxableAmount: 1228.57,
-        cgstAmount: 30.71,
-        sgstAmount: 30.72,
-        igstAmount: 0,
-        totalTax: 61.43,
-        roundOff: 0.0,
-        netPayable: 1290.0,
-        paidAmount: 1290.0,
-        balanceDue: 0.0,
-        tenders: [
-          { method: 'UPI', amount: 1290.0, reference: 'UPI-9821008819' }
-        ],
-        createdBy: 'USR-01',
-        createdByName: 'Priya Sharma',
-        postedAt: sampleInvoiceDate,
-        reversedAt: null,
-        reversalReason: null,
-      }
-    ],
+    stockMovements: [],
+    invoices: [],
     salesReturns: [],
-    purchases: [
-      {
-        id: 'PUR-SAMPLE-1',
-        docNumber: 'PUR-2026-0001',
-        supplierId: 'SUPP-01',
-        supplierName: 'AgroFresh Commodities LLP',
-        supplierInvoiceNo: 'AGRO/2026/771',
-        companyId: 'COMP-01',
-        storeId: 'STR-01',
-        warehouseId: 'WH-MUM-MAIN',
-        date: new Date(Date.now() - 86400000).toISOString(),
-        status: 'POSTED',
-        lines: [
-          {
-            lineId: 'PLINE-1',
-            productId: 'PROD-001',
-            name: 'Royal Heritage Basmati Rice 5kg',
-            qty: 50,
-            returnedQty: 0,
-            rate: 340.0,
-            taxRate: 5,
-            taxAmount: 850.0,
-            lineTotal: 17850.0,
-          }
-        ],
-        subtotal: 17000.0,
-        totalTax: 850.0,
-        netAmount: 17850.0,
-        paymentStatus: 'PAID',
-        createdBy: 'USR-02',
-        postedAt: new Date(Date.now() - 86400000).toISOString(),
-      }
-    ],
+    purchases: [],
     purchaseReturns: [],
-    stockTransfers: [
-      {
-        id: 'TRF-0001',
-        docNumber: 'TRF-2026-0001',
-        sourceWarehouseId: 'WH-MUM-MAIN',
-        destinationWarehouseId: 'WH-MUM-FRONT',
-        sourceStoreId: 'STR-01',
-        destinationStoreId: 'STR-01',
-        companyId: 'COMP-01',
-        status: 'RECEIVED', // DRAFT -> DISPATCHED -> RECEIVED -> CLOSED
-        lines: [
-          {
-            productId: 'PROD-001',
-            productName: 'Royal Heritage Basmati Rice 5kg',
-            dispatchedQty: 5,
-            receivedQty: 5,
-            damagedQty: 0,
-            variance: 0,
-          }
-        ],
-        dispatchedAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-        receivedAt: new Date(Date.now() - 3600000 * 3).toISOString(),
-        dispatchedBy: 'USR-03',
-        receivedBy: 'USR-01',
-        notes: 'Replenishing front counter shelf',
-      }
-    ],
+    stockTransfers: [],
     stockAdjustments: [],
     rateChanges: [],
-    loyaltyLedger: [
-      {
-        id: 'LOY-001',
-        customerId: 'CUST-002',
-        docType: 'SALE_EARN',
-        docNumber: sampleInvoiceNumber,
-        pointsDelta: 12,
-        balanceAfter: 340,
-        remarks: 'Points earned for invoice INV-2026-0001',
-        timestamp: sampleInvoiceDate,
-      }
-    ],
+    loyaltyLedger: [],
     registerSessions: [INITIAL_REGISTER_SESSION],
     tallyExportBatches: [],
     auditLogs: [
@@ -460,97 +263,11 @@ export function initializeDatabase(forceReset = false) {
         timestamp: new Date().toISOString(),
         action: 'SYSTEM_INIT',
         userId: 'USR-ADMIN',
-        details: 'NexBill ERP database initialized with enterprise compliance baseline',
+        details: 'NexBill ERP database initialized with clean system baseline',
         ip: '127.0.0.1',
-
       }
     ],
-    backlog: [
-      {
-        id: 'BKL-0001',
-        timestamp: new Date(Date.now() - 3600000 * 24).toISOString(),
-        userId: 'USR-ADMIN',
-        userName: 'System Administrator',
-        userRole: 'ADMINISTRATOR',
-        ipAddress: '192.168.1.100',
-        formName: 'Product Master',
-        action: 'SAVE',
-        recordRef: 'PROD-001',
-        details: 'Saved Product: Royal Heritage Basmati Rice 5kg (MRP: ₹499.00, Cost: ₹340.00)',
-      },
-      {
-        id: 'BKL-0002',
-        timestamp: new Date(Date.now() - 3600000 * 20).toISOString(),
-        userId: 'USR-ADMIN',
-        userName: 'System Administrator',
-        userRole: 'ADMINISTRATOR',
-        ipAddress: '192.168.1.100',
-        formName: 'Supplier Master',
-        action: 'SAVE',
-        recordRef: 'SUPP-01',
-        details: 'Saved Supplier: AgroFresh Commodities LLP (GSTIN: 27AAAFB1111C1Z0)',
-      },
-      {
-        id: 'BKL-0003',
-        timestamp: new Date(Date.now() - 3600000 * 16).toISOString(),
-        userId: 'USR-04',
-        userName: 'Anil Kapoor',
-        userRole: 'STORE_MANAGER',
-        ipAddress: '192.168.1.105',
-        formName: 'Branch Master',
-        action: 'UPDATE',
-        recordRef: 'STR-01',
-        details: 'Updated Branch: Apex Flagship Mumbai address & contact details',
-      },
-      {
-        id: 'BKL-0004',
-        timestamp: new Date(Date.now() - 3600000 * 8).toISOString(),
-        userId: 'USR-02',
-        userName: 'Rajesh Patel',
-        userRole: 'PURCHASE_USER',
-        ipAddress: '192.168.1.112',
-        formName: 'Purchase Order',
-        action: 'SAVE',
-        recordRef: 'PO/2026/0101',
-        details: 'Saved Purchase Order PO/2026/0101 for AgroFresh Commodities LLP with 2 items',
-      },
-      {
-        id: 'BKL-0005',
-        timestamp: new Date(Date.now() - 3600000 * 4).toISOString(),
-        userId: 'USR-01',
-        userName: 'Rahul Sharma',
-        userRole: 'CASHIER',
-        ipAddress: '192.168.1.120',
-        formName: 'Billing (POS)',
-        action: 'SAVE',
-        recordRef: 'INV-2026-0001',
-        details: 'Saved Sales Invoice INV-2026-0001 for customer Arun Verma (Net: ₹1,050.50)',
-      },
-      {
-        id: 'BKL-0006',
-        timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-        userId: 'USR-ADMIN',
-        userName: 'System Administrator',
-        userRole: 'ADMINISTRATOR',
-        ipAddress: '192.168.1.100',
-        formName: 'Unit Master',
-        action: 'DELETE',
-        recordRef: 'DOZ',
-        details: 'Deleted Unit: Dozen (DOZ)',
-      },
-      {
-        id: 'BKL-0007',
-        timestamp: new Date(Date.now() - 3600000 * 1).toISOString(),
-        userId: 'USR-02',
-        userName: 'Rajesh Patel',
-        userRole: 'PURCHASE_USER',
-        ipAddress: '192.168.1.112',
-        formName: 'Purchase Order',
-        action: 'CANCEL',
-        recordRef: 'PO/2026/0099',
-        details: 'Cancelled Purchase Order PO/2026/0099: Supplier notified out of stock',
-      },
-    ],
+    backlog: [],
     settings: {
       blockNegativeStock: true,
       costingMethod: 'WEIGHTED_AVERAGE', // FIFO | WEIGHTED_AVERAGE

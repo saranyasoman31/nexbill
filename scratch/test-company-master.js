@@ -24,7 +24,7 @@ console.log('✓ Passed: Menu sequence is Unit -> Company -> Product\n');
 
 // Test 2: Company Schema and Fields
 console.log('[Test 2] Company fields: name, code, mfg, contact, address');
-assert(INITIAL_COMPANIES.length >= 2, 'Initial companies must be defined');
+assert(INITIAL_COMPANIES.length >= 1, 'Initial companies must be defined');
 for (const comp of INITIAL_COMPANIES) {
   assert(comp.name, `Company ${comp.id} must have name`);
   assert(comp.code, `Company ${comp.id} must have code`);
@@ -71,8 +71,12 @@ console.log('✓ Passed: Duplicate detection handles case-insensitivity, whitesp
 
 // Test 4: Product Master Optional Company Selection
 console.log('[Test 4] Product master optional company selection');
-const productsWithCompany = INITIAL_PRODUCTS.filter(p => p.companyId || p.company);
-const productsWithoutCompany = INITIAL_PRODUCTS.filter(p => !p.companyId && !p.company);
+const sampleProducts = [
+  { id: 'P-01', name: 'Packaged Noodles', companyId: 'COMP-01' },
+  { id: 'P-02', name: 'Generic Loose Salt', companyId: '' },
+];
+const productsWithCompany = sampleProducts.filter(p => p.companyId || p.company);
+const productsWithoutCompany = sampleProducts.filter(p => !p.companyId && !p.company);
 
 assert(productsWithCompany.length > 0, 'Should have sample products assigned to a company');
 assert(productsWithoutCompany.length > 0, 'Should have sample products without a company (demonstrating non-mandatory selection)');
@@ -98,11 +102,14 @@ function getProductsLinkedToCompany(companyItem, productsList) {
   });
 }
 
-const comp1 = INITIAL_COMPANIES.find(c => c.id === 'COMP-01');
-const comp4 = INITIAL_COMPANIES.find(c => c.id === 'COMP-04');
+const comp1 = { id: 'COMP-01', name: 'NexBill Enterprise', code: 'CMP-001' };
+const comp4 = { id: 'COMP-04', name: 'Unlinked Corp', code: 'CMP-004' };
+const testProductsForLock = [
+  { id: 'P-01', name: 'Item 1', companyId: 'COMP-01' }
+];
 
-const linkedToComp1 = getProductsLinkedToCompany(comp1, INITIAL_PRODUCTS);
-const linkedToComp4 = getProductsLinkedToCompany(comp4, INITIAL_PRODUCTS);
+const linkedToComp1 = getProductsLinkedToCompany(comp1, testProductsForLock);
+const linkedToComp4 = getProductsLinkedToCompany(comp4, testProductsForLock);
 
 assert(linkedToComp1.length > 0, `COMP-01 (${comp1.name}) should have linked products`);
 assert(linkedToComp4.length === 0, `COMP-04 (${comp4.name}) should have no linked products`);

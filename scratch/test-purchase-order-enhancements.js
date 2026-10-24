@@ -6,12 +6,25 @@ import { numberToWords } from '../src/utils/numberToWords.js';
 console.log('=== STARTING PURCHASE ORDER ENHANCEMENTS UNIT TEST ===\n');
 
 // Mock Database
+const fixturePurchaseOrders = [
+  { id: 'PO-2026-0001', poNumber: 'PO/2026/0101', supplierId: 'SUPP-01' }
+];
+const fixtureStockBalances = [
+  { productId: 'PROD-001', valuationRate: 340, quantity: 45 }
+];
+const fixtureInitialStocks = [
+  { productId: 'PROD-001', valuationRate: 340, quantity: 45 }
+];
+const fixtureProducts = [
+  { id: 'PROD-001', name: 'Royal Heritage Basmati Rice', costRate: 340 }
+];
+
 const db = {
   suppliers: JSON.parse(JSON.stringify(INITIAL_SUPPLIERS)),
-  products: JSON.parse(JSON.stringify(INITIAL_PRODUCTS)),
-  stockBalances: JSON.parse(JSON.stringify(INITIAL_STOCK_BALANCES)),
-  initialStocks: JSON.parse(JSON.stringify(INITIAL_INITIAL_STOCKS)),
-  purchaseOrders: JSON.parse(JSON.stringify(INITIAL_PURCHASE_ORDERS)),
+  products: INITIAL_PRODUCTS.length > 0 ? JSON.parse(JSON.stringify(INITIAL_PRODUCTS)) : fixtureProducts,
+  stockBalances: INITIAL_STOCK_BALANCES.length > 0 ? JSON.parse(JSON.stringify(INITIAL_STOCK_BALANCES)) : fixtureStockBalances,
+  initialStocks: INITIAL_INITIAL_STOCKS.length > 0 ? JSON.parse(JSON.stringify(INITIAL_INITIAL_STOCKS)) : fixtureInitialStocks,
+  purchaseOrders: INITIAL_PURCHASE_ORDERS.length > 0 ? JSON.parse(JSON.stringify(INITIAL_PURCHASE_ORDERS)) : fixturePurchaseOrders,
   warehouses: [
     { id: 'WH-MUM-MAIN', name: 'Mumbai Main Warehouse' },
     { id: 'WH-MUM-FRONT', name: 'Mumbai Front Counter Shelf' }

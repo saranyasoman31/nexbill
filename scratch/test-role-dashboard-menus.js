@@ -85,6 +85,19 @@ function hasPermissionForUser(user, menuId, action = 'view') {
   return false;
 }
 
+// Ensure test role users exist for role tests
+const roleUserFixtures = [
+  { id: 'USR-CASHIER', name: 'Cashier Staff', roleId: 'ROLE_CASHIER', role: 'CASHIER' },
+  { id: 'USR-STOREKEEPER', name: 'Storekeeper Staff', roleId: 'ROLE_STOREKEEPER', role: 'STOREKEEPER' },
+  { id: 'USR-PURCHASE', name: 'Purchase Staff', roleId: 'ROLE_PURCHASE_USER', role: 'PURCHASE_USER' },
+  { id: 'USR-ACCOUNTANT', name: 'Accountant Staff', roleId: 'ROLE_ACCOUNTANT', role: 'ACCOUNTANT' },
+];
+roleUserFixtures.forEach(ru => {
+  if (!db.users.some(u => u.roleId === ru.roleId)) {
+    db.users.push(ru);
+  }
+});
+
 // Test 1: Administrator Full Access
 console.log('[Test 1] Administrator (ROLE_ADMIN) Menu & Dashboard Privileges');
 const adminUser = db.users.find(u => u.roleId === 'ROLE_ADMIN');
@@ -151,11 +164,11 @@ console.log(`  ✓ Storekeeper strictly blocked from retail billing, day close, 
 console.log('[Test 4] Purchase Executive (ROLE_PURCHASE_USER) Menu & Dashboard Tailoring');
 const purchaseUser = db.users.find(u => u.roleId === 'ROLE_PURCHASE_USER');
 const purchasePermittedMenus = SYSTEM_MENUS_CONFIG.filter(m => hasPermissionForUser(purchaseUser, m.id, 'view'));
-const purchaseExpected = ['supplier', 'main_category', 'category', 'brand', 'unit', 'product', 'purchase_order', 'purchase', 'purchase_return', 'stock', 'reports'];
+const purchaseExpected = ['supplier', 'main_category', 'category', 'brand', 'unit', 'company', 'product', 'purchase_order', 'purchase', 'purchase_return', 'stock', 'reports'];
 const purchaseActual = purchasePermittedMenus.map(m => m.id);
 
-if (purchasePermittedMenus.length !== 11) {
-  throw new Error(`Expected purchase user to have 11 permitted menus, got ${purchasePermittedMenus.length}`);
+if (purchasePermittedMenus.length !== 12) {
+  throw new Error(`Expected purchase user to have 12 permitted menus, got ${purchasePermittedMenus.length}`);
 }
 // Verify Purchase user CANNOT view retail POS billing or day close
 if (hasPermissionForUser(purchaseUser, 'billing', 'view')) {
