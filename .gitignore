@@ -26,3 +26,4 @@ dist-ssr
 # Generated test artifacts
 scratch/*.pdf
 scratch/*.xlsx
+*.zip
