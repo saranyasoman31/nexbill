@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "node scripts/dev-setup.js && vite",
+    "build": "node scripts/dev-setup.js && vite build && node scripts/deploy-setup.js",
     "test:acceptance": "node scratch/test-runner.js",
     "lint": "oxlint",
     "preview": "vite preview"

@@ -39,3 +39,9 @@ DirectoryIndex index.html
   ExpiresByType text/css "access plus 1 month"
   ExpiresByType application/javascript "access plus 1 month"
 </IfModule>
+
+# Protect sensitive files from direct web access
+<FilesMatch "^\.|\.env|package\.json|package-lock\.json|vite\.config\.js">
+  Order allow,deny
+  Deny from all
+</FilesMatch>

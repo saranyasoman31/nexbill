@@ -1,0 +1,47 @@
+# Ensure DirectoryIndex
+DirectoryIndex index.html
+
+# Prevent directory browsing
+<IfModule mod_autoindex.c>
+  Options -Indexes
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /nexbill/
+
+  # 1. Force trailing slash on /nexbill
+  RewriteCond %{REQUEST_URI} ^/nexbill$ [NC]
+  RewriteRule ^(.*)$ /nexbill/ [R=301,L]
+
+  # 2. Never rewrite real existing files (assets/*.js, assets/*.css, etc.)
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule ^ - [L]
+
+  # 3. Never rewrite real existing directories
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # 4. Route all other client URLs to index.html for React SPA
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ index.html [QSA,L]
+</IfModule>
+
+# Caching for static assets
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType image/jpg "access plus 1 month"
+  ExpiresByType image/jpeg "access plus 1 month"
+  ExpiresByType image/gif "access plus 1 month"
+  ExpiresByType image/png "access plus 1 month"
+  ExpiresByType image/svg+xml "access plus 1 month"
+  ExpiresByType text/css "access plus 1 month"
+  ExpiresByType application/javascript "access plus 1 month"
+</IfModule>
+
+# Protect sensitive files from direct web access
+<FilesMatch "^\.|\.env|package\.json|package-lock\.json|vite\.config\.js">
+  Order allow,deny
+  Deny from all
+</FilesMatch>
