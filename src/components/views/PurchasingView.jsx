@@ -8,7 +8,6 @@ import { numberToWords } from '../../utils/numberToWords.js';
 import {
   Truck,
   Plus,
-  RotateCcw,
   CheckCircle2,
   AlertTriangle,
   Receipt,
@@ -118,7 +117,7 @@ function getProductStockRates(productId, db) {
 export default function PurchasingView() {
   const { db, activeCompany, activeStore, activeWarehouse, currentUser, notify, triggerRefresh } = useApp();
 
-  // Navigation tab: list | new | debit_notes
+  // Navigation tab: list | new
   const [activeTab, setActiveTab] = useState('list');
 
   // Search & Filter state for List View
@@ -178,11 +177,6 @@ export default function PurchasingView() {
   const [viewingPurchase, setViewingPurchase] = useState(null);
   const [printingPurchase, setPrintingPurchase] = useState(null);
   const [deletingPurchase, setDeletingPurchase] = useState(null);
-
-  // Purchase Return (Debit Note) State
-  const [returnPurchase, setReturnPurchase] = useState(null);
-  const [returnItems, setReturnItems] = useState({});
-  const [returnReason, setReturnReason] = useState('Vendor defective batch');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -766,54 +760,6 @@ export default function PurchasingView() {
     }
   };
 
-  // Purchase Return (Debit Note) handlers
-  const handleStartDebitNote = (purchase) => {
-    const itemsMap = {};
-    (purchase.lines || []).forEach((l) => {
-      itemsMap[l.productId] = {
-        productId: l.productId,
-        name: l.name,
-        purchasedQty: l.qty,
-        prevReturned: l.returnedQty || 0,
-        maxReturnable: l.qty - (l.returnedQty || 0),
-        returnQty: 0,
-        costPrice: l.costPrice || l.rate,
-      };
-    });
-    setReturnItems(itemsMap);
-    setReturnPurchase(purchase);
-  };
-
-  const handleSubmitDebitNote = () => {
-    try {
-      const itemsToReturn = Object.values(returnItems)
-        .filter((it) => Number(it.returnQty) > 0)
-        .map((it) => ({
-          productId: it.productId,
-          returnQty: Number(it.returnQty),
-        }));
-
-      if (itemsToReturn.length === 0) {
-        notify('error', 'Select at least one product with return quantity.', 'Invalid Return');
-        return;
-      }
-
-      const res = PurchasePostingService.postPurchaseReturn({
-        originalPurchaseDocNumber: returnPurchase.docNumber,
-        items: itemsToReturn,
-        reason: returnReason,
-        userId: currentUser?.id || 'USR-ADMIN',
-      });
-
-      notify('success', res.message, 'Debit Note Issued');
-      triggerRefresh();
-      setReturnPurchase(null);
-      setActiveTab('debit_notes');
-    } catch (err) {
-      notify('error', err.message, 'Debit Note Failed');
-    }
-  };
-
   // Filtered Purchases for List View
   const filteredPurchases = useMemo(() => {
     let list = [...(db.purchases || [])];
@@ -868,49 +814,26 @@ export default function PurchasingView() {
             <Plus className="w-4 h-4" />
             <span>{editingPurchaseId ? 'Edit Purchase Entry' : 'New Inward Purchase'}</span>
           </button>
-
-          <button
-            onClick={() => setActiveTab('debit_notes')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
-              activeTab === 'debit_notes' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-            }`}
-          >
-            <RotateCcw className="w-4 h-4" />
-            <span>Supplier Debit Notes ({db.purchaseReturns?.length || 0})</span>
-          </button>
         </div>
 
-        {activeTab !== 'new' && (
+        {activeTab === 'list' && (
           <div className="flex items-center gap-2">
             <ExportButtons
-              data={
-                activeTab === 'list'
-                  ? filteredPurchases.map((p, idx) => ({
-                      '#': idx + 1,
-                      'Purchase #': p.docNumber,
-                      'Date': new Date(p.date).toLocaleDateString(),
-                      'Branch': p.branchName || p.storeName || (db.stores?.find((s) => s.id === p.storeId)?.name || 'Main Store'),
-                      'Supplier Name': p.supplierName,
-                      'Vendor Invoice #': p.supplierInvoiceNo,
-                      'Vendor Invoice Date': p.supplierInvoiceDate || '—',
-                      'PO Reference': p.poNumber || p.purchaseOrderRef || '—',
-                      'Items Count': p.lines?.length || 0,
-                      'Net Amount': `₹${Number(p.netAmount || p.grandTotal || 0).toFixed(2)}`,
-                      'Status': p.paymentStatus || 'PAID',
-                    }))
-                  : (db.purchaseReturns || []).map((pr, idx) => ({
-                      '#': idx + 1,
-                      'Debit Note #': pr.docNumber,
-                      'Date': new Date(pr.date).toLocaleDateString(),
-                      'Original Purchase #': pr.originalPurchaseDocNumber,
-                      'Supplier Name': pr.supplierName,
-                      'Items Count': pr.lines?.length || 1,
-                      'Debit Amount': `₹${Number(pr.totalDebitAmount).toFixed(2)}`,
-                      'Reason': pr.reason,
-                    }))
-              }
-              filename={activeTab === 'list' ? 'PURCHASE_REGISTER' : 'SUPPLIER_DEBIT_NOTES'}
-              title={activeTab === 'list' ? 'PURCHASE GOODS INWARD REGISTER' : 'SUPPLIER DEBIT NOTES & RETURNS'}
+              data={filteredPurchases.map((p, idx) => ({
+                '#': idx + 1,
+                'Purchase #': p.docNumber,
+                'Date': new Date(p.date).toLocaleDateString(),
+                'Branch': p.branchName || p.storeName || (db.stores?.find((s) => s.id === p.storeId)?.name || 'Main Store'),
+                'Supplier Name': p.supplierName,
+                'Vendor Invoice #': p.supplierInvoiceNo,
+                'Vendor Invoice Date': p.supplierInvoiceDate || '—',
+                'PO Reference': p.poNumber || p.purchaseOrderRef || '—',
+                'Items Count': p.lines?.length || 0,
+                'Net Amount': `₹${Number(p.netAmount || p.grandTotal || 0).toFixed(2)}`,
+                'Status': p.paymentStatus || 'PAID',
+              }))}
+              filename="PURCHASE_REGISTER"
+              title="PURCHASE GOODS INWARD REGISTER"
               pdfOrientation="landscape"
             />
           </div>
@@ -1098,15 +1021,6 @@ export default function PurchasingView() {
                                 className="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition cursor-pointer"
                               >
                                 <Trash2 className="w-4 h-4" />
-                              </button>
-
-                              {/* DEBIT NOTE */}
-                              <button
-                                onClick={() => handleStartDebitNote(p)}
-                                title="Issue Supplier Debit Note"
-                                className="p-1 text-slate-400 hover:text-amber-300 hover:bg-slate-800 rounded transition cursor-pointer"
-                              >
-                                <RotateCcw className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           </td>
@@ -1871,56 +1785,6 @@ export default function PurchasingView() {
       )}
 
       {/* ========================================================================= */}
-      {/* 3. SUPPLIER DEBIT NOTES VIEW                                               */}
-      {/* ========================================================================= */}
-      {activeTab === 'debit_notes' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
-                <tr>
-                  <th className="py-2.5 px-3">Debit Note #</th>
-                  <th className="py-2.5 px-3">Date</th>
-                  <th className="py-2.5 px-3">Original Purchase #</th>
-                  <th className="py-2.5 px-3">Supplier Name</th>
-                  <th className="py-2.5 px-2 text-center">Items</th>
-                  <th className="py-2.5 px-3 text-right">Debit Value (₹)</th>
-                  <th className="py-2.5 px-3">Reason</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60 font-sans">
-                {(!db.purchaseReturns || db.purchaseReturns.length === 0) ? (
-                  <tr>
-                    <td colSpan="7" className="py-10 text-center text-slate-500 text-xs">
-                      No purchase debit notes posted yet.
-                    </td>
-                  </tr>
-                ) : (
-                  db.purchaseReturns.map((dn) => (
-                    <tr key={dn.id} className="hover:bg-slate-800/40 transition">
-                      <td className="py-2.5 px-3 font-mono font-bold text-amber-300">{dn.docNumber}</td>
-                      <td className="py-2.5 px-3 text-slate-400 text-[11px] whitespace-nowrap">
-                        {new Date(dn.date).toLocaleDateString()}
-                      </td>
-                      <td className="py-2.5 px-3 font-mono text-indigo-400">{dn.originalPurchaseDocNumber}</td>
-                      <td className="py-2.5 px-3 font-semibold text-slate-200">{dn.supplierName}</td>
-                      <td className="py-2.5 px-2 text-center font-bold text-slate-300">
-                        {dn.lines?.length || 1}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-rose-400">
-                        ₹{Number(dn.totalDebitAmount).toFixed(2)}
-                      </td>
-                      <td className="py-2.5 px-3 text-slate-400 text-[11px]">{dn.reason}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
       {/* MODAL 1: VIEW PURCHASE DETAILS MODAL                                      */}
       {/* ========================================================================= */}
       {viewingPurchase && (
@@ -2519,103 +2383,6 @@ export default function PurchasingView() {
                   Apply Custom
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* MODAL 6: DEBIT NOTE MODAL (PURCHASE RETURN)                                */}
-      {/* ========================================================================= */}
-      {returnPurchase && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl space-y-4">
-            <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-white text-base flex items-center gap-2">
-                  <RotateCcw className="w-4 h-4 text-amber-400" />
-                  <span>Issue Debit Note for {returnPurchase.docNumber}</span>
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Stock-returnable goods create RETURN_OUT movement from warehouse
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setReturnPurchase(null)}
-                className="text-slate-400 hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="px-5 space-y-3 text-xs">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase text-[10px]">
-                  <tr>
-                    <th className="py-2 px-2">Item</th>
-                    <th className="py-2 px-2 text-center">Remaining Returnable</th>
-                    <th className="py-2 px-2 text-center">Warehouse Stock</th>
-                    <th className="py-2 px-2 text-center">Return Qty</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60 font-sans">
-                  {Object.values(returnItems).map((it) => {
-                    const currentWhStock = StockService.getStockBalance(returnPurchase.warehouseId, it.productId);
-                    return (
-                      <tr key={it.productId}>
-                        <td className="py-2 px-2 font-semibold text-slate-200">{it.name}</td>
-                        <td className="py-2 px-2 text-center text-amber-400 font-bold">{it.maxReturnable}</td>
-                        <td className="py-2 px-2 text-center text-slate-300 font-mono">{currentWhStock}</td>
-                        <td className="py-2 px-2 text-center">
-                          <input
-                            type="number"
-                            min="0"
-                            max={Math.min(it.maxReturnable, currentWhStock)}
-                            value={it.returnQty}
-                            onChange={(e) => {
-                              const val = Math.max(0, Number(e.target.value));
-                              setReturnItems((prev) => ({
-                                ...prev,
-                                [it.productId]: { ...prev[it.productId], returnQty: val },
-                              }));
-                            }}
-                            className="w-16 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-center font-bold text-slate-100 font-mono"
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-
-              <div>
-                <label className="text-[11px] font-semibold text-slate-400 block mb-1">Reason for Return</label>
-                <input
-                  type="text"
-                  value={returnReason}
-                  onChange={(e) => setReturnReason(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200"
-                />
-              </div>
-            </div>
-
-            <div className="px-5 py-3 border-t border-slate-800 flex justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setReturnPurchase(null)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-lg text-xs cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmitDebitNote}
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow cursor-pointer"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Confirm & Issue Debit Note</span>
-              </button>
             </div>
           </div>
         </div>
