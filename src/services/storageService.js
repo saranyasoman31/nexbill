@@ -278,6 +278,7 @@ export function initializeDatabase(forceReset = false) {
       managerApprovalThresholdQty: 10,
       managerApprovalThresholdAmount: 1000,
       defaultPOTerms: DEFAULT_PO_TERMS,
+      purchaseProductFilterMode: 'all', // 'supplier' | 'all'
     },
     roles: INITIAL_ROLES,
     states: INITIAL_STATES,
@@ -380,6 +381,10 @@ export function getDatabase() {
   }
   if (db.settings && !db.settings.defaultPOTerms) {
     db.settings.defaultPOTerms = DEFAULT_PO_TERMS;
+    saveDatabase(db);
+  }
+  if (db.settings && !db.settings.purchaseProductFilterMode) {
+    db.settings.purchaseProductFilterMode = 'all';
     saveDatabase(db);
   }
   return db;

@@ -186,6 +186,7 @@ export default function SettingsView({ initialSubTab = 'profile' }) {
     ewayBillThreshold: db.settings?.ewayBillThreshold ?? 50000,
     roundOffPolicy: db.settings?.roundOffPolicy || 'NEAREST_RUPEE',
     defaultPOTerms: db.settings?.defaultPOTerms || DEFAULT_PO_TERMS,
+    purchaseProductFilterMode: db.settings?.purchaseProductFilterMode || 'all',
   });
 
   // Handle Profile Update
@@ -1974,6 +1975,42 @@ export default function SettingsView({ initialSubTab = 'profile' }) {
                     {settings.defaultPOTerms ? settings.defaultPOTerms.split('\n').filter(Boolean).length : 0} clauses
                   </span>
                 </div>
+              </div>
+            </div>
+
+            {/* Purchase Catalog Filter Policy */}
+            <div className="p-4 bg-slate-900/40 border border-slate-800 rounded-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h5 className="font-semibold text-white text-xs">Purchase Product Catalog Filter</h5>
+                  <p className="text-[11px] text-slate-400">
+                    Choose whether the product search & selection in Purchase Entry displays all products or filters based on the selected supplier.
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setSettings({ ...settings, purchaseProductFilterMode: 'all' })}
+                  className={`py-2 px-3 rounded-lg text-xs font-semibold border transition text-center cursor-pointer ${
+                    settings.purchaseProductFilterMode === 'all'
+                      ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 font-bold'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  Show All Products
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSettings({ ...settings, purchaseProductFilterMode: 'supplier' })}
+                  className={`py-2 px-3 rounded-lg text-xs font-semibold border transition text-center cursor-pointer ${
+                    settings.purchaseProductFilterMode === 'supplier'
+                      ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 font-bold'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  List Products Based on Supplier
+                </button>
               </div>
             </div>
           </div>
