@@ -38,81 +38,9 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import ExportButtons from '../common/ExportButtons.jsx';
+import { getProductStockRates, getLatestHistoricalPurchaseRate } from '../../services/purchaseRateHelper.js';
 
-/**
- * Retrieve all distinct stock valuation rates for a product across:
- * 1. db.stockBalances
- * 2. db.initialStocks
- * 3. db.purchases
- * 4. Product master standard costRate
- */
-function getProductStockRates(productId, db) {
-  const prod = db.products?.find((p) => p.id === productId);
-  const entries = [];
-
-  (db.stockBalances || [])
-    .filter((b) => b.productId === productId && Number(b.valuationRate) > 0)
-    .forEach((b) => {
-      const wh = db.warehouses?.find((w) => w.id === b.warehouseId);
-      entries.push({
-        rate: Number(b.valuationRate),
-        qty: Number(b.quantity || 0),
-        source: `Stock Balance (${wh?.name || b.warehouseId})`,
-        warehouseName: wh?.name || b.warehouseId,
-      });
-    });
-
-  (db.initialStocks || [])
-    .filter((i) => i.productId === productId && Number(i.valuationRate) > 0)
-    .forEach((i) => {
-      const wh = db.warehouses?.find((w) => w.id === i.warehouseId);
-      entries.push({
-        rate: Number(i.valuationRate),
-        qty: Number(i.quantity || 0),
-        source: `Opening Stock (${i.docNumber || wh?.name || 'Initial'})`,
-        warehouseName: wh?.name || i.warehouseId,
-      });
-    });
-
-  (db.purchases || []).forEach((p) => {
-    (p.lines || [])
-      .filter((l) => (l.productId === productId || l.id === productId) && Number(l.costPrice || l.rate) > 0)
-      .forEach((l) => {
-        entries.push({
-          rate: Number(l.costPrice || l.rate),
-          qty: Number(l.qty || 0),
-          source: `Purchase Bill (${p.docNumber || 'Inward'})`,
-          warehouseName: p.branchName || p.storeName || '',
-        });
-      });
-  });
-
-  if (prod && Number(prod.costRate) > 0) {
-    entries.push({
-      rate: Number(prod.costRate),
-      qty: null,
-      source: 'Product Master Standard Cost',
-      warehouseName: 'Catalog Master',
-    });
-  }
-
-  const map = new Map();
-  for (const entry of entries) {
-    const key = entry.rate.toFixed(2);
-    if (!map.has(key)) {
-      map.set(key, {
-        rate: entry.rate,
-        sources: [entry.source],
-        stockQty: entry.qty || 0,
-      });
-    } else {
-      const existing = map.get(key);
-      if (!existing.sources.includes(entry.source)) existing.sources.push(entry.source);
-      if (entry.qty) existing.stockQty += entry.qty;
-    }
-  }
-  return Array.from(map.values());
-}
+export { getProductStockRates, getLatestHistoricalPurchaseRate };
 
 export default function PurchasingView() {
   const { db, activeCompany, activeStore, activeWarehouse, currentUser, notify, triggerRefresh } = useApp();
@@ -351,10 +279,17 @@ export default function PurchasingView() {
 
   // Apply selected product to lines
   const applyProductToLine = (product, chosenRate, targetLineIdx = null) => {
-    const costRate = Number(chosenRate ?? product.costRate ?? 100);
+    let costRate = 0;
+    if (chosenRate !== undefined && chosenRate !== null && chosenRate !== '') {
+      costRate = Number(chosenRate);
+    } else {
+      costRate = getLatestHistoricalPurchaseRate(product.id, db, formData.supplierId);
+    }
+    if (isNaN(costRate) || costRate < 0) costRate = 0;
+
     const taxRate = Number(product.taxRate ?? 0);
-    const mrp = Number(product.mrp ?? (costRate * 1.3));
-    const sellingPrice = Number(product.sellingRate ?? (costRate * 1.2));
+    const mrp = Number(product.mrp || (costRate > 0 ? costRate * 1.3 : 0));
+    const sellingPrice = Number(product.sellingRate || (costRate > 0 ? costRate * 1.2 : 0));
     const margin = Number((sellingPrice - costRate).toFixed(2));
     const marginPercent = costRate > 0 ? Number((((sellingPrice - costRate) / costRate) * 100).toFixed(1)) : 0;
 
@@ -367,14 +302,14 @@ export default function PurchasingView() {
       batchNo: '',
       expiryDate: '',
       qty: 1,
-      costPrice: costRate,
-      rate: costRate,
+      costPrice: costRate > 0 ? costRate : '',
+      rate: costRate > 0 ? costRate : 0,
       discountPercent: 0,
       discountAmount: 0,
-      mrp,
-      sellingPrice,
-      margin,
-      marginPercent,
+      mrp: mrp > 0 ? mrp : '',
+      sellingPrice: sellingPrice > 0 ? sellingPrice : '',
+      margin: costRate > 0 ? margin : 0,
+      marginPercent: costRate > 0 ? marginPercent : 0,
       taxRate,
       taxableAmount: costRate,
       taxAmount: Number(((costRate * taxRate) / 100).toFixed(2)),
@@ -397,20 +332,21 @@ export default function PurchasingView() {
 
   // Product selection handler
   const handleSelectProduct = (product, targetLineIdx = null) => {
-    const rates = getProductStockRates(product.id, db);
+    const rates = getProductStockRates(product.id, db, formData.supplierId);
     if (rates.length > 1) {
+      const preferredRate = rates.find((r) => r.isSupplierMatch)?.rate || rates[0].rate;
       setRateModal({
         isOpen: true,
         product,
         rates,
         targetLineIdx,
-        customRate: String(product.costRate || rates[0].rate || ''),
+        customRate: String(preferredRate || ''),
       });
       setIsSearchDropdownOpen(false);
       setHighlightedSuggestionIndex(-1);
       return;
     }
-    const singleRate = rates.length === 1 ? rates[0].rate : (product.costRate || 100);
+    const singleRate = rates.length === 1 ? rates[0].rate : getLatestHistoricalPurchaseRate(product.id, db, formData.supplierId);
     applyProductToLine(product, singleRate, targetLineIdx);
   };
 
@@ -418,7 +354,8 @@ export default function PurchasingView() {
   const handleAddBlankLine = () => {
     const firstProd = db.products?.[0];
     if (firstProd) {
-      applyProductToLine(firstProd, firstProd.costRate || 100);
+      const rate = getLatestHistoricalPurchaseRate(firstProd.id, db, formData.supplierId);
+      applyProductToLine(firstProd, rate);
     } else {
       setFormData((prev) => ({
         ...prev,
@@ -433,12 +370,12 @@ export default function PurchasingView() {
             batchNo: '',
             expiryDate: '',
             qty: 1,
-            costPrice: 0,
+            costPrice: '',
             rate: 0,
             discountPercent: 0,
             discountAmount: 0,
-            mrp: 0,
-            sellingPrice: 0,
+            mrp: '',
+            sellingPrice: '',
             margin: 0,
             marginPercent: 0,
             taxRate: 0,
@@ -469,13 +406,14 @@ export default function PurchasingView() {
       if (field === 'productId') {
         const prod = (db.products || []).find((p) => p.id === value);
         if (prod) {
+          const rate = getLatestHistoricalPurchaseRate(prod.id, db, formData.supplierId);
           line.name = prod.name;
           line.sku = prod.sku || '';
           line.uom = prod.uom || 'PCS';
-          line.costPrice = Number(prod.costRate || line.costPrice || 0);
-          line.rate = line.costPrice;
-          line.mrp = Number(prod.mrp || line.mrp || 0);
-          line.sellingPrice = Number(prod.sellingRate || line.sellingPrice || 0);
+          line.costPrice = rate > 0 ? rate : '';
+          line.rate = rate > 0 ? rate : 0;
+          line.mrp = prod.mrp ? Number(prod.mrp) : (rate > 0 ? Number((rate * 1.3).toFixed(2)) : '');
+          line.sellingPrice = prod.sellingRate ? Number(prod.sellingRate) : (rate > 0 ? Number((rate * 1.2).toFixed(2)) : '');
           line.taxRate = Number(prod.taxRate ?? line.taxRate ?? 0);
         }
       }
@@ -614,10 +552,10 @@ export default function PurchasingView() {
     const mappedLines = (po.lines || []).map((l, idx) => {
       const prod = (db.products || []).find((p) => p.id === (l.productId || l.id)) || {};
       const qty = Number(l.orderedQty || l.qty || 1);
-      const costPrice = Number(l.rate || prod.costRate || 100);
+      const costPrice = Number(l.rate || prod.costRate || getLatestHistoricalPurchaseRate(prod.id, db, po.supplierId) || 0);
       const taxRate = Number(l.taxRate ?? prod.taxRate ?? 0);
-      const mrp = Number(prod.mrp || (costPrice * 1.3));
-      const sellingPrice = Number(prod.sellingRate || (costPrice * 1.2));
+      const mrp = Number(prod.mrp || (costPrice > 0 ? costPrice * 1.3 : 0));
+      const sellingPrice = Number(prod.sellingRate || (costPrice > 0 ? costPrice * 1.2 : 0));
       const taxable = qty * costPrice;
       const taxAmount = Number(((taxable * taxRate) / 100).toFixed(2));
       const lineTotal = Number((taxable + taxAmount).toFixed(2));
@@ -1328,12 +1266,19 @@ export default function PurchasingView() {
                         </div>
 
                         <div className="text-right">
-                          <div className="font-mono font-bold text-indigo-400">
-                            Cost: ₹{prod.costRate || 0}
-                          </div>
-                          <div className="text-[10px] text-emerald-400">
-                            Sell: ₹{prod.sellingRate || 0}
-                          </div>
+                          {(() => {
+                            const histRate = getLatestHistoricalPurchaseRate(prod.id, db, formData.supplierId);
+                            return (
+                              <>
+                                <div className="font-mono font-bold text-indigo-400">
+                                  {histRate > 0 ? `Rate: ₹${histRate.toFixed(2)}` : 'New / No Rate'}
+                                </div>
+                                <div className="text-[10px] text-emerald-400">
+                                  Sell: ₹{prod.sellingRate || 0}
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     ))}
@@ -2375,7 +2320,7 @@ export default function PurchasingView() {
                   type="button"
                   onClick={() => {
                     const parsed = parseFloat(rateModal.customRate);
-                    applyProductToLine(rateModal.product, isNaN(parsed) ? 100 : parsed, rateModal.targetLineIdx);
+                    applyProductToLine(rateModal.product, isNaN(parsed) ? 0 : parsed, rateModal.targetLineIdx);
                     setRateModal({ isOpen: false, product: null, rates: [], targetLineIdx: null, customRate: '' });
                   }}
                   className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs font-semibold cursor-pointer"

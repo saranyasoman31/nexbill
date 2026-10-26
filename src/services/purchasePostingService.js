@@ -43,7 +43,8 @@ export const PurchasePostingService = {
       poNumber: rawPoNumber,
       purchaseOrderNo,
       purchaseOrderRef,
-      items,
+      items: rawItems,
+      lines: rawLines,
       discountType = 'FLAT',
       discountValue = 0,
       discountAmount: customDiscountAmount,
@@ -55,6 +56,8 @@ export const PurchasePostingService = {
       notes = '',
       userId = 'USR-ADMIN',
     } = purchasePayload;
+
+    const items = rawItems || rawLines;
 
     const poId = rawPoId || purchaseOrderId;
     const poNumber = rawPoNumber || purchaseOrderNo || purchaseOrderRef;
@@ -364,7 +367,8 @@ export const PurchasePostingService = {
       supplierInvoiceDate = oldPurchase.supplierInvoiceDate,
       supplierInvoiceAmount = oldPurchase.supplierInvoiceAmount,
       date = oldPurchase.date,
-      items,
+      items: rawItems,
+      lines: rawLines,
       discountType = oldPurchase.discountType || 'FLAT',
       discountValue = oldPurchase.discountValue || 0,
       otherCharges = oldPurchase.otherCharges || 0,
@@ -375,6 +379,8 @@ export const PurchasePostingService = {
       notes = oldPurchase.notes || '',
       userId = 'USR-ADMIN',
     } = purchasePayload;
+
+    const items = rawItems || rawLines;
 
     // Supplier validation
     const supplier = db.suppliers.find((s) => s.id === supplierId);

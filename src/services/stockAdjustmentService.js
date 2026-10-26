@@ -16,7 +16,7 @@ export const StockAdjustmentService = {
 
     const bookQty = StockService.getStockBalance(warehouseId, productId);
     const adjustmentQty = Number(countedQty) - bookQty;
-    const valuationImpact = Math.abs(adjustmentQty * (product.costRate || 100));
+    const valuationImpact = Math.abs(adjustmentQty * (product.costRate || 0));
 
     const needsApproval =
       Math.abs(adjustmentQty) > db.settings.managerApprovalThresholdQty ||

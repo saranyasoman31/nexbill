@@ -49,9 +49,9 @@ export default function MastersView() {
     hsnCode: '1006',
     uom: 'Pcs',
     taxRate: 5,
-    costRate: 100,
-    mrp: 150,
-    sellingRate: 130,
+    costRate: 0,
+    mrp: 0,
+    sellingRate: 0,
     minStockAlert: 10,
     active: true,
   });
@@ -129,6 +129,20 @@ export default function MastersView() {
     notify('success', `Product "${productRecord.name}" added to master catalog.`, 'Product Master Saved');
     triggerRefresh();
     setIsAddModalOpen(false);
+    setNewProduct({
+      sku: '',
+      barcode: '',
+      name: '',
+      category: 'Groceries & Staples',
+      hsnCode: '1006',
+      uom: 'Pcs',
+      taxRate: 5,
+      costRate: 0,
+      mrp: 0,
+      sellingRate: 0,
+      minStockAlert: 10,
+      active: true,
+    });
   };
 
   // Real-time Customer Form Validation Helpers
@@ -834,8 +848,8 @@ export default function MastersView() {
                     <input
                       type="number"
                       step="0.01"
-                      required
-                      value={newProduct.costRate}
+                      placeholder="0.00"
+                      value={newProduct.costRate !== undefined ? newProduct.costRate : ''}
                       onChange={(e) => setNewProduct({ ...newProduct, costRate: e.target.value })}
                       className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 font-mono text-slate-200"
                     />
@@ -845,8 +859,8 @@ export default function MastersView() {
                     <input
                       type="number"
                       step="0.01"
-                      required
-                      value={newProduct.mrp}
+                      placeholder="0.00"
+                      value={newProduct.mrp !== undefined ? newProduct.mrp : ''}
                       onChange={(e) => setNewProduct({ ...newProduct, mrp: e.target.value })}
                       className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 font-mono text-amber-300 font-bold"
                     />
@@ -856,8 +870,8 @@ export default function MastersView() {
                     <input
                       type="number"
                       step="0.01"
-                      required
-                      value={newProduct.sellingRate}
+                      placeholder="0.00"
+                      value={newProduct.sellingRate !== undefined ? newProduct.sellingRate : ''}
                       onChange={(e) => setNewProduct({ ...newProduct, sellingRate: e.target.value })}
                       className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 font-mono text-emerald-400 font-bold"
                     />

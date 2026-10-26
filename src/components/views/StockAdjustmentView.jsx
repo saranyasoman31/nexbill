@@ -27,7 +27,7 @@ export default function StockAdjustmentView() {
   const currentBookQty = StockService.getStockBalance(activeWarehouse.id, selectedProductId);
   const variance = Number(countedQty) - currentBookQty;
   const product = db.products.find(p => p.id === selectedProductId);
-  const valuationImpact = Math.abs(variance * (product?.costRate || 100));
+  const valuationImpact = Math.abs(variance * (product?.costRate || 0));
 
   const isMaterialThresholdExceeded =
     Math.abs(variance) > db.settings.managerApprovalThresholdQty ||

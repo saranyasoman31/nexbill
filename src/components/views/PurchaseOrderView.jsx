@@ -36,6 +36,7 @@ import {
   Ban,
 } from 'lucide-react';
 import ExportButtons from '../common/ExportButtons.jsx';
+import { getProductStockRates, getLatestHistoricalPurchaseRate } from '../../services/purchaseRateHelper.js';
 
 /**
  * Generate next unique sequential PO Number
@@ -65,96 +66,6 @@ function isPONumberDuplicate(poNumber, excludeId, db) {
   return (db.purchaseOrders || []).some(
     (p) => p.id !== excludeId && p.poNumber?.trim().toLowerCase() === num
   );
-}
-
-/**
- * Retrieve all distinct stock valuation rates for a product across:
- * 1. db.stockBalances (current warehouse stock balances)
- * 2. db.initialStocks (opening stock records)
- * 3. db.purchases (historical posted purchase receipts)
- * 4. Product master standard costRate
- */
-function getProductStockRates(productId, db) {
-  const prod = db.products?.find((p) => p.id === productId);
-  const entries = [];
-
-  // 1. Stock balances
-  (db.stockBalances || [])
-    .filter((b) => b.productId === productId && Number(b.valuationRate) > 0)
-    .forEach((b) => {
-      const wh = db.warehouses?.find((w) => w.id === b.warehouseId);
-      entries.push({
-        rate: Number(b.valuationRate),
-        qty: Number(b.quantity || 0),
-        source: `Stock Balance (${wh?.name || b.warehouseId})`,
-        warehouseName: wh?.name || b.warehouseId,
-        type: 'STOCK_BALANCE',
-      });
-    });
-
-  // 2. Initial stocks
-  (db.initialStocks || [])
-    .filter((i) => i.productId === productId && Number(i.valuationRate) > 0)
-    .forEach((i) => {
-      const wh = db.warehouses?.find((w) => w.id === i.warehouseId);
-      entries.push({
-        rate: Number(i.valuationRate),
-        qty: Number(i.quantity || 0),
-        source: `Opening Stock (${i.docNumber || wh?.name || 'Initial'})`,
-        warehouseName: wh?.name || i.warehouseId,
-        type: 'INITIAL_STOCK',
-      });
-    });
-
-  // 3. Purchase receipts
-  (db.purchases || []).forEach((p) => {
-    const lines = p.lines || p.items || [];
-    lines
-      .filter((l) => (l.productId === productId || l.id === productId) && Number(l.rate) > 0)
-      .forEach((l) => {
-        entries.push({
-          rate: Number(l.rate),
-          qty: Number(l.qty || l.orderedQty || 0),
-          source: `Purchase Voucher (${p.docNumber || 'Inward'})`,
-          warehouseName: p.warehouseId || '',
-          type: 'PURCHASE_HISTORY',
-        });
-      });
-  });
-
-  // 4. Product master cost
-  if (prod && Number(prod.costRate) > 0) {
-    entries.push({
-      rate: Number(prod.costRate),
-      qty: null,
-      source: 'Product Master Default Cost',
-      warehouseName: 'Master Catalog',
-      type: 'MASTER_COST',
-    });
-  }
-
-  // Deduplicate and group by rate (rounded to 2 decimal places)
-  const map = new Map();
-  for (const entry of entries) {
-    const key = entry.rate.toFixed(2);
-    if (!map.has(key)) {
-      map.set(key, {
-        rate: entry.rate,
-        sources: [entry.source],
-        stockQty: entry.qty || 0,
-        entries: [entry],
-      });
-    } else {
-      const existing = map.get(key);
-      if (!existing.sources.includes(entry.source)) {
-        existing.sources.push(entry.source);
-      }
-      if (entry.qty) existing.stockQty += entry.qty;
-      existing.entries.push(entry);
-    }
-  }
-
-  return Array.from(map.values());
 }
 
 /**
@@ -443,8 +354,8 @@ export default function PurchaseOrderView() {
     }
 
     // Only 1 rate exists or standard cost rate: immediately load product!
-    const singleRate = rates.length === 1 ? rates[0].rate : (product.costRate || 100);
-    const rateSource = rates.length === 1 ? rates[0].sources[0] : 'Default Master Cost';
+    const singleRate = rates.length === 1 ? rates[0].rate : (product.costRate || 0);
+    const rateSource = rates.length === 1 ? rates[0].sources[0] : (product.costRate ? 'Default Master Cost' : 'Unset');
 
     applyProductToLine(product, singleRate, rateSource, targetLineIdx);
     setIsSearchDropdownOpen(false);

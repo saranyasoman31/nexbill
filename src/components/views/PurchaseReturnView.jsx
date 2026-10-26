@@ -236,7 +236,21 @@ export default function PurchaseReturnView() {
   const addProductToDirectLines = (product) => {
     const currentWh = (db.warehouses || []).find((w) => w.storeId === formData.storeId) || db.warehouses?.[0];
     const currentWhStock = StockService.getStockBalance(currentWh?.id, product.id);
-    const costRate = Number(product.costRate || 100);
+    let costRate = Number(product.costRate || 0);
+    if (costRate <= 0) {
+      const purchases = [...(db.purchases || [])].reverse();
+      for (const p of purchases) {
+        const line = (p.lines || p.items || []).find((l) => (l.productId === product.id || l.id === product.id) && Number(l.costPrice || l.rate) > 0);
+        if (line) {
+          costRate = Number(line.costPrice || line.rate);
+          break;
+        }
+      }
+      if (costRate <= 0) {
+        const stock = (db.stockBalances || []).find((b) => b.productId === product.id && Number(b.valuationRate) > 0);
+        if (stock) costRate = Number(stock.valuationRate);
+      }
+    }
     const taxRate = Number(product.taxRate || product.gstRate || 0);
     const lineTotal = Number((costRate * (1 + taxRate / 100)).toFixed(2));
 

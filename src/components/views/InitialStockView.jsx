@@ -29,7 +29,7 @@ export default function InitialStockView() {
     warehouseId: activeWarehouse?.id || 'WH-MUM-MAIN',
     productId: db.products?.[0]?.id || 'PROD-001',
     quantity: 50,
-    valuationRate: db.products?.[0]?.costRate || 100,
+    valuationRate: db.products?.[0]?.costRate || 0,
     effectiveDate: new Date().toISOString().split('T')[0],
     notes: 'Fiscal Year Opening Stock Balance Cutover',
   });
@@ -51,7 +51,7 @@ export default function InitialStockView() {
     setEntryData({
       ...entryData,
       productId: prodId,
-      valuationRate: p?.costRate || 100,
+      valuationRate: p?.costRate || 0,
     });
   };
 
