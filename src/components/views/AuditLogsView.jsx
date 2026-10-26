@@ -28,16 +28,18 @@ export default function AuditLogsView() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-4 space-y-4">
       {/* Top Bar */}
-      <div className="flex items-center justify-between bg-slate-900 border border-slate-800 p-3 rounded-xl shadow-md">
-        <div className="flex items-center gap-2">
-          <ShieldAlert className="w-5 h-5 text-indigo-400" />
-          <div>
-            <h3 className="font-bold text-white text-sm">ERP Statutory Audit & Transaction Logs</h3>
-            <p className="text-[11px] text-slate-400">Section 3.3 & 18: Immutable audit trail with user, timestamp, and transaction context</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-900 border border-slate-800 p-3 sm:p-3.5 rounded-xl shadow-md gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="p-2 rounded-lg bg-slate-950 border border-slate-800 shrink-0">
+            <ShieldAlert className="w-5 h-5 text-indigo-400" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-bold text-white text-sm truncate sm:overflow-visible">ERP Statutory Audit & Transaction Logs</h3>
+            <p className="text-[11px] text-slate-400 line-clamp-1 sm:line-clamp-none">Section 3.3 & 18: Immutable audit trail with user, timestamp, and transaction context</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <ExportButtons
             data={filteredLogs.map((log, idx) => {
               const user = db.users.find(u => u.id === log.userId);

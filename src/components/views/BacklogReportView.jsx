@@ -191,12 +191,14 @@ export default function BacklogReportView() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-4 space-y-4">
       {/* Top Header Card */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-3 rounded-xl shadow-md">
-        <div className="flex items-center gap-2">
-          <Activity className="w-5 h-5 text-indigo-400" />
-          <div>
-            <h3 className="font-bold text-white text-sm">Operation Backlog & Audit Trail Report</h3>
-            <p className="text-[11px] text-slate-400">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-3 sm:p-3.5 rounded-xl shadow-md">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="p-2 rounded-lg bg-slate-950 border border-slate-800 shrink-0">
+            <Activity className="w-5 h-5 text-indigo-400" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-bold text-white text-sm truncate sm:overflow-visible">Operation Backlog & Audit Trail Report</h3>
+            <p className="text-[11px] text-slate-400 line-clamp-1 sm:line-clamp-none">
               Complete transaction audit: records User, Timestamp, Client IP Address, Form, and Action (SAVE, UPDATE, DELETE, CANCEL)
             </p>
           </div>

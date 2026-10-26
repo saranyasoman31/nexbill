@@ -82,7 +82,7 @@ export default function InventoryView() {
 
       {/* Filter and Search Bar */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-md">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Warehouse className="w-4 h-4 text-amber-400" />
           <span className="text-xs font-semibold text-slate-300">Warehouse:</span>
           <select
@@ -101,7 +101,7 @@ export default function InventoryView() {
           </select>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <ExportButtons
             data={filteredBalances.map((b, idx) => ({
               '#': idx + 1,

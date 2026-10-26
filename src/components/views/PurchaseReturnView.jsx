@@ -526,24 +526,26 @@ export default function PurchaseReturnView() {
       {/* ========================================================================= */}
       {/* TOP HEADER & NAVIGATION TABS                                              */}
       {/* ========================================================================= */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-3 rounded-xl shadow-md">
-        <div className="flex items-center gap-2">
-          <RotateCcw className="w-5 h-5 text-amber-400" />
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-bold text-white text-sm">Purchase Returns & Supplier Debit Notes</h3>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-3 sm:p-3.5 rounded-xl shadow-md">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="p-2 rounded-lg bg-slate-950 border border-slate-800 shrink-0">
+            <RotateCcw className="w-5 h-5 text-amber-400" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-bold text-white text-sm truncate sm:overflow-visible">Purchase Returns & Supplier Debit Notes</h3>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800 shrink-0">
                 Common Stock Sync
               </span>
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-slate-400 line-clamp-1 sm:line-clamp-none">
               Return items against original purchase receipts or direct product returns to any supplier with instant inventory reduction.
             </p>
           </div>
         </div>
 
         {/* Tab Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
             <button
               onClick={() => {

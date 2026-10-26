@@ -791,7 +791,7 @@ export default function PurchasingView() {
     <div className="max-w-7xl mx-auto px-4 py-4 space-y-4">
       {/* Top Header & Tab Navigation Bar */}
       <div className="flex flex-wrap items-center justify-between bg-slate-900 border border-slate-800 p-3 rounded-xl shadow-md gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setActiveTab('list')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
@@ -828,7 +828,7 @@ export default function PurchasingView() {
         </div>
 
         {activeTab === 'list' && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <ExportButtons
               data={filteredPurchases.map((p, idx) => ({
                 '#': idx + 1,

@@ -138,8 +138,8 @@ export default function InvoicesAndReturnsView() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-4 space-y-4">
       {/* Sub navigation & Search bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-3 rounded-xl shadow-md">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-3 rounded-xl shadow-md">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setActiveSubTab('invoices')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
@@ -165,7 +165,7 @@ export default function InvoicesAndReturnsView() {
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <ExportButtons
             data={
               activeSubTab === 'invoices'

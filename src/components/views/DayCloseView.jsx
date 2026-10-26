@@ -111,7 +111,7 @@ export default function DayCloseView() {
             {isDayOpen ? <Unlock className="w-6 h-6 animate-pulse" /> : <Lock className="w-6 h-6" />}
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-xl font-bold text-white tracking-tight">{activeStore.name}</h2>
               <span className={`px-2 py-0.5 rounded text-xs font-bold ${
                 isDayOpen
@@ -188,7 +188,7 @@ export default function DayCloseView() {
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-md space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
                 <span className="font-bold text-white text-sm">Live Shift Tender Breakdown</span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs text-slate-400">Invoices: {summary?.invoiceCount} | Returns: {summary?.returnCount}</span>
                   {summary && (
                     <ExportButtons
