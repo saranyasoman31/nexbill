@@ -252,6 +252,7 @@ export const SYSTEM_MENUS_CONFIG = [
     submenus: [
       { id: 'report_sales', label: 'Sales & Revenue Report', group: 'Analytics & Reports', tab: 'sales', icon: 'ShoppingCart' },
       { id: 'report_purchases', label: 'Purchases & Vendor Register', group: 'Analytics & Reports', tab: 'purchases', icon: 'Truck' },
+      { id: 'report_initial_stock', label: 'Initial Stock Cutover Report', group: 'Analytics & Reports', tab: 'initial_stock', icon: 'PackageCheck' },
       { id: 'report_stock', label: 'Stock Valuation & Low Stock', group: 'Analytics & Reports', tab: 'stock', icon: 'Boxes' },
       { id: 'report_gst', label: 'GST Statutory (GSTR-1)', group: 'Analytics & Reports', tab: 'gst', icon: 'Percent' },
       { id: 'report_tally', label: 'Tally Prime XML Export', group: 'Analytics & Reports', tab: 'tally', icon: 'DownloadCloud' },

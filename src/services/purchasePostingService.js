@@ -25,6 +25,29 @@ export const PurchasePostingService = {
   },
 
   /**
+   * Generates the next sequential Initial Stock Document Number (INIT-YYYY-XXXX)
+   */
+  generateNextInitialStockDocNumber(dbInstance = null) {
+    const db = dbInstance || getDatabase();
+    const year = new Date().getFullYear();
+    const prefix = `INIT-${year}-`;
+    const existing = [
+      ...(db.initialStocks || []).map((i) => i.docNumber),
+      ...(db.purchases || []).filter((p) => p.isInitialStock || p.entryType === 'INITIAL_STOCK').map((p) => p.docNumber),
+      ...(db.stockMovements || []).filter((m) => m.docType === 'INITIAL_STOCK').map((m) => m.docNumber),
+    ];
+    let maxNum = 0;
+    existing.forEach((doc) => {
+      if (doc && (doc.startsWith(prefix) || doc.startsWith('INIT-'))) {
+        const parts = doc.split('-');
+        const n = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(n) && n > maxNum) maxNum = n;
+      }
+    });
+    return `${prefix}${String(maxNum + 1).padStart(4, '0')}`;
+  },
+
+  /**
    * Post Purchase Bill / Inward Goods Receipt
    * @param {Object} purchasePayload
    */
@@ -65,15 +88,29 @@ export const PurchasePostingService = {
 
     const db = getDatabase();
 
-    // 1. Supplier Validation
-    const supplier = db.suppliers.find((s) => s.id === supplierId);
-    if (!supplier) throw new Error('PURCHASE_ERROR: Supplier is required.');
-    if (supplier.active === false || supplier.isActive === false) throw new Error(`PURCHASE_ERROR: Supplier "${supplier.name}" is deactivated.`);
+    const isInitialStock = Boolean(
+      purchasePayload.isInitialStock ||
+      purchasePayload.entryType === 'INITIAL_STOCK' ||
+      (customDocNumber && customDocNumber.startsWith('INIT-'))
+    );
 
-    // 2. Duplicate Supplier Invoice Check
-    if (supplierInvoiceNo && supplierInvoiceNo.trim()) {
+    // 1. Supplier Validation
+    let supplier = db.suppliers.find((s) => s.id === supplierId);
+    if (!supplier) {
+      if (isInitialStock) {
+        supplier = { id: 'SUP-INIT', name: 'Opening Stock / Initial Inventory', active: true };
+      } else {
+        throw new Error('PURCHASE_ERROR: Supplier is required.');
+      }
+    } else if (!isInitialStock && (supplier.active === false || supplier.isActive === false)) {
+      throw new Error(`PURCHASE_ERROR: Supplier "${supplier.name}" is deactivated.`);
+    }
+
+    // 2. Duplicate Supplier Invoice Check (Only for standard vendor purchases)
+    if (!isInitialStock && supplierInvoiceNo && supplierInvoiceNo.trim()) {
       const isDuplicate = (db.purchases || []).some(
         (p) =>
+          !p.isInitialStock &&
           p.supplierId === supplierId &&
           p.supplierInvoiceNo?.trim().toLowerCase() === supplierInvoiceNo.trim().toLowerCase() &&
           p.status !== 'CANCELLED'
@@ -212,18 +249,21 @@ export const PurchasePostingService = {
     const roundOff = Number((grandTotal - unroundedTotal).toFixed(2));
     const netAmount = grandTotal;
 
-    const docNumber = customDocNumber || this.generateNextPurchaseDocNumber(db);
-    const purchaseId = `PUR-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const docNumber = customDocNumber || (isInitialStock ? this.generateNextInitialStockDocNumber(db) : this.generateNextPurchaseDocNumber(db));
+    const purchaseId = isInitialStock ? `INIT-${Date.now()}-${Math.floor(Math.random() * 1000)}` : `PUR-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const nowIso = new Date().toISOString();
     const purchaseDate = customDate || nowIso;
 
     const purchaseRecord = {
       id: purchaseId,
       docNumber,
-      supplierId,
+      isInitialStock,
+      entryType: isInitialStock ? 'INITIAL_STOCK' : 'PURCHASE',
+      docType: isInitialStock ? 'INITIAL_STOCK' : 'PURCHASE',
+      supplierId: supplier.id,
       supplierName: supplier.name,
-      supplierInvoiceNo: (supplierInvoiceNo || `REF-${Date.now()}`).trim(),
-      supplierInvoiceDate: supplierInvoiceDate || purchaseDate.split('T')[0],
+      supplierInvoiceNo: isInitialStock ? 'OPENING-STOCK' : (supplierInvoiceNo || `REF-${Date.now()}`).trim(),
+      supplierInvoiceDate: isInitialStock ? purchaseDate.split('T')[0] : (supplierInvoiceDate || purchaseDate.split('T')[0]),
       supplierInvoiceAmount: supplierInvoiceAmount ? Number(supplierInvoiceAmount) : netAmount,
       companyId: companyId || store.companyId || 'COMP-01',
       storeId: finalStoreId,
@@ -256,10 +296,10 @@ export const PurchasePostingService = {
       netAmount,
       grandTotal,
       amountInWords: numberToWords(grandTotal),
-      paymentMode,
-      paymentStatus,
-      paidAmount: paymentStatus === 'PAID' ? grandTotal : Number(paidAmount || 0),
-      balanceDue: paymentStatus === 'PAID' ? 0 : Number((grandTotal - Number(paidAmount || 0)).toFixed(2)),
+      paymentMode: isInitialStock ? 'NOT_APPLICABLE' : paymentMode,
+      paymentStatus: isInitialStock ? 'PAID' : paymentStatus,
+      paidAmount: isInitialStock ? grandTotal : (paymentStatus === 'PAID' ? grandTotal : Number(paidAmount || 0)),
+      balanceDue: isInitialStock ? 0 : (paymentStatus === 'PAID' ? 0 : Number((grandTotal - Number(paidAmount || 0)).toFixed(2))),
       poId: poId || null,
       poNumber: poNumber || null,
       purchaseOrderRef: poNumber || null,
@@ -273,18 +313,20 @@ export const PurchasePostingService = {
     db.purchases = db.purchases || [];
     db.purchases.push(purchaseRecord);
 
-    // 6. Write PURCHASE_IN movements and update product master prices
+    // 6. Write stock movements and update product master prices
     for (const line of calculatedLines) {
       StockService.postMovement(
         {
-          docType: 'PURCHASE_IN',
+          docType: isInitialStock ? 'INITIAL_STOCK' : 'PURCHASE_IN',
           docId: purchaseRecord.id,
           docNumber: purchaseRecord.docNumber,
           warehouseId: finalWarehouseId,
           productId: line.productId,
           quantityDelta: line.qty,
           costRate: line.costPrice,
-          reason: `Purchase stock receipt (${purchaseRecord.supplierInvoiceNo})`,
+          reason: isInitialStock
+            ? `Initial stock cutover (${purchaseRecord.docNumber})`
+            : `Purchase stock receipt (${purchaseRecord.supplierInvoiceNo})`,
           userId,
         },
         db
@@ -299,8 +341,31 @@ export const PurchasePostingService = {
       }
     }
 
-    // 7. Update linked Purchase Order status to CONVERTED
-    if (poId || poNumber) {
+    // 7. If initial stock, also sync line records into db.initialStocks
+    if (isInitialStock) {
+      if (!db.initialStocks) db.initialStocks = [];
+      for (const line of calculatedLines) {
+        db.initialStocks.unshift({
+          id: `INIT-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          docNumber: purchaseRecord.docNumber,
+          warehouseId: finalWarehouseId,
+          productId: line.productId,
+          productName: line.name,
+          quantity: line.qty,
+          valuationRate: line.costPrice,
+          totalValuation: line.lineTotal,
+          effectiveDate: purchaseDate.split('T')[0],
+          notes: purchaseRecord.notes || 'Initial Stock Entry via Inward',
+          purchaseId: purchaseRecord.id,
+          isFromInward: true,
+          createdBy: userId,
+          createdAt: nowIso,
+        });
+      }
+    }
+
+    // 8. Update linked Purchase Order status to CONVERTED
+    if (!isInitialStock && (poId || poNumber)) {
       const po = (db.purchaseOrders || []).find((p) => (poId && p.id === poId) || (poNumber && p.poNumber === poNumber));
       if (po) {
         po.status = 'CONVERTED';
@@ -311,19 +376,22 @@ export const PurchasePostingService = {
     }
 
     saveDatabase(db);
-    logAuditEvent('PURCHASE_POSTED', userId, `Purchase ${docNumber} posted from ${supplier.name}. Net: ₹${netAmount}`);
+    const actionDesc = isInitialStock ? 'Initial Stock Cutover' : 'Purchase';
+    logAuditEvent(isInitialStock ? 'INITIAL_STOCK_POSTED' : 'PURCHASE_POSTED', userId, `${actionDesc} ${docNumber} posted. Total Units: ${totalQty}, Net: ₹${netAmount}`);
     logBacklog({
       action: 'SAVE',
-      formName: 'Purchase Inward',
+      formName: isInitialStock ? 'Initial Stock Inward' : 'Purchase Inward',
       recordRef: purchaseRecord.docNumber,
       userId,
-      details: `Saved Inward Purchase Receipt ${purchaseRecord.docNumber} (Supplier: ${supplier.name}, Inv: ${purchaseRecord.supplierInvoiceNo}, Branch: ${purchaseRecord.branchName}, Total: ₹${netAmount})`,
+      details: `Saved ${actionDesc} ${purchaseRecord.docNumber} (Branch: ${purchaseRecord.branchName}, Total: ₹${netAmount})`,
     });
 
     return {
       success: true,
       purchase: purchaseRecord,
-      message: `Purchase invoice ${docNumber} posted successfully. Stock added to ${purchaseRecord.branchName}.`,
+      purchaseId: purchaseRecord.id,
+      docNumber: purchaseRecord.docNumber,
+      message: `${isInitialStock ? 'Initial Stock' : 'Purchase invoice'} ${docNumber} posted successfully. Stock added to ${purchaseRecord.branchName}.`,
     };
   },
 
@@ -372,16 +440,42 @@ export const PurchasePostingService = {
       userId = 'USR-ADMIN',
     } = purchasePayload;
 
-    const items = rawItems || rawLines;
+    let items = rawItems || rawLines;
+    if (rawItems && rawLines && oldPurchase) {
+      const oldItemsStr = JSON.stringify(oldPurchase.items || []);
+      const oldLinesStr = JSON.stringify(oldPurchase.lines || []);
+      const newItemsStr = JSON.stringify(rawItems);
+      const newLinesStr = JSON.stringify(rawLines);
+
+      if (newLinesStr !== oldLinesStr && newItemsStr === oldItemsStr) {
+        items = rawLines;
+      } else if (newItemsStr !== oldItemsStr && newLinesStr === oldLinesStr) {
+        items = rawItems;
+      }
+    }
+
+    const isInitialStock = Boolean(
+      purchasePayload.isInitialStock ||
+      oldPurchase.isInitialStock ||
+      oldPurchase.entryType === 'INITIAL_STOCK' ||
+      oldPurchase.docNumber?.startsWith('INIT-')
+    );
 
     // Supplier validation
-    const supplier = db.suppliers.find((s) => s.id === supplierId);
-    if (!supplier) throw new Error('PURCHASE_ERROR: Supplier is required.');
+    let supplier = db.suppliers.find((s) => s.id === supplierId);
+    if (!supplier) {
+      if (isInitialStock) {
+        supplier = { id: 'SUP-INIT', name: 'Opening Stock / Initial Inventory', active: true };
+      } else {
+        throw new Error('PURCHASE_ERROR: Supplier is required.');
+      }
+    }
 
-    // Duplicate invoice check excluding current purchase
-    if (supplierInvoiceNo && supplierInvoiceNo.trim()) {
+    // Duplicate invoice check excluding current purchase (standard purchases only)
+    if (!isInitialStock && supplierInvoiceNo && supplierInvoiceNo.trim()) {
       const isDuplicate = db.purchases.some(
         (p) =>
+          !p.isInitialStock &&
           p.id !== purchaseId &&
           p.supplierId === supplierId &&
           p.supplierInvoiceNo?.trim().toLowerCase() === supplierInvoiceNo.trim().toLowerCase() &&
@@ -528,14 +622,16 @@ export const PurchasePostingService = {
     for (const newLine of calculatedLines) {
       StockService.postMovement(
         {
-          docType: 'PURCHASE_IN',
+          docType: isInitialStock ? 'INITIAL_STOCK' : 'PURCHASE_IN',
           docId: oldPurchase.id,
           docNumber: oldPurchase.docNumber,
           warehouseId: finalWarehouseId,
           productId: newLine.productId,
           quantityDelta: newLine.qty,
           costRate: newLine.costPrice,
-          reason: `Updated purchase stock receipt (${supplierInvoiceNo})`,
+          reason: isInitialStock
+            ? `Updated initial stock cutover (${oldPurchase.docNumber})`
+            : `Updated purchase stock receipt (${supplierInvoiceNo})`,
           userId,
         },
         db
@@ -552,9 +648,12 @@ export const PurchasePostingService = {
     // 4. Update purchase record
     const updatedRecord = {
       ...oldPurchase,
+      isInitialStock,
+      entryType: isInitialStock ? 'INITIAL_STOCK' : 'PURCHASE',
+      docType: isInitialStock ? 'INITIAL_STOCK' : 'PURCHASE',
       supplierId,
       supplierName: supplier.name,
-      supplierInvoiceNo: supplierInvoiceNo.trim(),
+      supplierInvoiceNo: isInitialStock ? 'OPENING-STOCK' : supplierInvoiceNo.trim(),
       supplierInvoiceDate: supplierInvoiceDate || date.split('T')[0],
       supplierInvoiceAmount: supplierInvoiceAmount ? Number(supplierInvoiceAmount) : netAmount,
       companyId,
@@ -587,15 +686,41 @@ export const PurchasePostingService = {
       netAmount,
       grandTotal,
       amountInWords: numberToWords(grandTotal),
-      paymentMode,
-      paymentStatus,
-      paidAmount: paymentStatus === 'PAID' ? grandTotal : Number(paidAmount || 0),
-      balanceDue: paymentStatus === 'PAID' ? 0 : Number((grandTotal - Number(paidAmount || 0)).toFixed(2)),
+      paymentMode: isInitialStock ? 'NOT_APPLICABLE' : paymentMode,
+      paymentStatus: isInitialStock ? 'PAID' : paymentStatus,
+      paidAmount: isInitialStock ? grandTotal : (paymentStatus === 'PAID' ? grandTotal : Number(paidAmount || 0)),
+      balanceDue: isInitialStock ? 0 : (paymentStatus === 'PAID' ? 0 : Number((grandTotal - Number(paidAmount || 0)).toFixed(2))),
       notes,
       totalQty,
       updatedAt: new Date().toISOString(),
       updatedBy: userId,
     };
+
+    // If initial stock, also refresh entries in db.initialStocks
+    if (isInitialStock) {
+      if (!db.initialStocks) db.initialStocks = [];
+      db.initialStocks = db.initialStocks.filter(
+        (i) => i.purchaseId !== oldPurchase.id && i.docNumber !== oldPurchase.docNumber
+      );
+      for (const line of calculatedLines) {
+        db.initialStocks.unshift({
+          id: `INIT-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          docNumber: oldPurchase.docNumber,
+          warehouseId: finalWarehouseId,
+          productId: line.productId,
+          productName: line.name,
+          quantity: line.qty,
+          valuationRate: line.costPrice,
+          totalValuation: line.lineTotal,
+          effectiveDate: date.split('T')[0],
+          notes: notes || 'Updated Initial Stock Entry via Inward',
+          purchaseId: oldPurchase.id,
+          isFromInward: true,
+          createdBy: userId,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    }
 
     db.purchases[existingIndex] = updatedRecord;
 
@@ -609,10 +734,13 @@ export const PurchasePostingService = {
       details: `Updated Inward Purchase Receipt ${updatedRecord.docNumber} (Supplier: ${supplier.name}, Inv: ${updatedRecord.supplierInvoiceNo}, Branch: ${updatedRecord.branchName}, Total: ₹${netAmount})`,
     });
 
+    const isInitDoc = Boolean(updatedRecord.isInitialStock || updatedRecord.entryType === 'INITIAL_STOCK' || updatedRecord.docNumber?.startsWith('INIT-'));
     return {
       success: true,
       purchase: updatedRecord,
-      message: `Purchase ${updatedRecord.docNumber} updated successfully. Inventory balances refreshed.`,
+      purchaseId: updatedRecord.id,
+      docNumber: updatedRecord.docNumber,
+      message: `${isInitDoc ? 'Initial Stock' : 'Purchase'} ${updatedRecord.docNumber} updated successfully. Inventory balances refreshed.`,
     };
   },
 
@@ -671,14 +799,22 @@ export const PurchasePostingService = {
     // Remove from db.purchases
     db.purchases = db.purchases.filter((p) => p.id !== purchaseId);
 
+    // If initial stock, also clean up linked records in db.initialStocks
+    if (purchase.isInitialStock || purchase.entryType === 'INITIAL_STOCK' || purchase.docNumber?.startsWith('INIT-')) {
+      db.initialStocks = (db.initialStocks || []).filter(
+        (i) => i.purchaseId !== purchaseId && i.docNumber !== purchase.docNumber
+      );
+    }
+
     saveDatabase(db);
-    logAuditEvent('PURCHASE_DELETED', userId, `Purchase ${purchase.docNumber} deleted and stock reversed.`);
+    const isInit = Boolean(purchase.isInitialStock || purchase.entryType === 'INITIAL_STOCK' || purchase.docNumber?.startsWith('INIT-'));
+    logAuditEvent(isInit ? 'INITIAL_STOCK_DELETED' : 'PURCHASE_DELETED', userId, `${isInit ? 'Initial Stock' : 'Purchase'} ${purchase.docNumber} deleted and stock reversed.`);
     logBacklog({
       action: 'DELETE',
-      formName: 'Purchase Inward',
+      formName: isInit ? 'Initial Stock Inward' : 'Purchase Inward',
       recordRef: purchase.docNumber,
       userId,
-      details: `Deleted Purchase Receipt ${purchase.docNumber} (${purchase.supplierName}, Inv: ${purchase.supplierInvoiceNo}, Amount: ₹${Number(purchase.netAmount).toFixed(2)}) and reversed inventory.`,
+      details: `Deleted ${isInit ? 'Initial Stock Receipt' : 'Purchase Receipt'} ${purchase.docNumber} (${purchase.supplierName}, Amount: ₹${Number(purchase.netAmount).toFixed(2)}) and reversed inventory.`,
     });
 
     return {

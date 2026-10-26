@@ -1,5 +1,5 @@
 // ReportsView: Comprehensive ERP Intelligence, Sales, Purchases, Stock Valuation, GST & Tally Exports
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { TallyExportService } from '../../services/tallyExportService.js';
 import {
@@ -20,6 +20,9 @@ import {
   Printer,
   FileCode,
   Activity,
+  PackageCheck,
+  Store,
+  Layers,
 } from 'lucide-react';
 import ExportButtons from '../common/ExportButtons.jsx';
 import BacklogReportView from './BacklogReportView.jsx';
@@ -56,7 +59,7 @@ export default function ReportsView({ initialReportTab = null }) {
   const [search, setSearch] = useState('');
 
   // 1. Sales Data
-  const postedInvoices = db.invoices.filter((i) => i.status === 'POSTED');
+  const postedInvoices = (db.invoices || []).filter((i) => i.status === 'POSTED');
   const totalRevenue = postedInvoices.reduce((sum, i) => sum + i.netPayable, 0);
   const totalTax = postedInvoices.reduce((sum, i) => sum + (i.totalTax || 0), 0);
   const totalInvoices = postedInvoices.length;
@@ -76,21 +79,142 @@ export default function ReportsView({ initialReportTab = null }) {
     });
   });
 
-  // 2. Purchase Data
-  const postedPurchases = db.purchases || [];
-  const totalPurchasesAmount = postedPurchases.reduce((sum, p) => sum + (Number(p.netAmount) || 0), 0);
-  const totalPurchaseTax = postedPurchases.reduce((sum, p) => sum + (Number(p.totalTax) || 0), 0);
+  // 2. Purchase & Inward Data (Clean Separation of Purchases vs Initial Stock)
+  const [purchasesFilterMode, setPurchasesFilterMode] = useState('purchases_only'); // 'purchases_only' | 'initial_stock_only' | 'all'
+  const allInwardPurchases = db.purchases || [];
+  const standardPurchases = allInwardPurchases.filter(
+    (p) => !p.isInitialStock && p.entryType !== 'INITIAL_STOCK' && !p.docNumber?.startsWith('INIT-')
+  );
+  const initialStockInwardPurchases = allInwardPurchases.filter(
+    (p) => p.isInitialStock || p.entryType === 'INITIAL_STOCK' || p.docNumber?.startsWith('INIT-')
+  );
 
-  // 3. Stock Valuation Data
-  const stockValuationTotal = db.stockBalances.reduce((sum, b) => {
-    const prod = db.products.find((p) => p.id === b.productId);
-    return sum + (Number(b.quantity) || 0) * (Number(b.valuationRate || prod?.costRate) || 0);
-  }, 0);
+  // Standard Purchases KPI totals (Does NOT count Initial Stock into purchase expenses or ITC)
+  const standardPurchasesAmount = standardPurchases.reduce((sum, p) => sum + (Number(p.netAmount || p.grandTotal) || 0), 0);
+  const standardPurchaseTax = standardPurchases.reduce((sum, p) => sum + (Number(p.totalTax) || 0), 0);
+  const initialStockInwardAmount = initialStockInwardPurchases.reduce((sum, p) => sum + (Number(p.netAmount || p.grandTotal) || 0), 0);
 
-  const lowStockProducts = db.stockBalances.filter((b) => {
-    const prod = db.products.find((p) => p.id === b.productId);
-    return Number(b.quantity) <= (prod?.minStockAlert || 5);
-  });
+  const displayPurchases = purchasesFilterMode === 'purchases_only'
+    ? standardPurchases
+    : purchasesFilterMode === 'initial_stock_only'
+    ? initialStockInwardPurchases
+    : allInwardPurchases;
+
+  // 2.5 Dedicated Initial Stock Report Data
+  const [initialStockWarehouseFilter, setInitialStockWarehouseFilter] = useState('ALL');
+  const [initialStockSearch, setInitialStockSearch] = useState('');
+
+  const initialStockRecords = useMemo(() => {
+    const list = (db.initialStocks || []).map((item) => {
+      const prod = (db.products || []).find((p) => p.id === item.productId);
+      const wh = (db.warehouses || []).find((w) => w.id === item.warehouseId);
+      const qty = Number(item.quantity || 0);
+      const rate = Number(item.valuationRate || prod?.costRate || 0);
+      const totalVal = Number(item.totalValuation) || (qty * rate);
+      return {
+        ...item,
+        productName: item.productName || prod?.name || item.productId,
+        sku: prod?.sku || '',
+        category: prod?.category || '',
+        warehouseName: wh?.name || item.warehouseId,
+        qty,
+        rate,
+        totalVal,
+      };
+    });
+    return list;
+  }, [db.initialStocks, db.products, db.warehouses]);
+
+  const filteredInitialStockRecords = useMemo(() => {
+    return initialStockRecords.filter((item) => {
+      if (initialStockWarehouseFilter !== 'ALL' && item.warehouseId !== initialStockWarehouseFilter) {
+        return false;
+      }
+      if (initialStockSearch.trim()) {
+        const q = initialStockSearch.trim().toLowerCase();
+        return (
+          item.docNumber?.toLowerCase().includes(q) ||
+          item.productName?.toLowerCase().includes(q) ||
+          item.sku?.toLowerCase().includes(q) ||
+          item.notes?.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [initialStockRecords, initialStockWarehouseFilter, initialStockSearch]);
+
+  const totalInitialStockValuation = initialStockRecords.reduce((sum, i) => sum + i.totalVal, 0);
+  const totalInitialStockUnits = initialStockRecords.reduce((sum, i) => sum + i.qty, 0);
+  const initialStockDocCount = new Set(initialStockRecords.map((i) => i.docNumber)).size;
+
+  // 3. Stock Report Data (with Condition Breakdown: Initial Stock, Purchased, Sales, Current Balance)
+  const [stockWarehouseFilter, setStockWarehouseFilter] = useState('ALL');
+  const [stockSearch, setStockSearch] = useState('');
+
+  const stockReportLedger = useMemo(() => {
+    return (db.stockBalances || []).map((b) => {
+      const prod = (db.products || []).find((p) => p.id === b.productId);
+      const wh = (db.warehouses || []).find((w) => w.id === b.warehouseId);
+
+      const movements = (db.stockMovements || []).filter(
+        (m) => m.productId === b.productId && m.warehouseId === b.warehouseId
+      );
+
+      const initialStockQty = movements
+        .filter((m) => m.docType === 'INITIAL_STOCK')
+        .reduce((sum, m) => sum + (Number(m.qtyChange ?? m.quantityDelta ?? m.quantity) || 0), 0);
+
+      const purchasedInwardQty = movements
+        .filter((m) => m.docType === 'PURCHASE_IN' || m.docType === 'PURCHASE')
+        .reduce((sum, m) => sum + (Number(m.qtyChange ?? m.quantityDelta ?? m.quantity) || 0), 0);
+
+      const salesOutwardQty = Math.abs(
+        movements
+          .filter((m) => m.docType === 'SALES_OUT' || m.docType === 'POS_SALE' || m.docType === 'SALE')
+          .reduce((sum, m) => sum + (Number(m.qtyChange ?? m.quantityDelta ?? m.quantity) || 0), 0)
+      );
+
+      const currentStock = Number(b.quantity || 0);
+      const valRate = Number(b.valuationRate || prod?.costRate || 0);
+      const totalVal = currentStock * valRate;
+      const isLow = currentStock <= (prod?.minStockAlert || 5);
+
+      return {
+        id: b.id,
+        warehouseId: b.warehouseId,
+        warehouseName: wh?.name || b.warehouseId,
+        productId: b.productId,
+        productName: prod?.name || b.productId,
+        sku: prod?.sku || '',
+        category: prod?.category || '',
+        initialStockQty,
+        purchasedInwardQty,
+        salesOutwardQty,
+        currentStock,
+        valRate,
+        totalVal,
+        isLow,
+      };
+    });
+  }, [db.stockBalances, db.products, db.warehouses, db.stockMovements]);
+
+  const filteredStockLedger = useMemo(() => {
+    return stockReportLedger.filter((s) => {
+      if (stockWarehouseFilter !== 'ALL' && s.warehouseId !== stockWarehouseFilter) return false;
+      if (stockSearch.trim()) {
+        const q = stockSearch.trim().toLowerCase();
+        return (
+          s.productName.toLowerCase().includes(q) ||
+          s.sku.toLowerCase().includes(q) ||
+          s.warehouseName.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [stockReportLedger, stockWarehouseFilter, stockSearch]);
+
+  const stockValuationTotal = stockReportLedger.reduce((sum, b) => sum + b.totalVal, 0);
+  const lowStockProducts = stockReportLedger.filter((b) => b.isLow);
 
   // 4. GST Breakdown
   const totalCGST = postedInvoices.reduce((sum, i) => sum + (Number(i.cgstAmount) || 0), 0);
@@ -140,38 +264,46 @@ export default function ReportsView({ initialReportTab = null }) {
       }));
     }
     if (activeReportTab === 'purchases') {
-      return postedPurchases.map((p, idx) => ({
+      return displayPurchases.map((p, idx) => ({
         '#': idx + 1,
-        'Purchase #': p.docNumber,
+        'Inward #': p.docNumber,
+        'Type': p.isInitialStock || p.entryType === 'INITIAL_STOCK' || p.docNumber?.startsWith('INIT-') ? 'INITIAL_STOCK' : 'PURCHASE',
         'Date': new Date(p.date).toLocaleDateString(),
         'Supplier': p.supplierName,
-        'Vendor Invoice #': p.supplierInvoiceNo,
-        'Taxable (₹)': p.taxableAmount?.toFixed(2),
-        'Tax (₹)': p.totalTax?.toFixed(2),
-        'Net Amount (₹)': p.netAmount?.toFixed(2),
+        'Vendor Invoice #': p.isInitialStock || p.entryType === 'INITIAL_STOCK' || p.docNumber?.startsWith('INIT-') ? 'OPENING_STOCK' : p.supplierInvoiceNo,
+        'Taxable (₹)': p.subtotal?.toFixed(2) || '0.00',
+        'Tax (₹)': p.totalTax?.toFixed(2) || '0.00',
+        'Net Amount (₹)': p.netAmount?.toFixed(2) || '0.00',
+      }));
+    }
+    if (activeReportTab === 'initial_stock') {
+      return filteredInitialStockRecords.map((item, idx) => ({
+        '#': idx + 1,
+        'Cutover Doc #': item.docNumber,
+        'Effective Date': item.effectiveDate || item.date || '—',
+        'Warehouse': item.warehouseName,
+        'Product Name': item.productName,
+        'SKU': item.sku || '—',
+        'Opening Qty': item.qty,
+        'Valuation Rate (₹)': item.rate.toFixed(2),
+        'Total Valuation (₹)': item.totalVal.toFixed(2),
+        'Source / Notes': item.notes || 'Initial Stock Cutover',
       }));
     }
     if (activeReportTab === 'stock') {
-      return (db.products || []).map((p, idx) => {
-        const stock = (db.warehouses || []).reduce((acc, w) => {
-          return (
-            acc +
-            (db.stockMovements || [])
-              .filter((m) => m.productId === p.id && m.warehouseId === w.id)
-              .reduce((s, m) => s + m.quantityDelta, 0)
-          );
-        }, 0);
-        return {
-          '#': idx + 1,
-          'Product Name': p.name,
-          'SKU': p.sku,
-          'Category': p.category,
-          'Current Stock': stock,
-          'Cost Rate': `₹${p.costRate?.toFixed(2)}`,
-          'Valuation': `₹${(stock * p.costRate).toFixed(2)}`,
-          'Status': stock <= (p.minStockAlert || 5) ? 'LOW STOCK ALERT' : 'HEALTHY',
-        };
-      });
+      return filteredStockLedger.map((s, idx) => ({
+        '#': idx + 1,
+        'Warehouse': s.warehouseName,
+        'Product Name': s.productName,
+        'SKU': s.sku,
+        'Initial Stock Qty': s.initialStockQty,
+        'Purchased Inward Qty': s.purchasedInwardQty,
+        'Sales Outward Qty': s.salesOutwardQty,
+        'Available Current Stock': s.currentStock,
+        'Valuation Rate (₹)': s.valRate.toFixed(2),
+        'Total Asset Value (₹)': s.totalVal.toFixed(2),
+        'Status': s.isLow ? 'LOW STOCK' : 'ADEQUATE',
+      }));
     }
     if (activeReportTab === 'gst') {
       return postedInvoices.map((inv, idx) => ({
@@ -273,6 +405,18 @@ export default function ReportsView({ initialReportTab = null }) {
         </button>
 
         <button
+          onClick={() => handleTabChange('initial_stock')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer ${
+            activeReportTab === 'initial_stock'
+              ? 'bg-amber-600 text-white font-semibold shadow-md shadow-amber-600/30'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+          }`}
+        >
+          <PackageCheck className="w-4 h-4 text-amber-400" />
+          <span>Initial Stock Report</span>
+        </button>
+
+        <button
           onClick={() => handleTabChange('stock')}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
             activeReportTab === 'stock'
@@ -281,7 +425,7 @@ export default function ReportsView({ initialReportTab = null }) {
           }`}
         >
           <Boxes className="w-4 h-4" />
-          <span>Stock Valuation & Low Stock</span>
+          <span>Stock Valuation & Ledger</span>
         </button>
 
         <button
@@ -413,33 +557,115 @@ export default function ReportsView({ initialReportTab = null }) {
       {/* 2. PURCHASES REPORT TAB */}
       {activeReportTab === 'purchases' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Purchases vs Initial Stock Filter Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900 border border-slate-800 p-2.5 rounded-xl">
+            <div className="inline-flex rounded-lg p-1 bg-slate-950 border border-slate-800 text-xs">
+              <button
+                type="button"
+                onClick={() => setPurchasesFilterMode('purchases_only')}
+                className={`px-3 py-1 rounded-md font-semibold transition cursor-pointer ${
+                  purchasesFilterMode === 'purchases_only'
+                    ? 'bg-indigo-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Standard Purchases Only ({standardPurchases.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setPurchasesFilterMode('initial_stock_only')}
+                className={`px-3 py-1 rounded-md font-semibold transition cursor-pointer ${
+                  purchasesFilterMode === 'initial_stock_only'
+                    ? 'bg-amber-600 text-white shadow'
+                    : 'text-amber-400/80 hover:text-amber-300'
+                }`}
+              >
+                Initial Stock Only ({initialStockInwardPurchases.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setPurchasesFilterMode('all')}
+                className={`px-3 py-1 rounded-md font-semibold transition cursor-pointer ${
+                  purchasesFilterMode === 'all'
+                    ? 'bg-slate-700 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                All Inward Records ({allInwardPurchases.length})
+              </button>
+            </div>
+
+            <div className="text-xs text-slate-400">
+              {purchasesFilterMode === 'purchases_only' && (
+                <span className="text-emerald-400 font-medium">
+                  ✓ Initial stock cutovers excluded from purchase turnover & ITC
+                </span>
+              )}
+              {purchasesFilterMode === 'initial_stock_only' && (
+                <span className="text-amber-400 font-medium">
+                  Showing opening stock inward cutovers only
+                </span>
+              )}
+              {purchasesFilterMode === 'all' && (
+                <span className="text-slate-300 font-medium">
+                  Showing combined purchases and opening cutovers
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
-              <span className="text-[11px] text-slate-400">Total Inward Purchase Value</span>
+              <span className="text-[11px] text-slate-400">
+                {purchasesFilterMode === 'initial_stock_only' ? 'Initial Stock Valuation' : 'Total Inward Purchase Value'}
+              </span>
               <div className="text-xl font-bold font-mono text-white">
-                ₹{totalPurchasesAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                ₹{displayPurchases
+                  .reduce((sum, p) => sum + (Number(p.netAmount || p.grandTotal) || 0), 0)
+                  .toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </div>
-              <span className="text-[10px] text-indigo-400 font-semibold">{postedPurchases.length} Vendor Bills</span>
+              <span className="text-[10px] text-indigo-400 font-semibold">{displayPurchases.length} Inward Records</span>
             </div>
 
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
               <span className="text-[11px] text-slate-400">Input Tax Credit (ITC) Available</span>
               <div className="text-xl font-bold font-mono text-emerald-400">
-                ₹{totalPurchaseTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                ₹{displayPurchases
+                  .filter((p) => !p.isInitialStock && p.entryType !== 'INITIAL_STOCK' && !p.docNumber?.startsWith('INIT-'))
+                  .reduce((sum, p) => sum + (Number(p.totalTax) || 0), 0)
+                  .toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </div>
-              <span className="text-[10px] text-emerald-300 font-semibold">Claimable against Output GST</span>
+              <span className="text-[10px] text-emerald-300 font-semibold">
+                {purchasesFilterMode === 'initial_stock_only'
+                  ? 'No ITC on Initial Stock'
+                  : 'Claimable against Output GST'}
+              </span>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
+              <span className="text-[11px] text-slate-400">Opening Stock Inward Cutover</span>
+              <div className="text-xl font-bold font-mono text-amber-400">
+                ₹{initialStockInwardAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </div>
+              <span className="text-[10px] text-amber-300/80 font-semibold">
+                {initialStockInwardPurchases.length} Opening Batches Separated
+              </span>
             </div>
           </div>
 
+          {/* Table */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
-            <div className="p-3 border-b border-slate-800 font-bold text-white text-xs">
-              Vendor Inward Invoices Register
+            <div className="p-3 border-b border-slate-800 font-bold text-white text-xs flex items-center justify-between">
+              <span>Vendor Inward & Purchase Invoices Register</span>
+              <span className="text-slate-400">{displayPurchases.length} Records</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] border-b border-slate-800">
                   <tr>
-                    <th className="py-2.5 px-3">Purchase Doc #</th>
+                    <th className="py-2.5 px-3">Inward Doc #</th>
+                    <th className="py-2.5 px-2 text-center">Type</th>
                     <th className="py-2.5 px-3">Supplier Invoice #</th>
                     <th className="py-2.5 px-3">Supplier Name</th>
                     <th className="py-2.5 px-3 text-right">Subtotal (₹)</th>
@@ -448,16 +674,50 @@ export default function ReportsView({ initialReportTab = null }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800 font-mono text-[11px]">
-                  {postedPurchases.map((p) => (
-                    <tr key={p.id} className="hover:bg-slate-800/40">
-                      <td className="py-2 px-3 text-indigo-300 font-bold">{p.docNumber}</td>
-                      <td className="py-2 px-3 text-slate-300 font-bold">{p.supplierInvoiceNo}</td>
-                      <td className="py-2 px-3 font-sans text-white">{p.supplierName}</td>
-                      <td className="py-2 px-3 text-right text-slate-300">₹{p.subtotal?.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right text-emerald-400">₹{p.totalTax?.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right font-bold text-white">₹{p.netAmount?.toFixed(2)}</td>
+                  {displayPurchases.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="py-8 text-center text-slate-500 font-sans">
+                        No inward goods records found for selected filter.
+                      </td>
                     </tr>
-                  ))}
+                  ) : (
+                    displayPurchases.map((p) => {
+                      const isInit = Boolean(
+                        p.isInitialStock ||
+                        p.entryType === 'INITIAL_STOCK' ||
+                        p.docNumber?.startsWith('INIT-')
+                      );
+                      return (
+                        <tr key={p.id} className="hover:bg-slate-800/40">
+                          <td className="py-2 px-3 text-indigo-300 font-bold">{p.docNumber}</td>
+                          <td className="py-2 px-2 text-center">
+                            {isInit ? (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800">
+                                Initial Stock
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-950 text-indigo-300 border border-indigo-800">
+                                Purchase
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-slate-300">
+                            {isInit ? (
+                              <span className="text-slate-500 italic text-[11px]">Opening Stock</span>
+                            ) : (
+                              <span className="font-bold">{p.supplierInvoiceNo}</span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3 font-sans text-white">{p.supplierName}</td>
+                          <td className="py-2 px-3 text-right text-slate-300">₹{Number(p.subtotal || 0).toFixed(2)}</td>
+                          <td className="py-2 px-3 text-right text-emerald-400">₹{Number(p.totalTax || 0).toFixed(2)}</td>
+                          <td className="py-2 px-3 text-right font-bold text-white">
+                            ₹{Number(p.netAmount || p.grandTotal || 0).toFixed(2)}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -465,16 +725,165 @@ export default function ReportsView({ initialReportTab = null }) {
         </div>
       )}
 
-      {/* 3. STOCK VALUATION & LOW STOCK TAB */}
+      {/* 2.5 INITIAL STOCK REPORT TAB */}
+      {activeReportTab === 'initial_stock' && (
+        <div className="space-y-4">
+          {/* Metrics Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
+              <span className="text-[11px] text-slate-400">Total Opening Stock Valuation</span>
+              <div className="text-xl font-bold font-mono text-amber-400">
+                ₹{totalInitialStockValuation.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </div>
+              <span className="text-[10px] text-amber-300/80 font-semibold">Total Cost Value</span>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
+              <span className="text-[11px] text-slate-400">Total Opening Units</span>
+              <div className="text-xl font-bold font-mono text-white">
+                {totalInitialStockUnits.toLocaleString()}
+              </div>
+              <span className="text-[10px] text-slate-500">Across All Products</span>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
+              <span className="text-[11px] text-slate-400">Cutover Documents / Batches</span>
+              <div className="text-xl font-bold font-mono text-indigo-400">
+                {initialStockDocCount}
+              </div>
+              <span className="text-[10px] text-indigo-300 font-semibold">Inward Cutover Batches</span>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
+              <span className="text-[11px] text-slate-400">Initialized Locations</span>
+              <div className="text-xl font-bold font-mono text-emerald-400">
+                {new Set(initialStockRecords.map((i) => i.warehouseId)).size}
+              </div>
+              <span className="text-[10px] text-emerald-300 font-semibold">Active Warehouses</span>
+            </div>
+          </div>
+
+          {/* Search, Filter & Export Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs">
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Search by Doc #, Product, SKU..."
+                  value={initialStockSearch}
+                  onChange={(e) => setInitialStockSearch(e.target.value)}
+                  className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-64"
+                />
+              </div>
+
+              <select
+                value={initialStockWarehouseFilter}
+                onChange={(e) => setInitialStockWarehouseFilter(e.target.value)}
+                className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200"
+              >
+                <option value="ALL">All Warehouses</option>
+                {(db.warehouses || []).map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <ExportButtons
+              data={filteredInitialStockRecords.map((item, idx) => ({
+                '#': idx + 1,
+                'Cutover Doc #': item.docNumber,
+                'Effective Date': item.effectiveDate || item.date || '—',
+                'Warehouse': item.warehouseName,
+                'Product Name': item.productName,
+                'SKU': item.sku || '—',
+                'Opening Qty': item.qty,
+                'Valuation Rate (₹)': Number(item.rate).toFixed(2),
+                'Total Valuation (₹)': Number(item.totalVal).toFixed(2),
+                'Source / Notes': item.notes || 'Initial Stock Cutover',
+              }))}
+              filename="INITIAL_STOCK_REPORT"
+              title="INITIAL STOCK OPENING INVENTORY CUTOVER REPORT"
+              pdfOrientation="landscape"
+            />
+          </div>
+
+          {/* Initial Stock Records Table */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
+            <div className="p-3 border-b border-slate-800 font-bold text-white text-xs flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <PackageCheck className="w-4 h-4 text-amber-400" />
+                <span>Initial Stock Cutover Audit Ledger</span>
+              </div>
+              <span className="text-slate-400">{filteredInitialStockRecords.length} Items</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] border-b border-slate-800">
+                  <tr>
+                    <th className="py-2.5 px-3">Cutover Doc #</th>
+                    <th className="py-2.5 px-3">Date</th>
+                    <th className="py-2.5 px-3">Warehouse / Branch</th>
+                    <th className="py-2.5 px-3">Product Name</th>
+                    <th className="py-2.5 px-2 text-center">Opening Qty</th>
+                    <th className="py-2.5 px-3 text-right">Valuation Rate</th>
+                    <th className="py-2.5 px-3 text-right">Total Asset Value</th>
+                    <th className="py-2.5 px-3">Source & Notes</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800 font-mono text-[11px]">
+                  {filteredInitialStockRecords.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="py-12 text-center text-slate-500 font-sans">
+                        No initial stock cutover records found matching current criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredInitialStockRecords.map((item, idx) => (
+                      <tr key={item.id || idx} className="hover:bg-slate-800/40">
+                        <td className="py-2.5 px-3 text-amber-300 font-bold">{item.docNumber}</td>
+                        <td className="py-2.5 px-3 text-slate-400 font-sans">{item.effectiveDate || item.date || '—'}</td>
+                        <td className="py-2.5 px-3 font-sans text-slate-200">{item.warehouseName}</td>
+                        <td className="py-2.5 px-3 font-sans text-white font-bold">
+                          {item.productName}
+                          {item.sku && <span className="block text-[10px] text-slate-500 font-mono">SKU: {item.sku}</span>}
+                        </td>
+                        <td className="py-2.5 px-2 text-center font-bold text-white">{item.qty}</td>
+                        <td className="py-2.5 px-3 text-right text-slate-300">₹{item.rate.toFixed(2)}</td>
+                        <td className="py-2.5 px-3 text-right font-bold text-amber-400">₹{item.totalVal.toFixed(2)}</td>
+                        <td className="py-2.5 px-3 font-sans text-slate-400 text-xs truncate max-w-[200px]">
+                          {item.notes || 'Opening Stock Inward'}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. STOCK VALUATION & LEDGER TAB (BREAKDOWN: INITIAL STOCK, PURCHASED, SALES, BALANCE) */}
       {activeReportTab === 'stock' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
-              <span className="text-[11px] text-slate-400">Total Stock Valuation (WAC Basis)</span>
+              <span className="text-[11px] text-slate-400">Total Stock Valuation (Cost Basis)</span>
               <div className="text-xl font-bold font-mono text-cyan-400">
                 ₹{stockValuationTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </div>
-              <span className="text-[10px] text-slate-400">{db.stockBalances.length} Warehouse Balances</span>
+              <span className="text-[10px] text-slate-400">{filteredStockLedger.length} Tracked Balances</span>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
+              <span className="text-[11px] text-slate-400">Total Initial Stock Inflow</span>
+              <div className="text-xl font-bold font-mono text-amber-400">
+                {stockReportLedger.reduce((sum, s) => sum + s.initialStockQty, 0).toLocaleString()} Units
+              </div>
+              <span className="text-[10px] text-amber-300 font-semibold">Opening Inventory Inflow</span>
             </div>
 
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
@@ -490,9 +899,59 @@ export default function ReportsView({ initialReportTab = null }) {
             </div>
           </div>
 
+          {/* Search, Filter & Export Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs">
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Search products by SKU, name..."
+                  value={stockSearch}
+                  onChange={(e) => setStockSearch(e.target.value)}
+                  className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-64"
+                />
+              </div>
+
+              <select
+                value={stockWarehouseFilter}
+                onChange={(e) => setStockWarehouseFilter(e.target.value)}
+                className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200"
+              >
+                <option value="ALL">All Warehouses</option>
+                {(db.warehouses || []).map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <ExportButtons
+              data={filteredStockLedger.map((s, idx) => ({
+                '#': idx + 1,
+                'Warehouse': s.warehouseName,
+                'Product Name': s.productName,
+                'SKU': s.sku,
+                'Initial Stock Qty': s.initialStockQty,
+                'Purchased Inward Qty': s.purchasedInwardQty,
+                'Sales Outward Qty': s.salesOutwardQty,
+                'Available Current Stock': s.currentStock,
+                'Valuation Rate': `₹${s.valRate.toFixed(2)}`,
+                'Total Asset Value': `₹${s.totalVal.toFixed(2)}`,
+                'Status': s.isLow ? 'LOW STOCK' : 'ADEQUATE',
+              }))}
+              filename="STOCK_LEDGER_VALUATION_REPORT"
+              title="STOCK VALUATION & MOVEMENT LEDGER (INITIAL vs PURCHASED vs SALES)"
+              pdfOrientation="landscape"
+            />
+          </div>
+
+          {/* Stock Table with Condition Breakdown */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
-            <div className="p-3 border-b border-slate-800 font-bold text-white text-xs">
-              Warehouse Physical Stock Valuation Ledger
+            <div className="p-3 border-b border-slate-800 font-bold text-white text-xs flex items-center justify-between">
+              <span>Warehouse Stock Balance Ledger (Initial Stock vs Purchased vs Outward Sales)</span>
+              <span className="text-slate-400">{filteredStockLedger.length} Records</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
@@ -500,30 +959,38 @@ export default function ReportsView({ initialReportTab = null }) {
                   <tr>
                     <th className="py-2.5 px-3">Warehouse</th>
                     <th className="py-2.5 px-3">Product Name</th>
-                    <th className="py-2.5 px-3 text-center">Available Stock</th>
+                    <th className="py-2.5 px-2 text-center text-amber-400">Initial Stock</th>
+                    <th className="py-2.5 px-2 text-center text-indigo-400">Purchased In</th>
+                    <th className="py-2.5 px-2 text-center text-rose-400">Sales Out</th>
+                    <th className="py-2.5 px-3 text-center text-emerald-400">Current Stock</th>
                     <th className="py-2.5 px-3 text-right">Valuation Rate</th>
                     <th className="py-2.5 px-3 text-right">Total Asset Value</th>
                     <th className="py-2.5 px-3 text-center">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800 font-mono text-[11px]">
-                  {db.stockBalances.map((b) => {
-                    const prod = db.products.find((p) => p.id === b.productId);
-                    const valRate = Number(b.valuationRate || prod?.costRate) || 0;
-                    const totalVal = Number(b.quantity || 0) * valRate;
-                    const isLow = Number(b.quantity || 0) <= (prod?.minStockAlert || 5);
-
-                    return (
-                      <tr key={b.id} className="hover:bg-slate-800/40">
-                        <td className="py-2 px-3 text-slate-400 font-sans">
-                          {db.warehouses.find((w) => w.id === b.warehouseId)?.name || b.warehouseId}
+                  {filteredStockLedger.length === 0 ? (
+                    <tr>
+                      <td colSpan="9" className="py-8 text-center text-slate-500 font-sans">
+                        No stock records found matching current criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredStockLedger.map((s) => (
+                      <tr key={s.id} className="hover:bg-slate-800/40">
+                        <td className="py-2 px-3 text-slate-400 font-sans">{s.warehouseName}</td>
+                        <td className="py-2 px-3 font-sans font-bold text-white">
+                          {s.productName}
+                          {s.sku && <span className="block text-[10px] text-slate-500 font-mono">SKU: {s.sku}</span>}
                         </td>
-                        <td className="py-2 px-3 font-sans font-bold text-white">{prod?.name || b.productId}</td>
-                        <td className="py-2 px-3 text-center font-bold text-white">{b.quantity}</td>
-                        <td className="py-2 px-3 text-right text-slate-300">₹{valRate.toFixed(2)}</td>
-                        <td className="py-2 px-3 text-right font-bold text-cyan-400">₹{totalVal.toFixed(2)}</td>
+                        <td className="py-2 px-2 text-center font-bold text-amber-400">{s.initialStockQty}</td>
+                        <td className="py-2 px-2 text-center font-bold text-indigo-300">{s.purchasedInwardQty}</td>
+                        <td className="py-2 px-2 text-center font-bold text-rose-400">{s.salesOutwardQty}</td>
+                        <td className="py-2 px-3 text-center font-bold text-emerald-400 bg-emerald-950/20">{s.currentStock}</td>
+                        <td className="py-2 px-3 text-right text-slate-300">₹{s.valRate.toFixed(2)}</td>
+                        <td className="py-2 px-3 text-right font-bold text-cyan-400">₹{s.totalVal.toFixed(2)}</td>
                         <td className="py-2 px-3 text-center font-sans">
-                          {isLow ? (
+                          {s.isLow ? (
                             <span className="px-1.5 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800 text-[10px] font-bold">
                               Low Stock
                             </span>
@@ -534,8 +1001,8 @@ export default function ReportsView({ initialReportTab = null }) {
                           )}
                         </td>
                       </tr>
-                    );
-                  })}
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

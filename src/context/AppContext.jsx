@@ -187,7 +187,7 @@ export function AppProvider({ children }) {
     // 5. Parent menu view access if any of its submenus are permitted
     if (action === 'view') {
       if (menuId === 'reports') {
-        const reportSubIds = ['report_sales', 'report_purchases', 'report_stock', 'report_gst', 'report_tally', 'report_audit'];
+        const reportSubIds = ['report_sales', 'report_purchases', 'report_initial_stock', 'report_stock', 'report_gst', 'report_tally', 'report_backlog', 'report_audit'];
         const anySubView = reportSubIds.some(subId => 
           currentUser.menuPermissions?.[subId]?.view === true ||
           roleObj?.menuPermissions?.[subId]?.view === true

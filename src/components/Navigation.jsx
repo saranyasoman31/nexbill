@@ -38,6 +38,7 @@ import {
   Sparkles,
   Sun,
   Moon,
+  PackageCheck,
   Palette,
   DownloadCloud,
   ShieldAlert,
@@ -146,7 +147,8 @@ export default function Navigation() {
           subItems: [
             { id: 'sales', permId: 'report_sales', label: 'Sales & Revenue', icon: ShoppingCart },
             { id: 'purchases', permId: 'report_purchases', label: 'Purchases Register', icon: Truck },
-            { id: 'stock', permId: 'report_stock', label: 'Stock Valuation', icon: Boxes },
+            { id: 'initial_stock', permId: 'report_initial_stock', label: 'Initial Stock Report', icon: PackageCheck },
+            { id: 'stock', permId: 'report_stock', label: 'Stock Valuation & Ledger', icon: Boxes },
             { id: 'gst', permId: 'report_gst', label: 'GST Statutory (GSTR-1)', icon: Percent },
             { id: 'tally', permId: 'report_tally', label: 'Tally Prime Export', icon: DownloadCloud },
             { id: 'backlog', permId: 'report_backlog', label: 'Backlog Activity Report', icon: Activity },

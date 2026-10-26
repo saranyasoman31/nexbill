@@ -36,6 +36,8 @@ import {
   ArrowRight,
   TrendingUp,
   RefreshCw,
+  PackageCheck,
+  AlertCircle,
 } from 'lucide-react';
 import ExportButtons from '../common/ExportButtons.jsx';
 import { getProductStockRates, getLatestHistoricalPurchaseRate, calculatePurchaseLine } from '../../services/purchaseRateHelper.js';
@@ -49,6 +51,7 @@ export default function PurchasingView() {
   const [activeTab, setActiveTab] = useState('list');
 
   // Search & Filter state for List View
+  const [listTypeFilter, setListTypeFilter] = useState('ALL'); // 'ALL' | 'PURCHASE' | 'INITIAL_STOCK'
   const [listSearchQuery, setListSearchQuery] = useState('');
   const [listBranchFilter, setListBranchFilter] = useState('ALL');
   const [listSupplierFilter, setListSupplierFilter] = useState('ALL');
@@ -64,6 +67,8 @@ export default function PurchasingView() {
     supplierInvoiceDate: new Date().toISOString().split('T')[0],
     supplierInvoiceAmount: '',
     purchaseTaxType: 'inclusive', // 'inclusive' | 'exclusive'
+    isInitialStock: false,
+    entryType: 'PURCHASE', // 'PURCHASE' | 'INITIAL_STOCK'
     poId: null,
     poNumber: null,
     lines: [],
@@ -128,9 +133,12 @@ export default function PurchasingView() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Initialize fresh purchase form
-  const initNewPurchase = () => {
-    const nextDocNo = PurchasePostingService.generateNextPurchaseDocNumber(db);
+  // Initialize fresh purchase / initial stock form
+  const initNewPurchase = (asInitialStock = false) => {
+    const isInit = Boolean(asInitialStock);
+    const nextDocNo = isInit
+      ? PurchasePostingService.generateNextInitialStockDocNumber(db)
+      : PurchasePostingService.generateNextPurchaseDocNumber(db);
     const firstSupplier = db.suppliers?.[0];
     const defaultBranch = activeStore?.id || db.stores?.[0]?.id || 'STR-01';
 
@@ -139,11 +147,13 @@ export default function PurchasingView() {
       docNumber: nextDocNo,
       date: new Date().toISOString().split('T')[0],
       storeId: defaultBranch,
-      supplierId: firstSupplier?.id || '',
-      supplierInvoiceNo: '',
+      supplierId: isInit ? (firstSupplier?.id || 'SUP-INIT') : (firstSupplier?.id || ''),
+      supplierInvoiceNo: isInit ? 'OPENING-STOCK' : '',
       supplierInvoiceDate: new Date().toISOString().split('T')[0],
       supplierInvoiceAmount: '',
       purchaseTaxType: 'inclusive',
+      isInitialStock: isInit,
+      entryType: isInit ? 'INITIAL_STOCK' : 'PURCHASE',
       poId: null,
       poNumber: null,
       lines: [],
@@ -151,13 +161,46 @@ export default function PurchasingView() {
       discountValue: 0,
       otherCharges: 0,
       otherChargesRemark: '',
-      paymentMode: 'CASH',
+      paymentMode: isInit ? 'NOT_APPLICABLE' : 'CASH',
       paymentStatus: 'PAID',
       paidAmount: '',
-      notes: '',
+      notes: isInit ? 'Initial Stock Cutover Inward' : '',
     });
     setProductSearchQuery('');
     setActiveTab('new');
+  };
+
+  // Toggle between Standard Purchase and Initial Stock Cutover
+  const handleToggleInitialStock = (asInitial) => {
+    setFormData((prev) => {
+      const isInit = Boolean(asInitial);
+      if (prev.isInitialStock === isInit) return prev;
+
+      let newDocNumber = prev.docNumber;
+      if (isInit) {
+        if (!newDocNumber || newDocNumber.startsWith('PUR-')) {
+          newDocNumber = PurchasePostingService.generateNextInitialStockDocNumber(db);
+        }
+      } else {
+        if (!newDocNumber || newDocNumber.startsWith('INIT-')) {
+          newDocNumber = PurchasePostingService.generateNextPurchaseDocNumber(db);
+        }
+      }
+
+      return {
+        ...prev,
+        isInitialStock: isInit,
+        entryType: isInit ? 'INITIAL_STOCK' : 'PURCHASE',
+        docNumber: newDocNumber,
+        supplierInvoiceNo: isInit
+          ? (prev.supplierInvoiceNo || 'OPENING-STOCK')
+          : (prev.supplierInvoiceNo === 'OPENING-STOCK' ? '' : prev.supplierInvoiceNo),
+        supplierInvoiceAmount: isInit ? '' : prev.supplierInvoiceAmount,
+        poId: isInit ? null : prev.poId,
+        poNumber: isInit ? null : prev.poNumber,
+        paymentMode: isInit ? 'NOT_APPLICABLE' : (prev.paymentMode === 'NOT_APPLICABLE' ? 'CASH' : prev.paymentMode),
+      };
+    });
   };
 
   // Populate purchase form for EDITING
@@ -171,16 +214,24 @@ export default function PurchasingView() {
       return;
     }
 
+    const isInit = Boolean(
+      purchase.isInitialStock ||
+      purchase.entryType === 'INITIAL_STOCK' ||
+      purchase.docNumber?.startsWith('INIT-')
+    );
+
     setEditingPurchaseId(purchase.id);
     setFormData({
       docNumber: purchase.docNumber,
       date: (purchase.date || new Date().toISOString()).split('T')[0],
       storeId: purchase.storeId || activeStore?.id || db.stores?.[0]?.id || 'STR-01',
       supplierId: purchase.supplierId,
-      supplierInvoiceNo: purchase.supplierInvoiceNo || '',
+      supplierInvoiceNo: purchase.supplierInvoiceNo || (isInit ? 'OPENING-STOCK' : ''),
       supplierInvoiceDate: (purchase.supplierInvoiceDate || purchase.date || '').split('T')[0],
       supplierInvoiceAmount: purchase.supplierInvoiceAmount ?? purchase.netAmount ?? '',
       purchaseTaxType: purchase.purchaseTaxType || 'inclusive',
+      isInitialStock: isInit,
+      entryType: isInit ? 'INITIAL_STOCK' : 'PURCHASE',
       poId: purchase.poId || null,
       poNumber: purchase.poNumber || purchase.purchaseOrderRef || null,
       lines: (purchase.lines || purchase.items || []).map((l) => ({
@@ -191,7 +242,7 @@ export default function PurchasingView() {
       discountValue: purchase.discountValue || 0,
       otherCharges: purchase.otherCharges || 0,
       otherChargesRemark: purchase.otherChargesRemark || '',
-      paymentMode: purchase.paymentMode || 'CASH',
+      paymentMode: purchase.paymentMode || (isInit ? 'NOT_APPLICABLE' : 'CASH'),
       paymentStatus: purchase.paymentStatus || 'PAID',
       paidAmount: purchase.paidAmount ?? '',
       notes: purchase.notes || '',
@@ -587,20 +638,26 @@ export default function PurchasingView() {
     notify('info', 'Purchase Order unlinked. Entry is now an independent purchase.', 'PO Unlinked');
   };
 
-  // Submit / Save Purchase Entry
+  // Submit / Save Purchase / Initial Stock Entry
   const handleSubmitPurchase = (e) => {
     e.preventDefault();
 
-    if (!formData.supplierId) {
+    const isInit = Boolean(
+      formData.isInitialStock ||
+      formData.entryType === 'INITIAL_STOCK' ||
+      formData.docNumber?.startsWith('INIT-')
+    );
+
+    if (!isInit && !formData.supplierId) {
       notify('error', 'Please choose a Supplier.', 'Missing Supplier');
       return;
     }
-    if (!formData.supplierInvoiceNo || !formData.supplierInvoiceNo.trim()) {
+    if (!isInit && (!formData.supplierInvoiceNo || !formData.supplierInvoiceNo.trim())) {
       notify('error', 'Please enter Vendor Bill / Invoice Number.', 'Missing Invoice Number');
       return;
     }
     if (!formData.lines || formData.lines.length === 0) {
-      notify('error', 'Please add at least one product to the purchase grid.', 'Empty Grid');
+      notify('error', 'Please add at least one product to the inward grid.', 'Empty Grid');
       return;
     }
     const hasInvalidLine = formData.lines.some((l) => !l.productId || Number(l.qty) <= 0);
@@ -613,11 +670,19 @@ export default function PurchasingView() {
     try {
       const payload = {
         ...formData,
+        isInitialStock: isInit,
+        entryType: isInit ? 'INITIAL_STOCK' : 'PURCHASE',
+        docType: isInit ? 'INITIAL_STOCK' : 'PURCHASE',
         companyId: activeCompany?.id || 'COMP-01',
         storeId: formData.storeId,
-        supplierInvoiceNo: formData.supplierInvoiceNo.trim(),
-        supplierInvoiceDate: formData.supplierInvoiceDate,
-        supplierInvoiceAmount: formData.supplierInvoiceAmount,
+        supplierId: formData.supplierId || (isInit ? 'SUP-INIT' : ''),
+        supplierInvoiceNo: isInit
+          ? (formData.supplierInvoiceNo || 'OPENING-STOCK').trim()
+          : formData.supplierInvoiceNo.trim(),
+        supplierInvoiceDate: isInit
+          ? (formData.date || new Date().toISOString().split('T')[0])
+          : formData.supplierInvoiceDate,
+        supplierInvoiceAmount: isInit ? purchaseCalculations.netAmount : formData.supplierInvoiceAmount,
         date: formData.date,
         items: formData.lines,
         discountType: formData.discountType,
@@ -634,27 +699,27 @@ export default function PurchasingView() {
         netAmount: purchaseCalculations.netAmount,
         grandTotal: purchaseCalculations.grandTotal,
         amountInWords: purchaseCalculations.amountInWords,
-        paymentMode: formData.paymentMode,
-        paymentStatus: formData.paymentStatus,
-        paidAmount: purchaseCalculations.paidAmount,
-        balanceDue: purchaseCalculations.balanceDue,
+        paymentMode: isInit ? 'NOT_APPLICABLE' : formData.paymentMode,
+        paymentStatus: isInit ? 'PAID' : formData.paymentStatus,
+        paidAmount: isInit ? purchaseCalculations.grandTotal : purchaseCalculations.paidAmount,
+        balanceDue: isInit ? 0 : purchaseCalculations.balanceDue,
         userId: currentUser?.id || 'USR-ADMIN',
       };
 
       let res;
       if (editingPurchaseId) {
         res = PurchasePostingService.updatePurchase(editingPurchaseId, payload);
-        notify('success', res.message, 'Purchase Receipt Updated');
+        notify('success', res.message, isInit ? 'Initial Stock Updated' : 'Purchase Receipt Updated');
       } else {
         res = PurchasePostingService.postPurchase(payload);
-        notify('success', res.message, 'Purchase Receipt Posted');
+        notify('success', res.message, isInit ? 'Initial Stock Recorded' : 'Purchase Receipt Posted');
       }
 
       triggerRefresh();
       setActiveTab('list');
       setEditingPurchaseId(null);
     } catch (err) {
-      notify('error', err.message, 'Purchase Failed');
+      notify('error', err.message, isInit ? 'Initial Stock Failed' : 'Purchase Failed');
     } finally {
       setIsSubmitting(false);
     }
@@ -665,7 +730,7 @@ export default function PurchasingView() {
     if (!deletingPurchase) return;
     try {
       const res = PurchasePostingService.deletePurchase(deletingPurchase.id, currentUser?.id || 'USR-ADMIN');
-      notify('success', res.message, 'Purchase Deleted');
+      notify('success', res.message, 'Inward Record Deleted');
       triggerRefresh();
       setDeletingPurchase(null);
     } catch (err) {
@@ -673,9 +738,28 @@ export default function PurchasingView() {
     }
   };
 
+  // Counts for tabs & filters
+  const totalInwardCount = (db.purchases || []).length;
+  const standardPurchaseCount = (db.purchases || []).filter(
+    (p) => !p.isInitialStock && p.entryType !== 'INITIAL_STOCK' && !p.docNumber?.startsWith('INIT-')
+  ).length;
+  const initialStockInwardCount = (db.purchases || []).filter(
+    (p) => p.isInitialStock || p.entryType === 'INITIAL_STOCK' || p.docNumber?.startsWith('INIT-')
+  ).length;
+
   // Filtered Purchases for List View
   const filteredPurchases = useMemo(() => {
     let list = [...(db.purchases || [])];
+
+    if (listTypeFilter === 'PURCHASE') {
+      list = list.filter(
+        (p) => !p.isInitialStock && p.entryType !== 'INITIAL_STOCK' && !p.docNumber?.startsWith('INIT-')
+      );
+    } else if (listTypeFilter === 'INITIAL_STOCK') {
+      list = list.filter(
+        (p) => p.isInitialStock || p.entryType === 'INITIAL_STOCK' || p.docNumber?.startsWith('INIT-')
+      );
+    }
 
     if (listBranchFilter !== 'ALL') {
       list = list.filter((p) => p.storeId === listBranchFilter);
@@ -696,7 +780,7 @@ export default function PurchasingView() {
     }
 
     return list.sort((a, b) => new Date(b.date || b.postedAt) - new Date(a.date || a.postedAt));
-  }, [db.purchases, listBranchFilter, listSupplierFilter, listSearchQuery]);
+  }, [db.purchases, listTypeFilter, listBranchFilter, listSupplierFilter, listSearchQuery]);
 
   // Available Purchase Orders for the PO Selector Modal
   const availablePOs = useMemo(() => {
@@ -715,17 +799,31 @@ export default function PurchasingView() {
             }`}
           >
             <Truck className="w-4 h-4" />
-            <span>Purchases Register ({db.purchases?.length || 0})</span>
+            <span>Inward Register ({totalInwardCount})</span>
           </button>
 
           <button
-            onClick={initNewPurchase}
+            onClick={() => initNewPurchase(false)}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
-              activeTab === 'new' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              activeTab === 'new' && !formData.isInitialStock
+                ? 'bg-indigo-600 text-white shadow'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
             }`}
           >
             <Plus className="w-4 h-4" />
-            <span>{editingPurchaseId ? 'Edit Purchase Entry' : 'New Inward Purchase'}</span>
+            <span>{editingPurchaseId && !formData.isInitialStock ? 'Edit Purchase' : 'New Purchase'}</span>
+          </button>
+
+          <button
+            onClick={() => initNewPurchase(true)}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+              activeTab === 'new' && formData.isInitialStock
+                ? 'bg-amber-600 text-white shadow'
+                : 'text-amber-400/90 hover:text-amber-300 hover:bg-slate-800'
+            }`}
+          >
+            <PackageCheck className="w-4 h-4 text-amber-400" />
+            <span>{editingPurchaseId && formData.isInitialStock ? 'Edit Initial Stock' : 'Initial Stock Inward'}</span>
           </button>
         </div>
 
@@ -734,19 +832,20 @@ export default function PurchasingView() {
             <ExportButtons
               data={filteredPurchases.map((p, idx) => ({
                 '#': idx + 1,
-                'Purchase #': p.docNumber,
+                'Inward #': p.docNumber,
+                'Type': p.isInitialStock || p.entryType === 'INITIAL_STOCK' || p.docNumber?.startsWith('INIT-') ? 'INITIAL_STOCK' : 'PURCHASE',
                 'Date': new Date(p.date).toLocaleDateString(),
                 'Branch': p.branchName || p.storeName || (db.stores?.find((s) => s.id === p.storeId)?.name || 'Main Store'),
                 'Supplier Name': p.supplierName,
-                'Vendor Invoice #': p.supplierInvoiceNo,
+                'Vendor Invoice #': p.isInitialStock || p.entryType === 'INITIAL_STOCK' || p.docNumber?.startsWith('INIT-') ? 'OPENING_STOCK' : p.supplierInvoiceNo,
                 'Vendor Invoice Date': p.supplierInvoiceDate || '—',
                 'PO Reference': p.poNumber || p.purchaseOrderRef || '—',
                 'Items Count': p.lines?.length || 0,
                 'Net Amount': `₹${Number(p.netAmount || p.grandTotal || 0).toFixed(2)}`,
                 'Status': p.paymentStatus || 'PAID',
               }))}
-              filename="PURCHASE_REGISTER"
-              title="PURCHASE GOODS INWARD REGISTER"
+              filename="INWARD_GOODS_REGISTER"
+              title="PURCHASE & INITIAL STOCK INWARD REGISTER"
               pdfOrientation="landscape"
             />
           </div>
@@ -754,17 +853,60 @@ export default function PurchasingView() {
       </div>
 
       {/* ========================================================================= */}
-      {/* 1. PURCHASES LIST VIEW                                                    */}
+      {/* 1. INWARD REGISTER LIST VIEW (PURCHASES & INITIAL STOCK)                 */}
       {/* ========================================================================= */}
       {activeTab === 'list' && (
         <div className="space-y-3">
-          {/* Filters Bar */}
+          {/* Inward Type Filter Tabs */}
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900 border border-slate-800 p-2.5 rounded-xl">
+            <div className="inline-flex rounded-lg p-1 bg-slate-950 border border-slate-800 text-xs">
+              <button
+                type="button"
+                onClick={() => setListTypeFilter('ALL')}
+                className={`px-3 py-1 rounded-md font-semibold transition cursor-pointer ${
+                  listTypeFilter === 'ALL'
+                    ? 'bg-indigo-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                All Inward ({totalInwardCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setListTypeFilter('PURCHASE')}
+                className={`px-3 py-1 rounded-md font-semibold transition cursor-pointer ${
+                  listTypeFilter === 'PURCHASE'
+                    ? 'bg-indigo-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Purchases Only ({standardPurchaseCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setListTypeFilter('INITIAL_STOCK')}
+                className={`px-3 py-1 rounded-md font-semibold transition cursor-pointer ${
+                  listTypeFilter === 'INITIAL_STOCK'
+                    ? 'bg-amber-600 text-white shadow'
+                    : 'text-amber-400/80 hover:text-amber-300'
+                }`}
+              >
+                Initial Stock Only ({initialStockInwardCount})
+              </button>
+            </div>
+
+            <div className="text-xs text-slate-400">
+              Showing <span className="font-bold text-white">{filteredPurchases.length}</span> record{filteredPurchases.length === 1 ? '' : 's'}
+            </div>
+          </div>
+
+          {/* Search & Filters Bar */}
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs">
             <div className="sm:col-span-2 relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               <input
                 type="text"
-                placeholder="Search by Purchase #, Supplier, Vendor Bill #, PO #..."
+                placeholder="Search by Inward #, Supplier, Vendor Bill #, PO #..."
                 value={listSearchQuery}
                 onChange={(e) => setListSearchQuery(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
@@ -810,13 +952,14 @@ export default function PurchasingView() {
             </div>
           </div>
 
-          {/* Purchases Table */}
+          {/* Inward Purchases Table */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                   <tr>
-                    <th className="py-2.5 px-3">Purchase #</th>
+                    <th className="py-2.5 px-3">Inward #</th>
+                    <th className="py-2.5 px-2 text-center">Type</th>
                     <th className="py-2.5 px-3">Date</th>
                     <th className="py-2.5 px-3">Branch</th>
                     <th className="py-2.5 px-3">Supplier Name</th>
@@ -831,9 +974,9 @@ export default function PurchasingView() {
                 <tbody className="divide-y divide-slate-800/60 font-sans">
                   {filteredPurchases.length === 0 ? (
                     <tr>
-                      <td colSpan="10" className="py-12 text-center text-slate-500 text-xs">
+                      <td colSpan="11" className="py-12 text-center text-slate-500 text-xs">
                         <ShoppingBag className="w-8 h-8 mx-auto text-slate-600 mb-2 opacity-50" />
-                        No purchases found matching current criteria.
+                        No inward goods records found matching current criteria.
                       </td>
                     </tr>
                   ) : (
@@ -843,11 +986,27 @@ export default function PurchasingView() {
                         p.storeName ||
                         db.stores?.find((s) => s.id === p.storeId)?.name ||
                         'Main Store';
+                      const isInit = Boolean(
+                        p.isInitialStock ||
+                        p.entryType === 'INITIAL_STOCK' ||
+                        p.docNumber?.startsWith('INIT-')
+                      );
 
                       return (
                         <tr key={p.id} className="hover:bg-slate-800/40 transition">
                           <td className="py-2.5 px-3 font-mono font-bold text-indigo-300">
                             {p.docNumber}
+                          </td>
+                          <td className="py-2.5 px-2 text-center">
+                            {isInit ? (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800 whitespace-nowrap">
+                                Initial Stock
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-950 text-indigo-300 border border-indigo-800 whitespace-nowrap">
+                                Purchase
+                              </span>
+                            )}
                           </td>
                           <td className="py-2.5 px-3 text-slate-400 text-[11px] whitespace-nowrap">
                             {new Date(p.date).toLocaleDateString()}
@@ -862,15 +1021,23 @@ export default function PurchasingView() {
                             {p.supplierName}
                           </td>
                           <td className="py-2.5 px-3 font-mono text-slate-300">
-                            <div>{p.supplierInvoiceNo}</div>
-                            {p.supplierInvoiceDate && (
-                              <div className="text-[10px] text-slate-500 font-sans">
-                                {new Date(p.supplierInvoiceDate).toLocaleDateString()}
+                            {isInit ? (
+                              <span className="text-slate-500 italic text-[11px]">Opening Stock</span>
+                            ) : (
+                              <div>
+                                <div>{p.supplierInvoiceNo}</div>
+                                {p.supplierInvoiceDate && (
+                                  <div className="text-[10px] text-slate-500 font-sans">
+                                    {new Date(p.supplierInvoiceDate).toLocaleDateString()}
+                                  </div>
+                                )}
                               </div>
                             )}
                           </td>
                           <td className="py-2.5 px-3 font-mono text-xs">
-                            {p.poNumber || p.purchaseOrderRef ? (
+                            {isInit ? (
+                              <span className="text-slate-500 text-[11px]">—</span>
+                            ) : p.poNumber || p.purchaseOrderRef ? (
                               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-950 text-indigo-300 border border-indigo-800 flex items-center gap-1 w-max">
                                 <LinkIcon className="w-3 h-3 text-indigo-400" />
                                 {p.poNumber || p.purchaseOrderRef}
@@ -886,24 +1053,30 @@ export default function PurchasingView() {
                             ₹{Number(p.netAmount || p.grandTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </td>
                           <td className="py-2.5 px-2 text-center">
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                p.paymentStatus === 'PAID'
-                                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                                  : p.paymentStatus === 'PARTIAL'
-                                  ? 'bg-amber-950 text-amber-300 border border-amber-800'
-                                  : 'bg-rose-950 text-rose-300 border border-rose-800'
-                              }`}
-                            >
-                              {p.paymentStatus || 'PAID'}
-                            </span>
+                            {isInit ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                                OPENING
+                              </span>
+                            ) : (
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  p.paymentStatus === 'PAID'
+                                    ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                                    : p.paymentStatus === 'PARTIAL'
+                                    ? 'bg-amber-950 text-amber-300 border border-amber-800'
+                                    : 'bg-rose-950 text-rose-300 border border-rose-800'
+                                }`}
+                              >
+                                {p.paymentStatus || 'PAID'}
+                              </span>
+                            )}
                           </td>
                           <td className="py-2.5 px-3 text-center">
                             <div className="flex items-center justify-center gap-1.5">
                               {/* VIEW */}
                               <button
                                 onClick={() => setViewingPurchase(p)}
-                                title="View Purchase Details"
+                                title={isInit ? 'View Initial Stock Details' : 'View Purchase Details'}
                                 className="p-1 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded transition cursor-pointer"
                               >
                                 <Eye className="w-4 h-4" />
@@ -912,7 +1085,7 @@ export default function PurchasingView() {
                               {/* EDIT */}
                               <button
                                 onClick={() => handleEditPurchase(p)}
-                                title="Edit Purchase"
+                                title={isInit ? 'Edit Initial Stock Entry' : 'Edit Purchase'}
                                 className="p-1 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded transition cursor-pointer"
                               >
                                 <Edit className="w-4 h-4" />
@@ -921,7 +1094,7 @@ export default function PurchasingView() {
                               {/* PRINT */}
                               <button
                                 onClick={() => setPrintingPurchase(p)}
-                                title="Print A4 Purchase Voucher"
+                                title={isInit ? 'Print Initial Stock Voucher' : 'Print A4 Purchase Voucher'}
                                 className="p-1 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded transition cursor-pointer"
                               >
                                 <Printer className="w-4 h-4" />
@@ -930,7 +1103,7 @@ export default function PurchasingView() {
                               {/* DELETE */}
                               <button
                                 onClick={() => setDeletingPurchase(p)}
-                                title="Delete Purchase Receipt & Reverse Stock"
+                                title={isInit ? 'Delete Initial Stock & Reverse Stock' : 'Delete Purchase Receipt & Reverse Stock'}
                                 className="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition cursor-pointer"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -949,7 +1122,7 @@ export default function PurchasingView() {
       )}
 
       {/* ========================================================================= */}
-      {/* 2. NEW / EDIT PURCHASE ENTRY VIEW                                         */}
+      {/* 2. NEW / EDIT PURCHASE / INITIAL STOCK ENTRY VIEW                         */}
       {/* ========================================================================= */}
       {activeTab === 'new' && (
         <form onSubmit={handleSubmitPurchase} className="space-y-4">
@@ -957,29 +1130,78 @@ export default function PurchasingView() {
           <div className="flex flex-wrap items-center justify-between bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-md gap-3">
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-indigo-950 text-indigo-300 border border-indigo-700 font-mono">
-                  {editingPurchaseId ? 'UPDATE VOUCHER' : 'NEW GOODS INWARD'}
+                <span
+                  className={`px-2.5 py-0.5 rounded text-[10px] font-bold font-mono border ${
+                    formData.isInitialStock
+                      ? 'bg-amber-950 text-amber-300 border-amber-700'
+                      : 'bg-indigo-950 text-indigo-300 border-indigo-700'
+                  }`}
+                >
+                  {editingPurchaseId
+                    ? formData.isInitialStock
+                      ? 'UPDATE INITIAL STOCK'
+                      : 'UPDATE PURCHASE VOUCHER'
+                    : formData.isInitialStock
+                    ? 'NEW INITIAL STOCK CUTOVER'
+                    : 'NEW PURCHASE INWARD'}
                 </span>
                 <h3 className="font-bold text-white text-base">
-                  {editingPurchaseId ? `Editing Purchase: ${formData.docNumber}` : 'Inward Purchase Receipt Entry'}
+                  {editingPurchaseId
+                    ? `${formData.isInitialStock ? 'Editing Initial Stock' : 'Editing Purchase'}: ${formData.docNumber}`
+                    : formData.isInitialStock
+                    ? 'Initial Stock Inward Cutover Entry'
+                    : 'Inward Purchase Receipt Entry'}
                 </h3>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Inward stock is directly saved to the common inventory balance table, immediately reflecting across POS billing and reports.
+                {formData.isInitialStock
+                  ? 'Initial stock creates opening inventory balances and is cleanly separated from purchase expense reports.'
+                  : 'Inward stock is directly saved to the common inventory balance table, immediately reflecting across POS billing and reports.'}
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsPOModalOpen(true)}
-                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-700/50 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow"
-              >
-                <ShoppingBag className="w-4 h-4 text-indigo-400" />
-                <span>Choose Purchase Order / Convert PO</span>
-              </button>
+            {/* Inward Mode Switcher & PO conversion */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Option to make as Initial Stock / Standard Purchase */}
+              <div className="inline-flex rounded-lg p-1 bg-slate-950 border border-slate-800 text-xs">
+                <button
+                  type="button"
+                  onClick={() => handleToggleInitialStock(false)}
+                  className={`px-3 py-1.5 rounded-md font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    !formData.isInitialStock
+                      ? 'bg-indigo-600 text-white shadow'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Receipt className="w-3.5 h-3.5" />
+                  <span>Standard Purchase</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggleInitialStock(true)}
+                  className={`px-3 py-1.5 rounded-md font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    formData.isInitialStock
+                      ? 'bg-amber-600 text-white shadow'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <PackageCheck className="w-3.5 h-3.5" />
+                  <span>Initial Stock</span>
+                </button>
+              </div>
 
-              {formData.poNumber && (
+              {!formData.isInitialStock && !editingPurchaseId && (
+                <button
+                  type="button"
+                  onClick={() => setIsPOModalOpen(true)}
+                  className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-700/50 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow"
+                >
+                  <ShoppingBag className="w-4 h-4 text-indigo-400" />
+                  <span>Choose PO ({availablePOs.length})</span>
+                </button>
+              )}
+
+              {!formData.isInitialStock && formData.poNumber && (
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-950/80 border border-indigo-600 text-xs">
                   <span className="text-indigo-300 font-mono font-bold">PO: {formData.poNumber}</span>
                   <button
@@ -995,19 +1217,28 @@ export default function PurchasingView() {
             </div>
           </div>
 
-          {/* Top Portion: Purchase & Invoice Details */}
+          {/* Top Portion: Purchase & Invoice Details (or Initial Stock Details) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* CARD 1: PURCHASE DETAILS */}
+            {/* CARD 1: INWARD / PURCHASE DETAILS */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-md space-y-3">
-              <div className="flex items-center gap-2 border-b border-slate-800 pb-2 text-xs font-bold text-indigo-300 uppercase tracking-wider">
-                <Receipt className="w-4 h-4" />
-                <span>Purchase Details</span>
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2 text-xs">
+                <div className="flex items-center gap-2 font-bold text-indigo-300 uppercase tracking-wider">
+                  <Receipt className="w-4 h-4" />
+                  <span>{formData.isInitialStock ? 'Initial Stock Reference & Branch' : 'Purchase Details'}</span>
+                </div>
+                {formData.isInitialStock && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800">
+                    OPENING INVENTORY
+                  </span>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                {/* Purchase Number */}
+                {/* Document Number */}
                 <div>
-                  <label className="font-semibold text-slate-300 block mb-1">Purchase No</label>
+                  <label className="font-semibold text-slate-300 block mb-1">
+                    {formData.isInitialStock ? 'Initial Stock Ref #' : 'Purchase No'}
+                  </label>
                   <input
                     type="text"
                     required
@@ -1015,11 +1246,18 @@ export default function PurchasingView() {
                     onChange={(e) => setFormData({ ...formData, docNumber: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-slate-100 font-mono font-bold focus:border-indigo-500 focus:outline-none"
                   />
+                  {formData.isInitialStock && (
+                    <span className="text-[10px] text-amber-400 mt-0.5 block font-mono">
+                      Direct Opening Stock Ref
+                    </span>
+                  )}
                 </div>
 
-                {/* Purchase Date */}
+                {/* Date */}
                 <div>
-                  <label className="font-semibold text-slate-300 block mb-1">Purchase Date</label>
+                  <label className="font-semibold text-slate-300 block mb-1">
+                    {formData.isInitialStock ? 'Opening Cutover Date' : 'Purchase Date'}
+                  </label>
                   <input
                     type="date"
                     required
@@ -1029,7 +1267,7 @@ export default function PurchasingView() {
                   />
                 </div>
 
-                {/* Branch Selection (Replaces Warehouse) */}
+                {/* Branch Selection */}
                 <div>
                   <label className="font-semibold text-slate-300 block mb-1 flex items-center gap-1">
                     <Store className="w-3.5 h-3.5 text-indigo-400" />
@@ -1050,78 +1288,125 @@ export default function PurchasingView() {
               </div>
             </div>
 
-            {/* CARD 2: VENDOR INVOICE DETAILS */}
+            {/* CARD 2: VENDOR INVOICE DETAILS (or INITIAL STOCK CUTOVER DETAILS) */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-md space-y-3">
-              <div className="flex items-center gap-2 border-b border-slate-800 pb-2 text-xs font-bold text-indigo-300 uppercase tracking-wider">
-                <Truck className="w-4 h-4" />
-                <span>Supplier & Invoice Details</span>
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2 text-xs">
+                <div className="flex items-center gap-2 font-bold text-indigo-300 uppercase tracking-wider">
+                  <Truck className="w-4 h-4" />
+                  <span>{formData.isInitialStock ? 'Initial Stock Cutover Info' : 'Supplier & Invoice Details'}</span>
+                </div>
+                {formData.isInitialStock && (
+                  <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> No Vendor Invoice Needed
+                  </span>
+                )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
-                {/* Supplier Selection */}
-                <div className="sm:col-span-2">
-                  <label className="font-semibold text-slate-300 block mb-1">Supplier / Vendor</label>
-                  <select
-                    value={formData.supplierId}
-                    onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-slate-100 font-semibold focus:border-indigo-500 focus:outline-none"
-                  >
-                    {(db.suppliers || []).map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} {s.gstin ? `(${s.gstin})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  {selectedSupplier && (
-                    <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-2">
-                      <span>Supply: <strong className="text-indigo-400">{currentSupplyType}</strong></span>
-                      {selectedSupplier.phone && <span>• Tel: {selectedSupplier.phone}</span>}
+              {formData.isInitialStock ? (
+                <div className="space-y-2 text-xs">
+                  <div className="bg-amber-950/40 border border-amber-800/60 rounded-lg p-2.5 text-amber-200 text-xs flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold">Opening Stock Cutover Mode</p>
+                      <p className="text-[11px] text-amber-300/80 mt-0.5">
+                        No vendor invoice details are required. Stock entered in the grid below will be initialized into branch inventory and tracked in the Initial Stock Cutover report without inflating purchase expense or GST ITC claims.
+                      </p>
                     </div>
-                  )}
-                </div>
+                  </div>
 
-                {/* Vendor Invoice No */}
-                <div>
-                  <label className="font-semibold text-slate-300 block mb-1">Invoice No</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. AGRO/9021"
-                    value={formData.supplierInvoiceNo}
-                    onChange={(e) => setFormData({ ...formData, supplierInvoiceNo: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-slate-100 font-mono focus:border-indigo-500 focus:outline-none"
-                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="font-semibold text-slate-300 block mb-1">Supplier / Sourcing (Optional)</label>
+                      <select
+                        value={formData.supplierId}
+                        onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-100 font-semibold focus:border-indigo-500 focus:outline-none"
+                      >
+                        <option value="">Opening Stock / Initial Inventory (Default)</option>
+                        {(db.suppliers || []).map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name} {s.gstin ? `(${s.gstin})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="font-semibold text-slate-300 block mb-1">Invoice Status</label>
+                      <div className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-2.5 py-1.5 text-slate-400 font-mono text-xs">
+                        Not Applicable (Opening Cutover)
+                      </div>
+                    </div>
+                  </div>
                 </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                    {/* Supplier Selection */}
+                    <div className="sm:col-span-2">
+                      <label className="font-semibold text-slate-300 block mb-1">Supplier / Vendor</label>
+                      <select
+                        value={formData.supplierId}
+                        onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-slate-100 font-semibold focus:border-indigo-500 focus:outline-none"
+                      >
+                        {(db.suppliers || []).map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name} {s.gstin ? `(${s.gstin})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      {selectedSupplier && (
+                        <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-2">
+                          <span>Supply: <strong className="text-indigo-400">{currentSupplyType}</strong></span>
+                          {selectedSupplier.phone && <span>• Tel: {selectedSupplier.phone}</span>}
+                        </div>
+                      )}
+                    </div>
 
-                {/* Vendor Invoice Date */}
-                <div>
-                  <label className="font-semibold text-slate-300 block mb-1">Invoice Date</label>
-                  <input
-                    type="date"
-                    value={formData.supplierInvoiceDate}
-                    onChange={(e) => setFormData({ ...formData, supplierInvoiceDate: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-slate-100 focus:border-indigo-500 focus:outline-none"
-                  />
-                </div>
-              </div>
+                    {/* Vendor Invoice No */}
+                    <div>
+                      <label className="font-semibold text-slate-300 block mb-1">Invoice No</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. AGRO/9021"
+                        value={formData.supplierInvoiceNo}
+                        onChange={(e) => setFormData({ ...formData, supplierInvoiceNo: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-slate-100 font-mono focus:border-indigo-500 focus:outline-none"
+                      />
+                    </div>
 
-              {/* Vendor Invoice Amount */}
-              <div className="pt-1 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-400 font-semibold">Vendor Invoice Amount: ₹</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="Bill Amount (₹)"
-                    value={formData.supplierInvoiceAmount}
-                    onChange={(e) => setFormData({ ...formData, supplierInvoiceAmount: e.target.value })}
-                    className="w-36 bg-slate-950 border border-slate-700 rounded px-2.5 py-1 text-slate-100 font-mono font-bold focus:border-indigo-500"
-                  />
-                </div>
-                <span className="text-[11px] text-slate-500 italic">
-                  Used for reconciliation with inward total
-                </span>
-              </div>
+                    {/* Vendor Invoice Date */}
+                    <div>
+                      <label className="font-semibold text-slate-300 block mb-1">Invoice Date</label>
+                      <input
+                        type="date"
+                        value={formData.supplierInvoiceDate}
+                        onChange={(e) => setFormData({ ...formData, supplierInvoiceDate: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-slate-100 focus:border-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Vendor Invoice Amount */}
+                  <div className="pt-1 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-400 font-semibold">Vendor Invoice Amount: ₹</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="Bill Amount (₹)"
+                        value={formData.supplierInvoiceAmount}
+                        onChange={(e) => setFormData({ ...formData, supplierInvoiceAmount: e.target.value })}
+                        className="w-36 bg-slate-950 border border-slate-700 rounded px-2.5 py-1 text-slate-100 font-mono font-bold focus:border-indigo-500"
+                      />
+                    </div>
+                    <span className="text-[11px] text-slate-500 italic">
+                      Used for reconciliation with inward total
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -1762,71 +2047,98 @@ export default function PurchasingView() {
       {viewingPurchase && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-indigo-950 text-indigo-300 border border-indigo-700 font-mono">
-                    PURCHASE INWARD VOUCHER
-                  </span>
-                  <h3 className="font-bold text-white text-base">{viewingPurchase.docNumber}</h3>
-                </div>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Supplier: {viewingPurchase.supplierName} • Vendor Bill: {viewingPurchase.supplierInvoiceNo}
-                </p>
-              </div>
+            {(() => {
+              const isInit = Boolean(
+                viewingPurchase.isInitialStock ||
+                viewingPurchase.entryType === 'INITIAL_STOCK' ||
+                viewingPurchase.docNumber?.startsWith('INIT-')
+              );
+              return (
+                <>
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2.5 py-0.5 rounded text-[10px] font-bold border font-mono ${
+                            isInit
+                              ? 'bg-amber-950 text-amber-300 border-amber-700'
+                              : 'bg-indigo-950 text-indigo-300 border-indigo-700'
+                          }`}
+                        >
+                          {isInit ? 'INITIAL STOCK INWARD VOUCHER' : 'PURCHASE INWARD VOUCHER'}
+                        </span>
+                        <h3 className="font-bold text-white text-base">{viewingPurchase.docNumber}</h3>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {isInit
+                          ? `Initial Stock Cutover • Branch: ${viewingPurchase.branchName || viewingPurchase.storeName || 'Main Store'}`
+                          : `Supplier: ${viewingPurchase.supplierName} • Vendor Bill: ${viewingPurchase.supplierInvoiceNo}`}
+                      </p>
+                    </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPrintingPurchase(viewingPurchase);
-                    setViewingPurchase(null);
-                  }}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Printer className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>A4 Print</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewingPurchase(null)}
-                  className="text-slate-400 hover:text-white p-1 rounded-lg"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPrintingPurchase(viewingPurchase);
+                          setViewingPurchase(null);
+                        }}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Printer className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>A4 Print</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewingPurchase(null)}
+                        className="text-slate-400 hover:text-white p-1 rounded-lg"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
 
-            {/* Top Details Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-xs">
-              <div>
-                <span className="text-[10px] text-slate-500 uppercase font-bold">Branch & Company</span>
-                <div className="font-bold text-white mt-1">
-                  {viewingPurchase.branchName || viewingPurchase.storeName || 'Main Store'}
-                </div>
-                <div className="text-slate-400 text-[11px]">{activeCompany?.name || 'NexBill Enterprise'}</div>
-              </div>
+                  {/* Top Details Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-bold">Branch & Company</span>
+                      <div className="font-bold text-white mt-1">
+                        {viewingPurchase.branchName || viewingPurchase.storeName || 'Main Store'}
+                      </div>
+                      <div className="text-slate-400 text-[11px]">{activeCompany?.name || 'NexBill Enterprise'}</div>
+                    </div>
 
-              <div>
-                <span className="text-[10px] text-slate-500 uppercase font-bold">Vendor Invoice Info</span>
-                <div className="font-mono font-bold text-indigo-300 mt-1">
-                  Invoice #: {viewingPurchase.supplierInvoiceNo}
-                </div>
-                <div className="text-slate-400 text-[11px]">
-                  Date: {viewingPurchase.supplierInvoiceDate || new Date(viewingPurchase.date).toLocaleDateString()}
-                </div>
-              </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-bold">
+                        {isInit ? 'Cutover Reference' : 'Vendor Invoice Info'}
+                      </span>
+                      <div className="font-mono font-bold text-indigo-300 mt-1">
+                        {isInit ? `Ref: ${viewingPurchase.docNumber}` : `Invoice #: ${viewingPurchase.supplierInvoiceNo}`}
+                      </div>
+                      <div className="text-slate-400 text-[11px]">
+                        Date: {viewingPurchase.supplierInvoiceDate || new Date(viewingPurchase.date).toLocaleDateString()}
+                      </div>
+                    </div>
 
-              <div>
-                <span className="text-[10px] text-slate-500 uppercase font-bold">PO & Payment Info</span>
-                <div className="text-slate-300 mt-1">
-                  PO Reference: {viewingPurchase.poNumber || viewingPurchase.purchaseOrderRef || 'None (Direct)'}
-                </div>
-                <div className="text-emerald-400 font-bold">
-                  Status: {viewingPurchase.paymentStatus || 'PAID'} ({viewingPurchase.paymentMode || 'CASH'})
-                </div>
-              </div>
-            </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-bold">
+                        {isInit ? 'Inventory Status' : 'PO & Payment Info'}
+                      </span>
+                      <div className="text-slate-300 mt-1">
+                        {isInit
+                          ? 'Stock initialized into active inventory'
+                          : `PO Reference: ${viewingPurchase.poNumber || viewingPurchase.purchaseOrderRef || 'None (Direct)'}`}
+                      </div>
+                      <div className="text-emerald-400 font-bold">
+                        {isInit
+                          ? 'Status: RECORDED (Opening Balance)'
+                          : `Status: ${viewingPurchase.paymentStatus || 'PAID'} (${viewingPurchase.paymentMode || 'CASH'})`}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
 
             {/* Line Items Table */}
             <div className="border border-slate-800 rounded-xl overflow-hidden">
@@ -1958,7 +2270,9 @@ export default function PurchasingView() {
 
                 <div className="text-right">
                   <div className="inline-block bg-slate-900 text-white font-bold px-3 py-1 text-xs rounded uppercase tracking-wider">
-                    GOODS INWARD RECEIPT
+                    {printingPurchase.isInitialStock || printingPurchase.entryType === 'INITIAL_STOCK' || printingPurchase.docNumber?.startsWith('INIT-')
+                      ? 'INITIAL STOCK INWARD VOUCHER'
+                      : 'GOODS INWARD RECEIPT'}
                   </div>
                   <div className="font-mono font-bold text-sm text-slate-900 mt-2">
                     {printingPurchase.docNumber}
@@ -1971,31 +2285,62 @@ export default function PurchasingView() {
 
               {/* Vendor & Invoice Meta */}
               <div className="grid grid-cols-2 gap-4 border border-slate-300 rounded p-3 text-xs">
-                <div>
-                  <span className="font-bold text-slate-700 uppercase text-[10px] block">Supplier / Vendor:</span>
-                  <div className="font-bold text-sm text-slate-900 mt-0.5">{printingPurchase.supplierName}</div>
-                  <div className="text-slate-600 font-mono text-[11px]">
-                    GSTIN: {printingPurchase.supplierGstin || 'Unregistered'}
-                  </div>
-                  <div className="text-slate-600 text-[11px]">
-                    Supply Jurisdiction: {printingPurchase.supplyType || 'LOCAL'}
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <span className="font-bold text-slate-700 uppercase text-[10px] block">Vendor Invoice References:</span>
-                  <div className="font-mono font-bold text-sm text-slate-900 mt-0.5">
-                    Invoice #: {printingPurchase.supplierInvoiceNo}
-                  </div>
-                  <div className="text-slate-600 text-[11px]">
-                    Invoice Date: {printingPurchase.supplierInvoiceDate || new Date(printingPurchase.date).toLocaleDateString()}
-                  </div>
-                  {printingPurchase.poNumber && (
-                    <div className="text-indigo-700 font-mono font-bold text-[11px]">
-                      PO Ref: {printingPurchase.poNumber}
+                {printingPurchase.isInitialStock || printingPurchase.entryType === 'INITIAL_STOCK' || printingPurchase.docNumber?.startsWith('INIT-') ? (
+                  <>
+                    <div>
+                      <span className="font-bold text-slate-700 uppercase text-[10px] block">Opening Inventory Cutover</span>
+                      <div className="font-bold text-sm text-slate-900 mt-0.5">
+                        {printingPurchase.supplierName || 'Opening Stock / Initial Inventory'}
+                      </div>
+                      <div className="text-slate-600 text-[11px] mt-0.5">
+                        Direct Stock Inward without Vendor Bill
+                      </div>
+                      <div className="text-slate-600 text-[11px]">
+                        Branch / Store: {printingPurchase.branchName || printingPurchase.storeName || 'Main Store'}
+                      </div>
                     </div>
-                  )}
-                </div>
+                    <div className="text-right">
+                      <span className="font-bold text-slate-700 uppercase text-[10px] block">Cutover Reference:</span>
+                      <div className="font-mono font-bold text-sm text-slate-900 mt-0.5">
+                        Ref #: {printingPurchase.docNumber}
+                      </div>
+                      <div className="text-slate-600 text-[11px]">
+                        Cutover Date: {new Date(printingPurchase.date).toLocaleDateString()}
+                      </div>
+                      <div className="text-emerald-700 font-bold text-[11px] mt-0.5">
+                        Status: Stock Initialized
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <span className="font-bold text-slate-700 uppercase text-[10px] block">Supplier / Vendor:</span>
+                      <div className="font-bold text-sm text-slate-900 mt-0.5">{printingPurchase.supplierName}</div>
+                      <div className="text-slate-600 font-mono text-[11px]">
+                        GSTIN: {printingPurchase.supplierGstin || 'Unregistered'}
+                      </div>
+                      <div className="text-slate-600 text-[11px]">
+                        Supply Jurisdiction: {printingPurchase.supplyType || 'LOCAL'}
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="font-bold text-slate-700 uppercase text-[10px] block">Vendor Invoice References:</span>
+                      <div className="font-mono font-bold text-sm text-slate-900 mt-0.5">
+                        Invoice #: {printingPurchase.supplierInvoiceNo}
+                      </div>
+                      <div className="text-slate-600 text-[11px]">
+                        Invoice Date: {printingPurchase.supplierInvoiceDate || new Date(printingPurchase.date).toLocaleDateString()}
+                      </div>
+                      {printingPurchase.poNumber && (
+                        <div className="text-indigo-700 font-mono font-bold text-[11px]">
+                          PO Ref: {printingPurchase.poNumber}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Product Lines Grid */}
@@ -2245,24 +2590,38 @@ export default function PurchasingView() {
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-bold text-white text-base">Delete Purchase Receipt</h3>
+                <h3 className="font-bold text-white text-base">
+                  {deletingPurchase.isInitialStock || deletingPurchase.entryType === 'INITIAL_STOCK' || deletingPurchase.docNumber?.startsWith('INIT-')
+                    ? 'Delete Initial Stock Cutover'
+                    : 'Delete Purchase Receipt'}
+                </h3>
                 <p className="text-xs text-slate-400">Reverses inventory stock balances from the warehouse</p>
               </div>
             </div>
 
             <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs space-y-1.5">
               <div>
-                <span className="text-slate-400">Purchase Document: </span>
+                <span className="text-slate-400">Document #: </span>
                 <strong className="text-white font-mono">{deletingPurchase.docNumber}</strong>
               </div>
               <div>
-                <span className="text-slate-400">Supplier: </span>
-                <strong className="text-slate-200">{deletingPurchase.supplierName}</strong>
+                <span className="text-slate-400">
+                  {deletingPurchase.isInitialStock || deletingPurchase.entryType === 'INITIAL_STOCK' || deletingPurchase.docNumber?.startsWith('INIT-')
+                    ? 'Cutover Type: '
+                    : 'Supplier: '}
+                </span>
+                <strong className="text-slate-200">
+                  {deletingPurchase.isInitialStock || deletingPurchase.entryType === 'INITIAL_STOCK' || deletingPurchase.docNumber?.startsWith('INIT-')
+                    ? 'Initial Opening Stock'
+                    : deletingPurchase.supplierName}
+                </strong>
               </div>
-              <div>
-                <span className="text-slate-400">Vendor Bill #: </span>
-                <strong className="text-slate-200 font-mono">{deletingPurchase.supplierInvoiceNo}</strong>
-              </div>
+              {!(deletingPurchase.isInitialStock || deletingPurchase.entryType === 'INITIAL_STOCK' || deletingPurchase.docNumber?.startsWith('INIT-')) && (
+                <div>
+                  <span className="text-slate-400">Vendor Bill #: </span>
+                  <strong className="text-slate-200 font-mono">{deletingPurchase.supplierInvoiceNo}</strong>
+                </div>
+              )}
               <div>
                 <span className="text-slate-400">Total Value: </span>
                 <strong className="text-emerald-400 font-mono">
@@ -2272,7 +2631,7 @@ export default function PurchasingView() {
             </div>
 
             <p className="text-xs text-rose-300">
-              ⚠️ Warning: Deleting this purchase will immediately deduct the items from stock balances. This action is permanently logged to the audit and backlog ledger.
+              ⚠️ Warning: Deleting this record will immediately deduct the items from stock balances. This action is permanently logged to the audit and backlog ledger.
             </p>
 
             <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
