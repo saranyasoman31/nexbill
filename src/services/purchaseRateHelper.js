@@ -142,3 +142,97 @@ export function getLatestHistoricalPurchaseRate(productId, db, supplierId = null
 
   return 0;
 }
+
+/**
+ * Calculate line item tax, taxable amount, landed unit price, line totals and margins.
+ * Accurately supports both Tax Inclusive and Tax Exclusive.
+ *
+ * @param {Object} line - line item with qty, costPrice/rate, discountPercent, taxRate, taxType ('inclusive'|'exclusive')
+ * @param {string} supplyType - 'LOCAL' or 'INTERSTATE'
+ */
+export function calculatePurchaseLine(line, supplyType = 'LOCAL') {
+  const qty = Number(line.qty || 0);
+  const cost = Number(line.costPrice ?? line.rate ?? 0);
+  const discPercent = Number(line.discountPercent || 0);
+  const taxRate = Number(line.taxRate || 0);
+  const mrp = Number(line.mrp || 0);
+  const selling = Number(line.sellingPrice || 0);
+  const isInclusive = (line.taxType || 'exclusive').toLowerCase() === 'inclusive';
+
+  const gross = qty * cost;
+  const discAmt = Number(((gross * discPercent) / 100).toFixed(2));
+  const netGross = Number((gross - discAmt).toFixed(2));
+
+  let taxable = 0;
+  let lineTax = 0;
+  let cgstRate = 0, cgstAmount = 0, sgstRate = 0, sgstAmount = 0, igstRate = 0, igstAmount = 0;
+  let lineTotal = 0;
+
+  if (isInclusive) {
+    // INCLUSIVE: entered cost includes tax
+    if (taxRate > 0) {
+      taxable = Number((netGross / (1 + taxRate / 100)).toFixed(2));
+      lineTax = Number((netGross - taxable).toFixed(2));
+    } else {
+      taxable = netGross;
+      lineTax = 0;
+    }
+    lineTotal = netGross;
+
+    if (supplyType === 'INTERSTATE') {
+      igstRate = taxRate;
+      igstAmount = lineTax;
+    } else {
+      cgstRate = taxRate / 2;
+      cgstAmount = Number((lineTax / 2).toFixed(2));
+      sgstRate = taxRate / 2;
+      sgstAmount = Number((lineTax - cgstAmount).toFixed(2));
+    }
+  } else {
+    // EXCLUSIVE: entered cost is before tax; tax is added on top
+    taxable = netGross;
+
+    if (supplyType === 'INTERSTATE') {
+      igstRate = taxRate;
+      igstAmount = Number(((taxable * igstRate) / 100).toFixed(2));
+    } else {
+      cgstRate = taxRate / 2;
+      cgstAmount = Number(((taxable * cgstRate) / 100).toFixed(2));
+      sgstRate = taxRate / 2;
+      sgstAmount = Number(((taxable * sgstRate) / 100).toFixed(2));
+    }
+    lineTax = Number((cgstAmount + sgstAmount + igstAmount).toFixed(2));
+    lineTotal = Number((taxable + lineTax).toFixed(2));
+  }
+
+  const singleUnitPrice = Number((qty > 0 ? lineTotal / qty : (isInclusive ? cost : cost * (1 + taxRate / 100))).toFixed(2));
+  const margin = Number((selling - cost).toFixed(2));
+  const marginPercent = cost > 0 ? Number((((selling - cost) / cost) * 100).toFixed(1)) : 0;
+
+  return {
+    ...line,
+    qty,
+    costPrice: line.costPrice !== undefined ? line.costPrice : cost,
+    rate: cost,
+    grossAmount: gross,
+    discountPercent: discPercent,
+    discountAmount: discAmt,
+    taxableAmount: taxable,
+    taxRate,
+    taxType: isInclusive ? 'inclusive' : 'exclusive',
+    isTaxInclusive: isInclusive,
+    cgstRate,
+    cgstAmount,
+    sgstRate,
+    sgstAmount,
+    igstRate,
+    igstAmount,
+    taxAmount: lineTax,
+    lineTotal,
+    singleUnitPrice,
+    mrp: mrp > 0 ? mrp : (line.mrp ?? ''),
+    sellingPrice: selling > 0 ? selling : (line.sellingPrice ?? ''),
+    margin: singleUnitPrice > 0 ? margin : 0,
+    marginPercent: singleUnitPrice > 0 ? marginPercent : 0,
+  };
+}

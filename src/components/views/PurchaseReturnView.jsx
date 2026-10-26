@@ -203,6 +203,8 @@ export default function PurchaseReturnView() {
         returnQty: 0,
         costPrice: Number(l.costPrice || l.rate || 0),
         taxRate: Number(l.taxRate || l.gstRate || 0),
+        taxType: l.taxType || (l.isTaxInclusive ? 'inclusive' : 'exclusive'),
+        isTaxInclusive: l.isTaxInclusive ?? (l.taxType === 'inclusive'),
         mrp: Number(l.mrp || 0),
         lineTotal: 0,
       };
@@ -252,7 +254,11 @@ export default function PurchaseReturnView() {
       }
     }
     const taxRate = Number(product.taxRate || product.gstRate || 0);
-    const lineTotal = Number((costRate * (1 + taxRate / 100)).toFixed(2));
+    const prodTaxType = (product.taxType || (product.isTaxInclusive ? 'inclusive' : 'exclusive')).toLowerCase();
+    const isInclusive = prodTaxType === 'inclusive';
+    const lineTotal = isInclusive
+      ? Number(costRate.toFixed(2))
+      : Number((costRate * (1 + taxRate / 100)).toFixed(2));
 
     const newLine = {
       lineId: `DRLINE-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -269,6 +275,8 @@ export default function PurchaseReturnView() {
       returnQty: 1,
       costPrice: costRate,
       taxRate,
+      taxType: prodTaxType,
+      isTaxInclusive: isInclusive,
       mrp: Number(product.mrp || 0),
       lineTotal,
     };
@@ -291,9 +299,14 @@ export default function PurchaseReturnView() {
       const qty = Number(target.returnQty || 0);
       const cost = Number(target.costPrice || 0);
       const taxRate = Number(target.taxRate || 0);
-      const taxable = qty * cost;
-      const taxAmt = (taxable * taxRate) / 100;
-      target.lineTotal = Number((taxable + taxAmt).toFixed(2));
+      const isInclusive = (target.taxType || (target.isTaxInclusive ? 'inclusive' : 'exclusive')) === 'inclusive';
+      if (isInclusive) {
+        target.lineTotal = Number((qty * cost).toFixed(2));
+      } else {
+        const taxable = qty * cost;
+        const taxAmt = (taxable * taxRate) / 100;
+        target.lineTotal = Number((taxable + taxAmt).toFixed(2));
+      }
 
       nextLines[index] = target;
       return { ...prev, lines: nextLines };
@@ -338,14 +351,25 @@ export default function PurchaseReturnView() {
       if (qty <= 0) return;
       const cost = Number(l.costPrice || 0);
       const taxRate = Number(l.taxRate || 0);
-      const taxable = qty * cost;
+      const isInclusive = (l.taxType || (l.isTaxInclusive ? 'inclusive' : 'exclusive')) === 'inclusive';
+      let taxable = 0;
+      let lineTax = 0;
+
+      if (isInclusive) {
+        const gross = qty * cost;
+        taxable = taxRate > 0 ? Number((gross / (1 + taxRate / 100)).toFixed(2)) : gross;
+        lineTax = Number((gross - taxable).toFixed(2));
+      } else {
+        taxable = Number((qty * cost).toFixed(2));
+        lineTax = Number(((taxable * taxRate) / 100).toFixed(2));
+      }
 
       let cgst = 0, sgst = 0, igst = 0;
       if (isInterstate) {
-        igst = (taxable * taxRate) / 100;
+        igst = lineTax;
       } else {
-        cgst = (taxable * (taxRate / 2)) / 100;
-        sgst = (taxable * (taxRate / 2)) / 100;
+        cgst = Number((lineTax / 2).toFixed(2));
+        sgst = Number((lineTax - cgst).toFixed(2));
       }
 
       subtotal += taxable;

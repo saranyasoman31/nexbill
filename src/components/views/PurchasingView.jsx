@@ -38,9 +38,9 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import ExportButtons from '../common/ExportButtons.jsx';
-import { getProductStockRates, getLatestHistoricalPurchaseRate } from '../../services/purchaseRateHelper.js';
+import { getProductStockRates, getLatestHistoricalPurchaseRate, calculatePurchaseLine } from '../../services/purchaseRateHelper.js';
 
-export { getProductStockRates, getLatestHistoricalPurchaseRate };
+export { getProductStockRates, getLatestHistoricalPurchaseRate, calculatePurchaseLine };
 
 export default function PurchasingView() {
   const { db, activeCompany, activeStore, activeWarehouse, currentUser, notify, triggerRefresh } = useApp();
@@ -63,6 +63,7 @@ export default function PurchasingView() {
     supplierInvoiceNo: '',
     supplierInvoiceDate: new Date().toISOString().split('T')[0],
     supplierInvoiceAmount: '',
+    purchaseTaxType: 'inclusive', // 'inclusive' | 'exclusive'
     poId: null,
     poNumber: null,
     lines: [],
@@ -142,6 +143,7 @@ export default function PurchasingView() {
       supplierInvoiceNo: '',
       supplierInvoiceDate: new Date().toISOString().split('T')[0],
       supplierInvoiceAmount: '',
+      purchaseTaxType: 'inclusive',
       poId: null,
       poNumber: null,
       lines: [],
@@ -178,9 +180,13 @@ export default function PurchasingView() {
       supplierInvoiceNo: purchase.supplierInvoiceNo || '',
       supplierInvoiceDate: (purchase.supplierInvoiceDate || purchase.date || '').split('T')[0],
       supplierInvoiceAmount: purchase.supplierInvoiceAmount ?? purchase.netAmount ?? '',
+      purchaseTaxType: purchase.purchaseTaxType || 'inclusive',
       poId: purchase.poId || null,
       poNumber: purchase.poNumber || purchase.purchaseOrderRef || null,
-      lines: (purchase.lines || []).map((l) => ({ ...l })),
+      lines: (purchase.lines || purchase.items || []).map((l) => ({
+        ...l,
+        taxType: l.taxType || (l.isTaxInclusive ? 'inclusive' : 'exclusive'),
+      })),
       discountType: purchase.discountType || 'FLAT',
       discountValue: purchase.discountValue || 0,
       otherCharges: purchase.otherCharges || 0,
@@ -277,6 +283,32 @@ export default function PurchasingView() {
     }
   };
 
+  // Toggle Whole Purchase Tax Type (Inclusive / Exclusive)
+  const handleChangeWholePurchaseTaxType = (newTaxType) => {
+    setFormData((prev) => {
+      const updatedLines = (prev.lines || []).map((line) => {
+        return calculatePurchaseLine(
+          {
+            ...line,
+            taxType: newTaxType,
+            isTaxInclusive: newTaxType === 'inclusive',
+          },
+          currentSupplyType
+        );
+      });
+      return {
+        ...prev,
+        purchaseTaxType: newTaxType,
+        lines: updatedLines,
+      };
+    });
+    notify(
+      'info',
+      `Whole purchase tax mode set to ${newTaxType === 'inclusive' ? 'Inclusive (Tax In)' : 'Exclusive (+Tax)'}. All line rates recalculated.`,
+      'Tax Mode Changed'
+    );
+  };
+
   // Apply selected product to lines
   const applyProductToLine = (product, chosenRate, targetLineIdx = null) => {
     let costRate = 0;
@@ -287,13 +319,11 @@ export default function PurchasingView() {
     }
     if (isNaN(costRate) || costRate < 0) costRate = 0;
 
+    const prodTaxType = (product.taxType || (product.isTaxInclusive ? 'inclusive' : (formData.purchaseTaxType || 'inclusive'))).toLowerCase();
+    const isInclusive = prodTaxType === 'inclusive';
     const taxRate = Number(product.taxRate ?? 0);
-    const mrp = Number(product.mrp || (costRate > 0 ? costRate * 1.3 : 0));
-    const sellingPrice = Number(product.sellingRate || (costRate > 0 ? costRate * 1.2 : 0));
-    const margin = Number((sellingPrice - costRate).toFixed(2));
-    const marginPercent = costRate > 0 ? Number((((sellingPrice - costRate) / costRate) * 100).toFixed(1)) : 0;
 
-    const newLine = {
+    const rawLine = {
       lineId: `PLINE-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       productId: product.id,
       name: product.name,
@@ -306,16 +336,14 @@ export default function PurchasingView() {
       rate: costRate > 0 ? costRate : 0,
       discountPercent: 0,
       discountAmount: 0,
-      mrp: mrp > 0 ? mrp : '',
-      sellingPrice: sellingPrice > 0 ? sellingPrice : '',
-      margin: costRate > 0 ? margin : 0,
-      marginPercent: costRate > 0 ? marginPercent : 0,
+      mrp: product.mrp ? Number(product.mrp) : '',
+      sellingPrice: product.sellingRate ? Number(product.sellingRate) : '',
       taxRate,
-      taxableAmount: costRate,
-      taxAmount: Number(((costRate * taxRate) / 100).toFixed(2)),
-      singleUnitPrice: Number((costRate * (1 + taxRate / 100)).toFixed(2)),
-      lineTotal: Number((costRate * (1 + taxRate / 100)).toFixed(2)),
+      taxType: isInclusive ? 'inclusive' : 'exclusive',
+      isTaxInclusive: isInclusive,
     };
+
+    const newLine = calculatePurchaseLine(rawLine, currentSupplyType);
 
     setFormData((prev) => {
       if (targetLineIdx !== null && targetLineIdx >= 0 && targetLineIdx < prev.lines.length) {
@@ -357,34 +385,29 @@ export default function PurchasingView() {
       const rate = getLatestHistoricalPurchaseRate(firstProd.id, db, formData.supplierId);
       applyProductToLine(firstProd, rate);
     } else {
+      const isInclusive = (formData.purchaseTaxType || 'inclusive') === 'inclusive';
+      const rawLine = {
+        lineId: `PLINE-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        productId: '',
+        name: '',
+        sku: '',
+        uom: 'PCS',
+        batchNo: '',
+        expiryDate: '',
+        qty: 1,
+        costPrice: '',
+        rate: 0,
+        discountPercent: 0,
+        discountAmount: 0,
+        mrp: '',
+        sellingPrice: '',
+        taxRate: 0,
+        taxType: isInclusive ? 'inclusive' : 'exclusive',
+        isTaxInclusive: isInclusive,
+      };
       setFormData((prev) => ({
         ...prev,
-        lines: [
-          ...prev.lines,
-          {
-            lineId: `PLINE-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-            productId: '',
-            name: '',
-            sku: '',
-            uom: 'PCS',
-            batchNo: '',
-            expiryDate: '',
-            qty: 1,
-            costPrice: '',
-            rate: 0,
-            discountPercent: 0,
-            discountAmount: 0,
-            mrp: '',
-            sellingPrice: '',
-            margin: 0,
-            marginPercent: 0,
-            taxRate: 0,
-            taxableAmount: 0,
-            taxAmount: 0,
-            singleUnitPrice: 0,
-            lineTotal: 0,
-          },
-        ],
+        lines: [...prev.lines, calculatePurchaseLine(rawLine, currentSupplyType)],
       }));
     }
   };
@@ -407,57 +430,26 @@ export default function PurchasingView() {
         const prod = (db.products || []).find((p) => p.id === value);
         if (prod) {
           const rate = getLatestHistoricalPurchaseRate(prod.id, db, formData.supplierId);
+          const pTaxType = (prod.taxType || (prod.isTaxInclusive ? 'inclusive' : (formData.purchaseTaxType || 'inclusive'))).toLowerCase();
           line.name = prod.name;
           line.sku = prod.sku || '';
           line.uom = prod.uom || 'PCS';
           line.costPrice = rate > 0 ? rate : '';
           line.rate = rate > 0 ? rate : 0;
-          line.mrp = prod.mrp ? Number(prod.mrp) : (rate > 0 ? Number((rate * 1.3).toFixed(2)) : '');
-          line.sellingPrice = prod.sellingRate ? Number(prod.sellingRate) : (rate > 0 ? Number((rate * 1.2).toFixed(2)) : '');
+          line.mrp = prod.mrp ? Number(prod.mrp) : '';
+          line.sellingPrice = prod.sellingRate ? Number(prod.sellingRate) : '';
           line.taxRate = Number(prod.taxRate ?? line.taxRate ?? 0);
+          line.taxType = pTaxType;
+          line.isTaxInclusive = pTaxType === 'inclusive';
         }
       }
 
-      // Recompute line numbers
-      const qty = Number(line.qty || 0);
-      const cost = Number(line.costPrice || 0);
-      line.rate = cost;
-      const mrp = Number(line.mrp || 0);
-      const selling = Number(line.sellingPrice || 0);
-      const discPercent = Number(line.discountPercent || 0);
-      const taxRate = Number(line.taxRate || 0);
-
-      const gross = qty * cost;
-      const discAmt = Number(((gross * discPercent) / 100).toFixed(2));
-      line.discountAmount = discAmt;
-      const taxable = gross - discAmt;
-      line.taxableAmount = Number(taxable.toFixed(2));
-
-      let cgstRate = 0, cgstAmount = 0, sgstRate = 0, sgstAmount = 0, igstRate = 0, igstAmount = 0;
-      if (currentSupplyType === 'INTERSTATE') {
-        igstRate = taxRate;
-        igstAmount = Number(((taxable * igstRate) / 100).toFixed(2));
-      } else {
-        cgstRate = taxRate / 2;
-        cgstAmount = Number(((taxable * cgstRate) / 100).toFixed(2));
-        sgstRate = taxRate / 2;
-        sgstAmount = Number(((taxable * sgstRate) / 100).toFixed(2));
+      if (field === 'taxType') {
+        line.taxType = value;
+        line.isTaxInclusive = value === 'inclusive';
       }
-      const lineTax = cgstAmount + sgstAmount + igstAmount;
-      line.cgstRate = cgstRate;
-      line.cgstAmount = cgstAmount;
-      line.sgstRate = sgstRate;
-      line.sgstAmount = sgstAmount;
-      line.igstRate = igstRate;
-      line.igstAmount = igstAmount;
-      line.taxAmount = Number(lineTax.toFixed(2));
 
-      line.lineTotal = Number((taxable + lineTax).toFixed(2));
-      line.singleUnitPrice = Number((qty > 0 ? line.lineTotal / qty : cost).toFixed(2));
-      line.margin = Number((selling - cost).toFixed(2));
-      line.marginPercent = cost > 0 ? Number((((selling - cost) / cost) * 100).toFixed(1)) : 0;
-
-      nextLines[idx] = line;
+      nextLines[idx] = calculatePurchaseLine(line, currentSupplyType);
       return { ...prev, lines: nextLines };
     });
   };
@@ -473,22 +465,14 @@ export default function PurchasingView() {
     const taxSummaryMap = new Map();
 
     (formData.lines || []).forEach((line) => {
+      const taxable = Number(line.taxableAmount || 0);
+      const cgstAmt = Number(line.cgstAmount || 0);
+      const sgstAmt = Number(line.sgstAmount || 0);
+      const igstAmt = Number(line.igstAmount || 0);
+      const lineTax = Number(line.taxAmount || 0);
+      const discAmt = Number(line.discountAmount || 0);
       const qty = Number(line.qty || 0);
-      const cost = Number(line.costPrice || 0);
-      const discPercent = Number(line.discountPercent || 0);
       const taxRate = Number(line.taxRate || 0);
-
-      const gross = qty * cost;
-      const discAmt = Number(((gross * discPercent) / 100).toFixed(2));
-      const taxable = gross - discAmt;
-
-      let cgstAmt = 0, sgstAmt = 0, igstAmt = 0;
-      if (currentSupplyType === 'INTERSTATE') {
-        igstAmt = Number(((taxable * taxRate) / 100).toFixed(2));
-      } else {
-        cgstAmt = Number(((taxable * (taxRate / 2)) / 100).toFixed(2));
-        sgstAmt = Number(((taxable * (taxRate / 2)) / 100).toFixed(2));
-      }
 
       subtotal += taxable;
       lineDiscountsTotal += discAmt;
@@ -500,7 +484,7 @@ export default function PurchasingView() {
       const rateKey = taxRate;
       const prevGroup = taxSummaryMap.get(rateKey) || { rate: rateKey, taxable: 0, tax: 0 };
       prevGroup.taxable += taxable;
-      prevGroup.tax += (cgstAmt + sgstAmt + igstAmt);
+      prevGroup.tax += lineTax;
       taxSummaryMap.set(rateKey, prevGroup);
     });
 
@@ -554,16 +538,9 @@ export default function PurchasingView() {
       const qty = Number(l.orderedQty || l.qty || 1);
       const costPrice = Number(l.rate || prod.costRate || getLatestHistoricalPurchaseRate(prod.id, db, po.supplierId) || 0);
       const taxRate = Number(l.taxRate ?? prod.taxRate ?? 0);
-      const mrp = Number(prod.mrp || (costPrice > 0 ? costPrice * 1.3 : 0));
-      const sellingPrice = Number(prod.sellingRate || (costPrice > 0 ? costPrice * 1.2 : 0));
-      const taxable = qty * costPrice;
-      const taxAmount = Number(((taxable * taxRate) / 100).toFixed(2));
-      const lineTotal = Number((taxable + taxAmount).toFixed(2));
-      const singleUnitPrice = Number((qty > 0 ? lineTotal / qty : costPrice).toFixed(2));
-      const margin = Number((sellingPrice - costPrice).toFixed(2));
-      const marginPercent = costPrice > 0 ? Number((((sellingPrice - costPrice) / costPrice) * 100).toFixed(1)) : 0;
+      const initialTaxType = (l.taxType || prod.taxType || (prod.isTaxInclusive ? 'inclusive' : (formData.purchaseTaxType || 'inclusive'))).toLowerCase();
 
-      return {
+      const rawLine = {
         lineId: `PLINE-PO-${idx + 1}-${Date.now()}`,
         productId: l.productId || l.id,
         name: l.productName || l.name || prod.name || 'Product',
@@ -572,20 +549,18 @@ export default function PurchasingView() {
         batchNo: '',
         expiryDate: '',
         qty,
-        costPrice,
+        costPrice: costPrice > 0 ? costPrice : '',
         rate: costPrice,
-        discountPercent: 0,
+        discountPercent: Number(l.discountPercent || 0),
         discountAmount: 0,
-        mrp,
-        sellingPrice,
-        margin,
-        marginPercent,
+        mrp: prod.mrp ? Number(prod.mrp) : '',
+        sellingPrice: prod.sellingRate ? Number(prod.sellingRate) : '',
         taxRate,
-        taxableAmount: Number(taxable.toFixed(2)),
-        taxAmount,
-        singleUnitPrice,
-        lineTotal,
+        taxType: initialTaxType,
+        isTaxInclusive: initialTaxType === 'inclusive',
       };
+
+      return calculatePurchaseLine(rawLine, currentSupplyType);
     });
 
     setFormData((prev) => ({
@@ -1159,31 +1134,62 @@ export default function PurchasingView() {
                 <span className="text-xs text-slate-400">({formData.lines.length} items in bill)</span>
               </div>
 
-              {/* Setting Toggle: All Products vs Supplier's Products */}
-              <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
-                <span className="text-slate-400 text-[11px] px-2 font-semibold">Filter:</span>
-                <button
-                  type="button"
-                  onClick={() => handleToggleFilterMode('all')}
-                  className={`px-2.5 py-1 rounded text-[11px] font-semibold transition cursor-pointer ${
-                    productFilterMode === 'all'
-                      ? 'bg-indigo-600 text-white shadow'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  All Products
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleToggleFilterMode('supplier')}
-                  className={`px-2.5 py-1 rounded text-[11px] font-semibold transition cursor-pointer ${
-                    productFilterMode === 'supplier'
-                      ? 'bg-indigo-600 text-white shadow'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Supplier's Products Only
-                </button>
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Whole Purchase Tax Mode Toggle */}
+                <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
+                  <span className="text-slate-400 text-[11px] px-2 font-semibold">Purchase Tax Mode:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleChangeWholePurchaseTaxType('inclusive')}
+                    className={`px-2.5 py-1 rounded text-[11px] font-semibold transition cursor-pointer ${
+                      (formData.purchaseTaxType || 'inclusive') === 'inclusive'
+                        ? 'bg-emerald-600 text-white shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Calculate all products in purchase as Tax Inclusive"
+                  >
+                    Inclusive (All)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleChangeWholePurchaseTaxType('exclusive')}
+                    className={`px-2.5 py-1 rounded text-[11px] font-semibold transition cursor-pointer ${
+                      formData.purchaseTaxType === 'exclusive'
+                        ? 'bg-indigo-600 text-white shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Calculate all products in purchase as Tax Exclusive"
+                  >
+                    Exclusive (All)
+                  </button>
+                </div>
+
+                {/* Setting Toggle: All Products vs Supplier's Products */}
+                <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
+                  <span className="text-slate-400 text-[11px] px-2 font-semibold">Filter:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleFilterMode('all')}
+                    className={`px-2.5 py-1 rounded text-[11px] font-semibold transition cursor-pointer ${
+                      productFilterMode === 'all'
+                        ? 'bg-indigo-600 text-white shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    All Products
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleFilterMode('supplier')}
+                    className={`px-2.5 py-1 rounded text-[11px] font-semibold transition cursor-pointer ${
+                      productFilterMode === 'supplier'
+                        ? 'bg-indigo-600 text-white shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Supplier's Products Only
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1307,6 +1313,7 @@ export default function PurchasingView() {
                       <th className="py-2.5 px-2 min-w-[140px]">Batch / Expiry</th>
                       <th className="py-2.5 px-2 text-center w-20">Qty</th>
                       <th className="py-2.5 px-2 text-right w-24">Cost Price (₹)</th>
+                      <th className="py-2.5 px-2 text-center min-w-[105px]">Tax Type</th>
                       <th className="py-2.5 px-1 text-center w-14">Disc%</th>
                       <th className="py-2.5 px-2 text-right w-24">Unit Landed</th>
                       <th className="py-2.5 px-2 text-right w-24">MRP (₹)</th>
@@ -1320,7 +1327,7 @@ export default function PurchasingView() {
                   <tbody className="divide-y divide-slate-800/70 font-sans">
                     {formData.lines.length === 0 ? (
                       <tr>
-                        <td colSpan="13" className="py-12 text-center text-slate-500 text-xs">
+                        <td colSpan="14" className="py-12 text-center text-slate-500 text-xs">
                           <ShoppingBag className="w-8 h-8 mx-auto text-slate-600 mb-2 opacity-40" />
                           No items added yet. Use the product search above or click "Add Line Item".
                         </td>
@@ -1385,6 +1392,22 @@ export default function PurchasingView() {
                               onChange={(e) => handleUpdateLine(idx, 'costPrice', e.target.value)}
                               className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-right font-mono font-bold text-slate-100 focus:border-indigo-500"
                             />
+                          </td>
+
+                          {/* Tax Type Selector */}
+                          <td className="py-2 px-1 text-center">
+                            <select
+                              value={line.taxType || (line.isTaxInclusive ? 'inclusive' : 'exclusive')}
+                              onChange={(e) => handleUpdateLine(idx, 'taxType', e.target.value)}
+                              className={`w-full text-[11px] font-semibold py-1 px-1 rounded border focus:outline-none cursor-pointer ${
+                                (line.taxType || (line.isTaxInclusive ? 'inclusive' : 'exclusive')) === 'inclusive'
+                                  ? 'bg-emerald-950/80 border-emerald-700 text-emerald-300'
+                                  : 'bg-indigo-950/80 border-indigo-700 text-indigo-300'
+                              }`}
+                            >
+                              <option value="inclusive" className="bg-slate-900 text-emerald-300">Inclusive</option>
+                              <option value="exclusive" className="bg-slate-900 text-indigo-300">Exclusive</option>
+                            </select>
                           </td>
 
                           {/* Line Discount % */}
@@ -1460,8 +1483,12 @@ export default function PurchasingView() {
                               <option value="18">18%</option>
                               <option value="28">28%</option>
                             </select>
-                            <div className="text-[10px] text-slate-500 font-mono mt-0.5">
-                              +₹{Number(line.taxAmount || 0).toFixed(2)}
+                            <div className="text-[10px] font-mono mt-0.5 whitespace-nowrap">
+                              {line.taxType === 'inclusive' ? (
+                                <span className="text-emerald-400 font-semibold" title="Inclusive Tax: Included in gross amount">Incl: ₹{Number(line.taxAmount || 0).toFixed(2)}</span>
+                              ) : (
+                                <span className="text-indigo-400 font-semibold" title="Exclusive Tax: Added on top of taxable amount">+₹{Number(line.taxAmount || 0).toFixed(2)}</span>
+                              )}
                             </div>
                           </td>
 
@@ -1833,7 +1860,12 @@ export default function PurchasingView() {
                           {line.marginPercent || 0}%
                         </span>
                       </td>
-                      <td className="py-2 px-2 text-center text-slate-400">{line.taxRate}%</td>
+                      <td className="py-2 px-2 text-center text-slate-400">
+                        {line.taxRate}%{' '}
+                        <span className="text-[10px] text-slate-500 font-sans">
+                          ({(line.taxType || (line.isTaxInclusive ? 'inclusive' : 'exclusive')) === 'inclusive' ? 'Incl' : 'Excl'})
+                        </span>
+                      </td>
                       <td className="py-2 px-3 text-right font-bold text-white">
                         ₹{Number(line.lineTotal || 0).toFixed(2)}
                       </td>
@@ -1996,7 +2028,12 @@ export default function PurchasingView() {
                       <td className="py-2 px-2 border-r border-slate-300 text-right">₹{Number(line.mrp || 0).toFixed(2)}</td>
                       <td className="py-2 px-2 border-r border-slate-300 text-right">₹{Number(line.sellingPrice || 0).toFixed(2)}</td>
                       <td className="py-2 px-2 border-r border-slate-300 text-center font-sans">{line.marginPercent || 0}%</td>
-                      <td className="py-2 px-2 border-r border-slate-300 text-center">{line.taxRate}%</td>
+                      <td className="py-2 px-2 border-r border-slate-300 text-center">
+                        {line.taxRate}%
+                        <span className="block text-[9px] text-slate-500 font-sans">
+                          ({(line.taxType || (line.isTaxInclusive ? 'inclusive' : 'exclusive')) === 'inclusive' ? 'Incl' : 'Excl'})
+                        </span>
+                      </td>
                       <td className="py-2 px-3 text-right font-bold text-slate-900">₹{Number(line.lineTotal || 0).toFixed(2)}</td>
                     </tr>
                   ))}

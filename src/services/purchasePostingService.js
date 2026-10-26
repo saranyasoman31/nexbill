@@ -2,6 +2,7 @@
 import { getDatabase, saveDatabase, logAuditEvent, logBacklog } from './storageService.js';
 import { StockService } from './stockService.js';
 import { numberToWords } from '../utils/numberToWords.js';
+import { calculatePurchaseLine } from './purchaseRateHelper.js';
 
 export const PurchasePostingService = {
   /**
@@ -130,42 +131,30 @@ export const PurchasePostingService = {
       const mrp = Number(item.mrp ?? prod.mrp ?? 0);
       const sellingPrice = Number(item.sellingPrice ?? prod.sellingRate ?? 0);
       const lineDiscPercent = Number(item.discountPercent || 0);
+      const taxType = (item.taxType || (prod.isTaxInclusive ? 'inclusive' : (prod.taxType || purchasePayload.purchaseTaxType || 'exclusive'))).toLowerCase();
 
       if (qty <= 0) throw new Error(`PURCHASE_ERROR: Line #${idx + 1} (${item.name || 'Item'}) quantity must be greater than zero.`);
       if (costPrice < 0) throw new Error(`PURCHASE_ERROR: Line #${idx + 1} (${item.name || 'Item'}) cost price cannot be negative.`);
 
-      const lineGross = qty * costPrice;
-      const lineDiscVal = Number(((lineGross * lineDiscPercent) / 100).toFixed(2));
-      const taxable = lineGross - lineDiscVal;
+      const calc = calculatePurchaseLine(
+        {
+          qty,
+          costPrice,
+          rate: costPrice,
+          taxRate,
+          mrp,
+          sellingPrice,
+          discountPercent: lineDiscPercent,
+          taxType,
+        },
+        isInterstate ? 'INTERSTATE' : 'LOCAL'
+      );
 
-      let cgstRate = 0;
-      let cgstAmount = 0;
-      let sgstRate = 0;
-      let sgstAmount = 0;
-      let igstRate = 0;
-      let igstAmount = 0;
-
-      if (isInterstate) {
-        igstRate = taxRate;
-        igstAmount = Number(((taxable * igstRate) / 100).toFixed(2));
-      } else {
-        cgstRate = taxRate / 2;
-        cgstAmount = Number(((taxable * cgstRate) / 100).toFixed(2));
-        sgstRate = taxRate / 2;
-        sgstAmount = Number(((taxable * sgstRate) / 100).toFixed(2));
-      }
-
-      const lineTax = cgstAmount + sgstAmount + igstAmount;
-      const lineTotal = Number((taxable + lineTax).toFixed(2));
-      const singleUnitPrice = Number((qty > 0 ? lineTotal / qty : costPrice).toFixed(2));
-      const margin = Number((sellingPrice - costPrice).toFixed(2));
-      const marginPercent = costPrice > 0 ? Number((((sellingPrice - costPrice) / costPrice) * 100).toFixed(1)) : 0;
-
-      grossSubtotal += taxable;
-      lineDiscountsTotal += lineDiscVal;
-      cgstTotal += cgstAmount;
-      sgstTotal += sgstAmount;
-      igstTotal += igstAmount;
+      grossSubtotal += calc.taxableAmount;
+      lineDiscountsTotal += calc.discountAmount;
+      cgstTotal += calc.cgstAmount;
+      sgstTotal += calc.sgstAmount;
+      igstTotal += calc.igstAmount;
       totalQty += qty;
 
       return {
@@ -180,27 +169,29 @@ export const PurchasePostingService = {
         returnedQty: 0,
         costPrice,
         rate: costPrice, // backward compatibility
+        taxType: calc.taxType,
+        isTaxInclusive: calc.isTaxInclusive,
         discountPercent: lineDiscPercent,
-        discountAmount: lineDiscVal,
-        taxableAmount: Number(taxable.toFixed(2)),
-        taxRate,
-        cgstRate,
-        cgstAmount,
-        sgstRate,
-        sgstAmount,
-        igstRate,
-        igstAmount,
-        taxAmount: Number(lineTax.toFixed(2)),
-        singleUnitPrice,
-        unitPriceLanded: singleUnitPrice,
-        mrp,
-        sellingPrice,
-        margin,
-        marginAmount: margin,
-        marginPercent,
-        lineTotal,
-        totalAmount: lineTotal,
-        total: lineTotal,
+        discountAmount: calc.discountAmount,
+        taxableAmount: calc.taxableAmount,
+        taxRate: calc.taxRate,
+        cgstRate: calc.cgstRate,
+        cgstAmount: calc.cgstAmount,
+        sgstRate: calc.sgstRate,
+        sgstAmount: calc.sgstAmount,
+        igstRate: calc.igstRate,
+        igstAmount: calc.igstAmount,
+        taxAmount: calc.taxAmount,
+        singleUnitPrice: calc.singleUnitPrice,
+        unitPriceLanded: calc.singleUnitPrice,
+        mrp: calc.mrp,
+        sellingPrice: calc.sellingPrice,
+        margin: calc.margin,
+        marginAmount: calc.margin,
+        marginPercent: calc.marginPercent,
+        lineTotal: calc.lineTotal,
+        totalAmount: calc.lineTotal,
+        total: calc.lineTotal,
       };
     });
 
@@ -243,6 +234,7 @@ export const PurchasePostingService = {
       date: purchaseDate,
       status: 'POSTED',
       supplyType: isInterstate ? 'INTERSTATE' : 'LOCAL',
+      purchaseTaxType: purchasePayload.purchaseTaxType || 'inclusive',
       lines: calculatedLines,
       items: calculatedLines,
       subtotal: Number(grossSubtotal.toFixed(2)),
@@ -454,42 +446,30 @@ export const PurchasePostingService = {
       const mrp = Number(item.mrp ?? prod.mrp ?? 0);
       const sellingPrice = Number(item.sellingPrice ?? prod.sellingRate ?? 0);
       const lineDiscPercent = Number(item.discountPercent || 0);
+      const taxType = (item.taxType || (prod.isTaxInclusive ? 'inclusive' : (prod.taxType || purchasePayload.purchaseTaxType || 'exclusive'))).toLowerCase();
 
       if (qty <= 0) throw new Error(`PURCHASE_ERROR: Line #${idx + 1} quantity must be greater than zero.`);
       if (costPrice < 0) throw new Error(`PURCHASE_ERROR: Line #${idx + 1} cost price cannot be negative.`);
 
-      const lineGross = qty * costPrice;
-      const lineDiscVal = Number(((lineGross * lineDiscPercent) / 100).toFixed(2));
-      const taxable = lineGross - lineDiscVal;
+      const calc = calculatePurchaseLine(
+        {
+          qty,
+          costPrice,
+          rate: costPrice,
+          taxRate,
+          mrp,
+          sellingPrice,
+          discountPercent: lineDiscPercent,
+          taxType,
+        },
+        isInterstate ? 'INTERSTATE' : 'LOCAL'
+      );
 
-      let cgstRate = 0;
-      let cgstAmount = 0;
-      let sgstRate = 0;
-      let sgstAmount = 0;
-      let igstRate = 0;
-      let igstAmount = 0;
-
-      if (isInterstate) {
-        igstRate = taxRate;
-        igstAmount = Number(((taxable * igstRate) / 100).toFixed(2));
-      } else {
-        cgstRate = taxRate / 2;
-        cgstAmount = Number(((taxable * cgstRate) / 100).toFixed(2));
-        sgstRate = taxRate / 2;
-        sgstAmount = Number(((taxable * sgstRate) / 100).toFixed(2));
-      }
-
-      const lineTax = cgstAmount + sgstAmount + igstAmount;
-      const lineTotal = Number((taxable + lineTax).toFixed(2));
-      const singleUnitPrice = Number((qty > 0 ? lineTotal / qty : costPrice).toFixed(2));
-      const margin = Number((sellingPrice - costPrice).toFixed(2));
-      const marginPercent = costPrice > 0 ? Number((((sellingPrice - costPrice) / costPrice) * 100).toFixed(1)) : 0;
-
-      grossSubtotal += taxable;
-      lineDiscountsTotal += lineDiscVal;
-      cgstTotal += cgstAmount;
-      sgstTotal += sgstAmount;
-      igstTotal += igstAmount;
+      grossSubtotal += calc.taxableAmount;
+      lineDiscountsTotal += calc.discountAmount;
+      cgstTotal += calc.cgstAmount;
+      sgstTotal += calc.sgstAmount;
+      igstTotal += calc.igstAmount;
       totalQty += qty;
 
       return {
@@ -504,27 +484,29 @@ export const PurchasePostingService = {
         returnedQty: oldPurchase.lines?.find((ol) => ol.productId === (item.productId || item.id))?.returnedQty || 0,
         costPrice,
         rate: costPrice,
+        taxType: calc.taxType,
+        isTaxInclusive: calc.isTaxInclusive,
         discountPercent: lineDiscPercent,
-        discountAmount: lineDiscVal,
-        taxableAmount: Number(taxable.toFixed(2)),
-        taxRate,
-        cgstRate,
-        cgstAmount,
-        sgstRate,
-        sgstAmount,
-        igstRate,
-        igstAmount,
-        taxAmount: Number(lineTax.toFixed(2)),
-        singleUnitPrice,
-        unitPriceLanded: singleUnitPrice,
-        mrp,
-        sellingPrice,
-        margin,
-        marginAmount: margin,
-        marginPercent,
-        lineTotal,
-        totalAmount: lineTotal,
-        total: lineTotal,
+        discountAmount: calc.discountAmount,
+        taxableAmount: calc.taxableAmount,
+        taxRate: calc.taxRate,
+        cgstRate: calc.cgstRate,
+        cgstAmount: calc.cgstAmount,
+        sgstRate: calc.sgstRate,
+        sgstAmount: calc.sgstAmount,
+        igstRate: calc.igstRate,
+        igstAmount: calc.igstAmount,
+        taxAmount: calc.taxAmount,
+        singleUnitPrice: calc.singleUnitPrice,
+        unitPriceLanded: calc.singleUnitPrice,
+        mrp: calc.mrp,
+        sellingPrice: calc.sellingPrice,
+        margin: calc.margin,
+        marginAmount: calc.margin,
+        marginPercent: calc.marginPercent,
+        lineTotal: calc.lineTotal,
+        totalAmount: calc.lineTotal,
+        total: calc.lineTotal,
       };
     });
 
@@ -583,6 +565,7 @@ export const PurchasePostingService = {
       warehouseName: warehouse.name || 'Main Warehouse',
       date,
       supplyType: isInterstate ? 'INTERSTATE' : 'LOCAL',
+      purchaseTaxType: purchasePayload.purchaseTaxType || oldPurchase.purchaseTaxType || 'inclusive',
       lines: calculatedLines,
       items: calculatedLines,
       subtotal: Number(grossSubtotal.toFixed(2)),

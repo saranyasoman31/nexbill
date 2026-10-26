@@ -49,6 +49,8 @@ export default function MastersView() {
     hsnCode: '1006',
     uom: 'Pcs',
     taxRate: 5,
+    taxType: 'inclusive',
+    isTaxInclusive: true,
     costRate: 0,
     mrp: 0,
     sellingRate: 0,
@@ -112,9 +114,12 @@ export default function MastersView() {
     }
 
     const prodId = `PROD-${String(db.products.length + 1).padStart(3, '0')}`;
+    const taxTypeVal = newProduct.taxType || (newProduct.isTaxInclusive === false ? 'exclusive' : 'inclusive');
     const productRecord = {
       ...newProduct,
       id: prodId,
+      taxType: taxTypeVal,
+      isTaxInclusive: taxTypeVal === 'inclusive',
       costRate: Number(newProduct.costRate),
       mrp: Number(newProduct.mrp),
       sellingRate: Number(newProduct.sellingRate),
@@ -137,6 +142,8 @@ export default function MastersView() {
       hsnCode: '1006',
       uom: 'Pcs',
       taxRate: 5,
+      taxType: 'inclusive',
+      isTaxInclusive: true,
       costRate: 0,
       mrp: 0,
       sellingRate: 0,
@@ -875,6 +882,40 @@ export default function MastersView() {
                       onChange={(e) => setNewProduct({ ...newProduct, sellingRate: e.target.value })}
                       className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 font-mono text-emerald-400 font-bold"
                     />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold text-slate-300 block mb-1">Tax Type *</label>
+                    <select
+                      value={newProduct.taxType || 'inclusive'}
+                      onChange={(e) => {
+                        const tt = e.target.value;
+                        setNewProduct({
+                          ...newProduct,
+                          taxType: tt,
+                          isTaxInclusive: tt === 'inclusive',
+                        });
+                      }}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-200"
+                    >
+                      <option value="inclusive">Tax Inclusive (Price includes GST)</option>
+                      <option value="exclusive">Tax Exclusive (GST added at billing)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="font-semibold text-slate-300 block mb-1">GST Rate (%) *</label>
+                    <select
+                      value={newProduct.taxRate}
+                      onChange={(e) => setNewProduct({ ...newProduct, taxRate: Number(e.target.value) })}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-200 font-mono"
+                    >
+                      <option value="0">0%</option>
+                      <option value="5">5%</option>
+                      <option value="12">12%</option>
+                      <option value="18">18%</option>
+                      <option value="28">28%</option>
+                    </select>
                   </div>
                 </div>
                 <div className="pt-2 border-t border-slate-800 space-y-1">
