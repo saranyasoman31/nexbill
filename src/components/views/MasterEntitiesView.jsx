@@ -2278,7 +2278,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
       {/* Master Data Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[720px]">
             <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
                 <th className="py-2.5 px-3">#</th>
@@ -2944,7 +2944,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
             <form onSubmit={handleSave} className="space-y-4 text-xs overflow-y-auto pr-1 flex-1 scrollbar-thin">
               {/* Product Form */}
               {activeEntity === 'product' && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Basic Identification */}
                   <div className="col-span-2 space-y-1">
                     <label className="font-semibold text-slate-300 block">Product Name *</label>
@@ -4114,7 +4114,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                         <span className="text-xs font-semibold text-slate-200">GST Component Breakdown</span>
                         <span className="text-[10px] text-indigo-400 font-medium">Auto-calculated from Total Rate</span>
                       </div>
-                      <div className="grid grid-cols-4 gap-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <div className="space-y-1">
                           <label className="text-[10px] font-semibold text-slate-400 block">CGST (Intra-state)</label>
                           <input

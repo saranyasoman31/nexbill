@@ -521,7 +521,7 @@ export default function ReportsView({ initialReportTab = null }) {
               <span className="text-slate-400">{postedInvoices.length} Records</span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs min-w-[850px]">
                 <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] border-b border-slate-800">
                   <tr>
                     <th className="py-2.5 px-3">Invoice #</th>
@@ -661,7 +661,7 @@ export default function ReportsView({ initialReportTab = null }) {
               <span className="text-slate-400">{displayPurchases.length} Records</span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs min-w-[850px]">
                 <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] border-b border-slate-800">
                   <tr>
                     <th className="py-2.5 px-3">Inward Doc #</th>
@@ -820,7 +820,7 @@ export default function ReportsView({ initialReportTab = null }) {
               <span className="text-slate-400">{filteredInitialStockRecords.length} Items</span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs min-w-[850px]">
                 <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] border-b border-slate-800">
                   <tr>
                     <th className="py-2.5 px-3">Cutover Doc #</th>
@@ -954,7 +954,7 @@ export default function ReportsView({ initialReportTab = null }) {
               <span className="text-slate-400">{filteredStockLedger.length} Records</span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs min-w-[850px]">
                 <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] border-b border-slate-800">
                   <tr>
                     <th className="py-2.5 px-3">Warehouse</th>
@@ -1103,7 +1103,7 @@ export default function ReportsView({ initialReportTab = null }) {
             Statutory Transaction & Security Audit Trail (Section 18)
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[700px]">
               <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] border-b border-slate-800">
                 <tr>
                   <th className="py-2.5 px-3">Timestamp</th>

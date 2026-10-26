@@ -43,6 +43,7 @@ import {
   DownloadCloud,
   ShieldAlert,
   Activity,
+  X,
 } from 'lucide-react';
 
 export default function Navigation() {
@@ -51,6 +52,8 @@ export default function Navigation() {
     setActiveTab,
     isSidebarCollapsed,
     setIsSidebarCollapsed,
+    isMobileSidebarOpen,
+    setIsMobileSidebarOpen,
     setActiveMasterSubEntity,
     settingsSubTab,
     setSettingsSubTab,
@@ -184,6 +187,7 @@ export default function Navigation() {
   ];
 
   const handleMenuClick = (item) => {
+    setIsMobileSidebarOpen(false);
     if (item.isMaster) {
       setActiveMasterSubEntity(item.entityKey);
       setActiveTab(item.id);
@@ -199,6 +203,7 @@ export default function Navigation() {
   };
 
   const handleSubItemClick = (parentItem, sub) => {
+    setIsMobileSidebarOpen(false);
     if (parentItem.id === 'reports') {
       setActiveTab('reports');
       setReportsSubTab(sub.id);
@@ -210,51 +215,77 @@ export default function Navigation() {
 
   // Filter items if searching
   const q = search.trim().toLowerCase();
+  const showLabels = !isSidebarCollapsed || isMobileSidebarOpen;
 
   return (
-    <aside
-      className={`bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 transition-all duration-200 select-none z-30 ${
-        isSidebarCollapsed ? 'w-16' : 'w-64'
-      }`}
-    >
-      {/* Sidebar Header & Toggle */}
-      <div className="p-3 border-b border-slate-800 flex items-center justify-between">
-        {!isSidebarCollapsed && (
-          <div className="flex items-center gap-2 overflow-hidden">
-            <div className="h-7 w-7 rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white font-black text-xs shadow-md">
-              N
+    <>
+      {/* Mobile Drawer Backdrop Overlay */}
+      {isMobileSidebarOpen && (
+        <div
+          onClick={() => setIsMobileSidebarOpen(false)}
+          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-xs lg:hidden transition-opacity cursor-pointer"
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-50 bg-slate-900 border-r border-slate-800 flex flex-col transition-all duration-200 select-none
+          lg:static lg:z-30 lg:translate-x-0
+          ${isMobileSidebarOpen ? 'translate-x-0 shadow-2xl w-72 max-w-[85vw]' : '-translate-x-full lg:translate-x-0'}
+          ${isSidebarCollapsed ? 'lg:w-16' : 'lg:w-64'}
+        `}
+      >
+        {/* Sidebar Header & Toggle */}
+        <div className="p-3 border-b border-slate-800 flex items-center justify-between">
+          {showLabels && (
+            <div className="flex items-center gap-2 overflow-hidden">
+              <div className="h-7 w-7 rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white font-black text-xs shadow-md shrink-0">
+                N
+              </div>
+              <div className="overflow-hidden">
+                <span className="font-bold text-white text-xs tracking-tight block truncate">NexBill ERP</span>
+                <span className="text-[10px] text-slate-400 block truncate">Transactions & Masters</span>
+              </div>
             </div>
-            <div className="overflow-hidden">
-              <span className="font-bold text-white text-xs tracking-tight block truncate">NexBill ERP</span>
-              <span className="text-[10px] text-slate-400 block truncate">Transactions & Masters</span>
+          )}
+
+          <div className="flex items-center gap-1">
+            {/* Desktop Collapse Toggle */}
+            <button
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="hidden lg:flex p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer"
+              title={isSidebarCollapsed ? 'Expand Navigation Sidebar' : 'Collapse Sidebar'}
+            >
+              {isSidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            </button>
+
+            {/* Mobile Drawer Close Button */}
+            <button
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className="lg:hidden p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer"
+              title="Close Menu"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Quick Search (only when expanded or on mobile drawer) */}
+        {showLabels && (
+          <div className="p-2.5 border-b border-slate-800/80">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Search menu..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700/80 rounded-lg pl-8 pr-2 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              />
             </div>
           </div>
         )}
-
-        <button
-          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white mx-auto transition"
-          title={isSidebarCollapsed ? 'Expand Navigation Sidebar' : 'Collapse Sidebar'}
-        >
-          {isSidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-        </button>
-      </div>
-
-      {/* Quick Search (only when expanded) */}
-      {!isSidebarCollapsed && (
-        <div className="p-2.5 border-b border-slate-800/80">
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-500" />
-            <input
-              type="text"
-              placeholder="Search menu..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700/80 rounded-lg pl-8 pr-2 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-            />
-          </div>
-        </div>
-      )}
 
       {/* Menu Items Scroll Area */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-3 scrollbar-thin">
@@ -291,7 +322,7 @@ export default function Navigation() {
 
           return (
             <div key={grpIdx} className="space-y-1">
-              {!isSidebarCollapsed && (
+              {showLabels && (
                 <div className="text-[10px] uppercase font-bold text-slate-500 px-2 tracking-wider py-0.5">
                   {grp.group}
                 </div>
@@ -307,7 +338,7 @@ export default function Navigation() {
                   <div key={item.id} className="space-y-0.5">
                     <button
                       onClick={() => handleMenuClick(item)}
-                      title={isSidebarCollapsed ? item.label : undefined}
+                      title={!showLabels ? item.label : undefined}
                       className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold transition-all duration-150 relative text-left group ${
                         isActive
                           ? item.highlight
@@ -320,7 +351,7 @@ export default function Navigation() {
                     >
                       <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`} />
 
-                      {!isSidebarCollapsed && (
+                      {showLabels && (
                         <>
                           <span className="flex-1 truncate">{item.label}</span>
 
@@ -369,7 +400,7 @@ export default function Navigation() {
 
                     {/* Sub-items for Reports or Settings */}
                     {item.hasSubItems &&
-                      !isSidebarCollapsed &&
+                      showLabels &&
                       (item.id === 'reports' ? isReportsExpanded : isSettingsExpanded) && (
                         <div className="pl-6 pr-1 space-y-0.5 pt-0.5">
                           {item.subItems.map((sub) => {
@@ -423,23 +454,24 @@ export default function Navigation() {
             ) : (
               <Sun className="w-3.5 h-3.5 text-amber-600 shrink-0" />
             )}
-            {!isSidebarCollapsed && (
+            {showLabels && (
               <span>{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
             )}
           </div>
-          {!isSidebarCollapsed && (
+          {showLabels && (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700/70 text-slate-400 font-mono">
               {theme === 'dark' ? 'Light' : 'Dark'}
             </span>
           )}
         </button>
 
-        {!isSidebarCollapsed && (
+        {showLabels && (
           <div className="text-[10px] text-slate-500 text-center">
             NexBill ERP • Multi-Store Retail
           </div>
         )}
       </div>
     </aside>
+  </>
   );
 }

@@ -476,7 +476,7 @@ export default function POSBillingView() {
               </div>
             </div>
 
-            <div className="max-h-[380px] overflow-y-auto">
+            <div className="max-h-[380px] overflow-y-auto overflow-x-auto">
               {cart.length === 0 ? (
                 <div className="py-12 text-center text-slate-500 text-xs space-y-2">
                   <Scan className="w-8 h-8 mx-auto text-slate-600 opacity-60" />
@@ -484,7 +484,7 @@ export default function POSBillingView() {
                   <p className="text-[11px] text-slate-600">Scan a barcode, select from the quick catalog, or search products.</p>
                 </div>
               ) : (
-                <table className="w-full text-left text-xs">
+                <table className="w-full text-left text-xs min-w-[560px]">
                   <thead className="bg-slate-950/60 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                     <tr>
                       <th className="py-2 px-3">Item Details</th>
@@ -794,7 +794,7 @@ export default function POSBillingView() {
       {/* Multi-Tender Split Payment Modal */}
       {isPaymentModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl space-y-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl space-y-4">
             <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-white text-base">Payment & Tender Breakdown</h3>

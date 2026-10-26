@@ -34,8 +34,17 @@ export function AppProvider({ children }) {
   // Active navigation tab (Default to 'dashboard')
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // Sidebar toggle state
+  // Sidebar toggle state (Desktop collapsed rail & Mobile overlay drawer)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  const toggleSidebar = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsMobileSidebarOpen((prev) => !prev);
+    } else {
+      setIsSidebarCollapsed((prev) => !prev);
+    }
+  };
 
   // Active Master Sub-Entity, Settings Sub-Tab and Reports Sub-Tab
   const [activeMasterSubEntity, setActiveMasterSubEntity] = useState('product');
@@ -333,6 +342,9 @@ export function AppProvider({ children }) {
         setActiveTab,
         isSidebarCollapsed,
         setIsSidebarCollapsed,
+        isMobileSidebarOpen,
+        setIsMobileSidebarOpen,
+        toggleSidebar,
         activeMasterSubEntity,
         setActiveMasterSubEntity,
         settingsSubTab,

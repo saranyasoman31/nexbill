@@ -217,7 +217,7 @@ export default function InvoicesAndReturnsView() {
       {activeSubTab === 'invoices' ? (
         <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[850px]">
               <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                 <tr>
                   <th className="py-2.5 px-3">Invoice #</th>
@@ -328,7 +328,7 @@ export default function InvoicesAndReturnsView() {
         /* Sales Returns Tab */
         <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[850px]">
               <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                 <tr>
                   <th className="py-2.5 px-3">Credit Note #</th>
@@ -427,7 +427,7 @@ export default function InvoicesAndReturnsView() {
 
             <div className="px-5 space-y-3 text-xs max-h-[70vh] overflow-y-auto">
               {/* Customer & Location Details */}
-              <div className="grid grid-cols-2 gap-3 bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-950 p-3 rounded-xl border border-slate-800">
                 <div>
                   <div className="text-slate-400 text-[10px] uppercase">Customer</div>
                   <div className="font-bold text-slate-200">{selectedInvoice.customerName}</div>
@@ -447,33 +447,35 @@ export default function InvoicesAndReturnsView() {
               </div>
 
               {/* Items List */}
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 text-[10px] uppercase">
-                  <tr>
-                    <th className="py-2 px-2">Item</th>
-                    <th className="py-2 px-2 text-center">Qty</th>
-                    <th className="py-2 px-2 text-right">Rate</th>
-                    <th className="py-2 px-2 text-center">GST %</th>
-                    <th className="py-2 px-2 text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {selectedInvoice.lines.map((l, i) => (
-                    <tr key={i}>
-                      <td className="py-2 px-2">
-                        <div className="font-semibold text-slate-200">{l.name}</div>
-                        <div className="text-[10px] text-slate-500">HSN: {l.hsnCode}</div>
-                      </td>
-                      <td className="py-2 px-2 text-center text-slate-200 font-bold">{l.qty}</td>
-                      <td className="py-2 px-2 text-right font-mono">₹{l.rate}</td>
-                      <td className="py-2 px-2 text-center">{l.taxRate}%</td>
-                      <td className="py-2 px-2 text-right font-mono font-bold text-indigo-300">
-                        ₹{Number(l.lineTotal).toFixed(2)}
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs min-w-[650px]">
+                  <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 text-[10px] uppercase">
+                    <tr>
+                      <th className="py-2 px-2">Item</th>
+                      <th className="py-2 px-2 text-center">Qty</th>
+                      <th className="py-2 px-2 text-right">Rate</th>
+                      <th className="py-2 px-2 text-center">GST %</th>
+                      <th className="py-2 px-2 text-right">Total</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {selectedInvoice.lines.map((l, i) => (
+                      <tr key={i}>
+                        <td className="py-2 px-2">
+                          <div className="font-semibold text-slate-200">{l.name}</div>
+                          <div className="text-[10px] text-slate-500">HSN: {l.hsnCode}</div>
+                        </td>
+                        <td className="py-2 px-2 text-center text-slate-200 font-bold">{l.qty}</td>
+                        <td className="py-2 px-2 text-right font-mono">₹{l.rate}</td>
+                        <td className="py-2 px-2 text-center">{l.taxRate}%</td>
+                        <td className="py-2 px-2 text-right font-mono font-bold text-indigo-300">
+                          ₹{Number(l.lineTotal).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
               {/* Financial Totals */}
               <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5 font-mono">
@@ -543,64 +545,66 @@ export default function InvoicesAndReturnsView() {
               </div>
 
               {/* Items Table */}
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase text-[10px]">
-                  <tr>
-                    <th className="py-2 px-3">Product</th>
-                    <th className="py-2 px-2 text-center">Remaining Returnable</th>
-                    <th className="py-2 px-2 text-center">Return Qty</th>
-                    <th className="py-2 px-3">Disposition</th>
-                    <th className="py-2 px-3 text-right">Refund Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {returnInvoice.lines.map((l) => {
-                    const it = returnItems[l.lineId] || {};
-                    return (
-                      <tr key={l.lineId}>
-                        <td className="py-2.5 px-3">
-                          <div className="font-semibold text-slate-200">{l.name}</div>
-                          <div className="text-[10px] text-slate-400">Sold: {l.qty} | Prev Returned: {l.returnedQty || 0}</div>
-                        </td>
-                        <td className="py-2.5 px-2 text-center font-bold text-amber-400">
-                          {l.maxReturnableQty}
-                        </td>
-                        <td className="py-2.5 px-2 text-center">
-                          <input
-                            type="number"
-                            min="0"
-                            max={l.maxReturnableQty}
-                            value={it.returnQty || 0}
-                            onChange={(e) => {
-                              const val = Math.min(l.maxReturnableQty, Math.max(0, Number(e.target.value)));
-                              handleReturnItemChange(l.lineId, 'returnQty', val);
-                            }}
-                            className="w-16 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-center font-mono font-bold text-slate-100"
-                          />
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <select
-                            value={it.disposition || 'RESTOCK'}
-                            onChange={(e) => handleReturnItemChange(l.lineId, 'disposition', e.target.value)}
-                            className="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200"
-                          >
-                            <option value="RESTOCK">Restock (Add to Sellable)</option>
-                            <option value="DAMAGED_QUARANTINE">Damaged / Quarantine</option>
-                            <option value="SUPPLIER_RETURN">Supplier Return</option>
-                            <option value="NON_STOCKABLE">Non-Stockable / Scrap</option>
-                          </select>
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-indigo-300">
-                          ₹{((it.returnQty || 0) * (it.unitNetRate || 0)).toFixed(2)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs min-w-[650px]">
+                  <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase text-[10px]">
+                    <tr>
+                      <th className="py-2 px-3">Product</th>
+                      <th className="py-2 px-2 text-center">Remaining Returnable</th>
+                      <th className="py-2 px-2 text-center">Return Qty</th>
+                      <th className="py-2 px-3">Disposition</th>
+                      <th className="py-2 px-3 text-right">Refund Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {returnInvoice.lines.map((l) => {
+                      const it = returnItems[l.lineId] || {};
+                      return (
+                        <tr key={l.lineId}>
+                          <td className="py-2.5 px-3">
+                            <div className="font-semibold text-slate-200">{l.name}</div>
+                            <div className="text-[10px] text-slate-400">Sold: {l.qty} | Prev Returned: {l.returnedQty || 0}</div>
+                          </td>
+                          <td className="py-2.5 px-2 text-center font-bold text-amber-400">
+                            {l.maxReturnableQty}
+                          </td>
+                          <td className="py-2.5 px-2 text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              max={l.maxReturnableQty}
+                              value={it.returnQty || 0}
+                              onChange={(e) => {
+                                const val = Math.min(l.maxReturnableQty, Math.max(0, Number(e.target.value)));
+                                handleReturnItemChange(l.lineId, 'returnQty', val);
+                              }}
+                              className="w-16 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-center font-mono font-bold text-slate-100"
+                            />
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <select
+                              value={it.disposition || 'RESTOCK'}
+                              onChange={(e) => handleReturnItemChange(l.lineId, 'disposition', e.target.value)}
+                              className="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200"
+                            >
+                              <option value="RESTOCK">Restock (Add to Sellable)</option>
+                              <option value="DAMAGED_QUARANTINE">Damaged / Quarantine</option>
+                              <option value="SUPPLIER_RETURN">Supplier Return</option>
+                              <option value="NON_STOCKABLE">Non-Stockable / Scrap</option>
+                            </select>
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-indigo-300">
+                            ₹{((it.returnQty || 0) * (it.unitNetRate || 0)).toFixed(2)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
               {/* Refund Method & Notes */}
-              <div className="grid grid-cols-2 gap-4 bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950 p-3 rounded-xl border border-slate-800">
                 <div>
                   <label className="text-[11px] font-semibold text-slate-400 block mb-1">Refund Method</label>
                   <select

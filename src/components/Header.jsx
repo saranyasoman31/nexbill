@@ -24,6 +24,9 @@ export default function Header() {
     logoutUser,
     isSidebarCollapsed,
     setIsSidebarCollapsed,
+    isMobileSidebarOpen,
+    setIsMobileSidebarOpen,
+    toggleSidebar,
     activeTab,
     theme,
     toggleTheme,
@@ -77,33 +80,33 @@ export default function Header() {
 
   return (
     <header className="bg-slate-900 border-b border-slate-800 text-slate-200 sticky top-0 z-40 shadow-xl">
-      <div className="w-full px-4 py-2 flex flex-wrap items-center justify-between gap-3">
+      <div className="w-full px-2.5 sm:px-4 py-2 flex items-center justify-between gap-2">
         {/* Brand and Breadcrumb */}
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
           <button
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition"
+            onClick={toggleSidebar}
+            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer"
             title="Toggle Menu Sidebar"
           >
             <Menu className="w-4 h-4" />
           </button>
 
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 font-black text-white text-base">
+          <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 font-black text-white text-sm sm:text-base">
             N
           </div>
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-white tracking-tight text-sm">NexBill</span>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
-            <span className="px-2 py-0.5 rounded text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className="font-bold text-white tracking-tight text-xs sm:text-sm">NexBill</span>
+            <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-600 hidden xs:inline" />
+            <span className="px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 max-w-[90px] xs:max-w-[130px] sm:max-w-none truncate">
               {formattedTabName}
             </span>
           </div>
         </div>
 
         {/* Global Context: Logged User, Role, IP Address, Date & Time, System Controls */}
-        <div className="flex items-center flex-wrap gap-2.5 text-xs">
+        <div className="flex items-center gap-1.5 sm:gap-2 text-xs">
           {/* Logged User & Role Badge with Quick Switcher */}
-          <div className="flex items-center bg-slate-950/80 border border-slate-700/80 rounded-xl px-2.5 py-1.5 gap-2 shadow-sm">
+          <div className="flex items-center bg-slate-950/80 border border-slate-700/80 rounded-xl px-2 sm:px-2.5 py-1 sm:py-1.5 gap-1.5 sm:gap-2 shadow-sm">
             {currentUser?.photo ? (
               <img
                 src={currentUser.photo}
@@ -116,20 +119,20 @@ export default function Header() {
               </div>
             )}
             <div className="flex items-center gap-1.5">
-              <span className="font-bold text-white text-xs whitespace-nowrap">
+              <span className="font-bold text-white text-[11px] sm:text-xs whitespace-nowrap max-w-[70px] xs:max-w-[100px] sm:max-w-none truncate">
                 {currentUser?.name}
               </span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase leading-none whitespace-nowrap">
+              <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase leading-none whitespace-nowrap">
                 {roleDisplayName}
               </span>
             </div>
 
-            {/* User Switcher (only shown if multiple staff users exist) */}
+            {/* User Switcher (only shown if multiple staff users exist and on md+ screens) */}
             {db.users && db.users.length > 1 && (
               <select
                 value={currentUserId}
                 onChange={(e) => setCurrentUserId(e.target.value)}
-                className="bg-slate-900 border border-slate-700/80 text-indigo-200 text-[11px] rounded-lg px-1.5 py-0.5 focus:outline-none focus:border-indigo-500 cursor-pointer ml-1 font-medium"
+                className="hidden md:inline-block bg-slate-900 border border-slate-700/80 text-indigo-200 text-[11px] rounded-lg px-1.5 py-0.5 focus:outline-none focus:border-indigo-500 cursor-pointer ml-1 font-medium"
                 title="Switch Active Operator / Role"
               >
                 {db.users.map((u) => (
@@ -141,9 +144,9 @@ export default function Header() {
             )}
           </div>
 
-          {/* IP Address */}
+          {/* IP Address - hidden on small/medium screens */}
           <div
-            className="flex items-center gap-1.5 bg-slate-950/80 border border-slate-700/80 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 shadow-sm"
+            className="hidden lg:flex items-center gap-1.5 bg-slate-950/80 border border-slate-700/80 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 shadow-sm"
             title="Terminal POS IP Address"
           >
             <Globe className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
@@ -153,9 +156,9 @@ export default function Header() {
             </div>
           </div>
 
-          {/* Live Date and Time */}
+          {/* Live Date and Time - hidden on mobile/tablet screens */}
           <div
-            className="flex items-center gap-2 bg-slate-950/80 border border-slate-700/80 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 shadow-sm font-mono"
+            className="hidden xl:flex items-center gap-2 bg-slate-950/80 border border-slate-700/80 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 shadow-sm font-mono"
             title="Terminal System Date & Live Time"
           >
             <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0 animate-pulse" />
@@ -183,14 +186,14 @@ export default function Header() {
           <button
             onClick={toggleTheme}
             title={theme === 'dark' ? 'Switch to Light Mode for better daytime visibility' : 'Switch to Dark Mode'}
-            className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-amber-300 border border-slate-700 transition flex items-center gap-1.5"
+            className="p-1.5 sm:p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-amber-300 border border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
           >
             {theme === 'dark' ? (
-              <Sun className="w-4 h-4 text-amber-400 animate-spin-slow" />
+              <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 animate-spin-slow" />
             ) : (
-              <Moon className="w-4 h-4 text-indigo-400" />
+              <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-400" />
             )}
-            <span className="hidden xl:inline text-[11px] font-semibold text-slate-300">
+            <span className="hidden 2xl:inline text-[11px] font-semibold text-slate-300">
               {theme === 'dark' ? 'Light' : 'Dark'}
             </span>
           </button>
@@ -203,9 +206,9 @@ export default function Header() {
               }
             }}
             title="Reset database to initial baseline data"
-            className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-rose-300 border border-slate-700 transition"
+            className="p-1.5 sm:p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-rose-300 border border-slate-700 transition cursor-pointer"
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
 
           {/* Logout Button */}
@@ -216,10 +219,10 @@ export default function Header() {
               }
             }}
             title="Sign out of ERP terminal"
-            className="px-2.5 py-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 flex items-center gap-1.5 transition text-xs font-semibold"
+            className="px-2 sm:px-2.5 py-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 flex items-center gap-1.5 transition text-xs font-semibold cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span>Sign Out</span>
+            <span className="hidden sm:inline">Sign Out</span>
           </button>
         </div>
       </div>

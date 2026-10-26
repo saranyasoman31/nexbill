@@ -113,7 +113,7 @@ function ERPAppContent() {
   const hasViewAccess = isSpecialTab || hasPermission(targetMenuId, 'view');
 
   return (
-    <div className="h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-600 selection:text-white overflow-hidden">
+    <div className="h-screen min-h-[100dvh] bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-600 selection:text-white overflow-hidden">
       {/* Toast Notification Banner */}
       {toast && (
         <div className="fixed top-3 right-4 z-50 animate-bounce duration-300">
@@ -152,7 +152,7 @@ function ERPAppContent() {
       <Header />
 
       {/* Main Container: Sidebar + Content Workspace */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Navigation Sidebar */}
         <Navigation />
 

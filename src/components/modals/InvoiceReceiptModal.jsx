@@ -20,9 +20,9 @@ export default function InvoiceReceiptModal() {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl space-y-3">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl space-y-3">
         {/* Modal Controls */}
-        <div className="px-5 py-3 border-b border-slate-800 flex items-center justify-between text-xs">
+        <div className="px-4 sm:px-5 py-3 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2">
             <span className="font-bold text-white">Invoice Receipt: {inv.docNumber}</span>
             <div className="flex bg-slate-950 border border-slate-800 rounded-lg p-0.5 ml-2">

@@ -640,7 +640,7 @@ export default function PurchaseReturnView() {
           {/* Table */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs min-w-[900px]">
                 <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                   <tr>
                     <th className="py-2.5 px-3">Return Doc #</th>
@@ -1014,7 +1014,7 @@ export default function PurchaseReturnView() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs min-w-[850px]">
                 <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                   <tr>
                     <th className="py-2.5 px-3 text-center">#</th>
@@ -1289,8 +1289,8 @@ export default function PurchaseReturnView() {
             </div>
 
             {/* Lines Table */}
-            <div className="border border-slate-800 rounded-xl overflow-hidden">
-              <table className="w-full text-left text-xs">
+            <div className="border border-slate-800 rounded-xl overflow-hidden overflow-x-auto">
+              <table className="w-full text-left text-xs min-w-[650px]">
                 <thead className="bg-slate-950 text-slate-400 text-[10px] uppercase border-b border-slate-800">
                   <tr>
                     <th className="py-2 px-3">Item</th>
@@ -1407,35 +1407,37 @@ export default function PurchaseReturnView() {
               </div>
 
               {/* Items Table */}
-              <table className="w-full text-left text-xs border border-slate-300 border-collapse">
-                <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] border-b border-slate-300">
-                  <tr>
-                    <th className="p-2 border-r border-slate-300 text-center w-8">#</th>
-                    <th className="p-2 border-r border-slate-300">Item Description</th>
-                    <th className="p-2 border-r border-slate-300 text-center w-16">UOM</th>
-                    <th className="p-2 border-r border-slate-300 text-center w-16">Qty</th>
-                    <th className="p-2 border-r border-slate-300 text-right w-24">Unit Rate (₹)</th>
-                    <th className="p-2 border-r border-slate-300 text-center w-16">GST %</th>
-                    <th className="p-2 text-right w-28">Amount (₹)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {(printingReturn.lines || []).map((l, idx) => (
-                    <tr key={idx}>
-                      <td className="p-2 border-r border-slate-300 text-center font-mono text-[11px]">{idx + 1}</td>
-                      <td className="p-2 border-r border-slate-300">
-                        <span className="font-semibold text-slate-900 block">{l.name || l.productName}</span>
-                        <span className="text-[10px] text-slate-500 font-mono">SKU: {l.sku || '—'} {l.batchNo ? `| Batch: ${l.batchNo}` : ''}</span>
-                      </td>
-                      <td className="p-2 border-r border-slate-300 text-center">{l.uom || 'PCS'}</td>
-                      <td className="p-2 border-r border-slate-300 text-center font-bold font-mono text-rose-700">-{l.returnQty || l.qty}</td>
-                      <td className="p-2 border-r border-slate-300 text-right font-mono">₹{Number(l.costPrice || l.rate || 0).toFixed(2)}</td>
-                      <td className="p-2 border-r border-slate-300 text-center font-mono">{l.taxRate || 0}%</td>
-                      <td className="p-2 text-right font-bold font-mono">₹{Number(l.lineTotal || l.totalAmount || 0).toFixed(2)}</td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border border-slate-300 border-collapse min-w-[650px]">
+                  <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] border-b border-slate-300">
+                    <tr>
+                      <th className="p-2 border-r border-slate-300 text-center w-8">#</th>
+                      <th className="p-2 border-r border-slate-300">Item Description</th>
+                      <th className="p-2 border-r border-slate-300 text-center w-16">UOM</th>
+                      <th className="p-2 border-r border-slate-300 text-center w-16">Qty</th>
+                      <th className="p-2 border-r border-slate-300 text-right w-24">Unit Rate (₹)</th>
+                      <th className="p-2 border-r border-slate-300 text-center w-16">GST %</th>
+                      <th className="p-2 text-right w-28">Amount (₹)</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {(printingReturn.lines || []).map((l, idx) => (
+                      <tr key={idx}>
+                        <td className="p-2 border-r border-slate-300 text-center font-mono text-[11px]">{idx + 1}</td>
+                        <td className="p-2 border-r border-slate-300">
+                          <span className="font-semibold text-slate-900 block">{l.name || l.productName}</span>
+                          <span className="text-[10px] text-slate-500 font-mono">SKU: {l.sku || '—'} {l.batchNo ? `| Batch: ${l.batchNo}` : ''}</span>
+                        </td>
+                        <td className="p-2 border-r border-slate-300 text-center">{l.uom || 'PCS'}</td>
+                        <td className="p-2 border-r border-slate-300 text-center font-bold font-mono text-rose-700">-{l.returnQty || l.qty}</td>
+                        <td className="p-2 border-r border-slate-300 text-right font-mono">₹{Number(l.costPrice || l.rate || 0).toFixed(2)}</td>
+                        <td className="p-2 border-r border-slate-300 text-center font-mono">{l.taxRate || 0}%</td>
+                        <td className="p-2 text-right font-bold font-mono">₹{Number(l.lineTotal || l.totalAmount || 0).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
               {/* Totals & Signatures */}
               <div className="grid grid-cols-2 gap-6 pt-2">

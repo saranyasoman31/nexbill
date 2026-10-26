@@ -1001,7 +1001,7 @@ export default function PurchaseOrderView() {
       {/* Purchase Orders List Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[850px]">
             <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
                 <th className="py-2.5 px-3">PO Number</th>
@@ -1469,7 +1469,7 @@ export default function PurchaseOrderView() {
               {/* Line Items Grid with Full Tax Details */}
               <div className="border border-slate-800 rounded-xl overflow-hidden shadow-inner bg-slate-950/40">
                 <div className="overflow-x-auto max-h-64 overflow-y-auto">
-                  <table className="w-full text-left text-xs">
+                  <table className="w-full text-left text-xs min-w-[750px]">
                     <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] sticky top-0 z-10 border-b border-slate-800">
                       <tr>
                         <th className="py-2 px-2.5 text-center w-8">#</th>
@@ -1971,8 +1971,8 @@ export default function PurchaseOrderView() {
             </div>
 
             {/* Line Items Table */}
-            <div className="border border-slate-800 rounded-xl overflow-hidden">
-              <table className="w-full text-left text-xs">
+            <div className="border border-slate-800 rounded-xl overflow-hidden overflow-x-auto">
+              <table className="w-full text-left text-xs min-w-[700px]">
                 <thead className="bg-slate-950 text-slate-400 uppercase text-[10px]">
                   <tr>
                     <th className="py-2 px-3">#</th>
@@ -2271,8 +2271,8 @@ export default function PurchaseOrderView() {
                 </div>
 
                 {/* Items Table with Full Tax Details */}
-                <div className="border border-[#cbd5e1] rounded overflow-hidden">
-                  <table className="w-full text-left text-xs border-collapse">
+                <div className="border border-[#cbd5e1] rounded overflow-hidden overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse min-w-[650px]">
                     <thead className="bg-[#f1f5f9] border-b border-[#cbd5e1] text-[10px] font-bold uppercase text-[#334155]">
                       <tr>
                         <th className="p-2 border-r border-[#cbd5e1] text-center w-8">#</th>

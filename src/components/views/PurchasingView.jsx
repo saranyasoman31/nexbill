@@ -955,7 +955,7 @@ export default function PurchasingView() {
           {/* Inward Purchases Table */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs min-w-[920px]">
                 <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                   <tr>
                     <th className="py-2.5 px-3">Inward #</th>
@@ -2141,8 +2141,8 @@ export default function PurchasingView() {
             })()}
 
             {/* Line Items Table */}
-            <div className="border border-slate-800 rounded-xl overflow-hidden">
-              <table className="w-full text-left text-xs">
+            <div className="border border-slate-800 rounded-xl overflow-hidden overflow-x-auto">
+              <table className="w-full text-left text-xs min-w-[700px]">
                 <thead className="bg-slate-950 text-slate-400 uppercase text-[10px]">
                   <tr>
                     <th className="py-2 px-3">#</th>
@@ -2344,7 +2344,8 @@ export default function PurchasingView() {
               </div>
 
               {/* Product Lines Grid */}
-              <table className="w-full text-left text-xs border border-slate-300">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border border-slate-300 min-w-[650px]">
                 <thead className="bg-slate-100 text-slate-700 uppercase text-[10px] border-b border-slate-300">
                   <tr>
                     <th className="py-2 px-2 border-r border-slate-300 w-8 text-center">#</th>
@@ -2384,6 +2385,7 @@ export default function PurchasingView() {
                   ))}
                 </tbody>
               </table>
+              </div>
 
               {/* Totals & Tax Split-ups */}
               <div className="flex justify-between items-start pt-2 border-t border-slate-300 text-xs">
@@ -2498,8 +2500,8 @@ export default function PurchasingView() {
               />
             </div>
 
-            <div className="border border-slate-800 rounded-xl overflow-hidden max-h-72 overflow-y-auto">
-              <table className="w-full text-left text-xs">
+            <div className="border border-slate-800 rounded-xl overflow-hidden max-h-72 overflow-y-auto overflow-x-auto">
+              <table className="w-full text-left text-xs min-w-[650px]">
                 <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                   <tr>
                     <th className="py-2.5 px-3">PO #</th>

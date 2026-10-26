@@ -572,7 +572,7 @@ export default function CreditCustomerView() {
       {/* Credit Customers Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[750px]">
             <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
                 <th className="py-2.5 px-3">Customer Name</th>
@@ -805,26 +805,28 @@ export default function CreditCustomerView() {
                   No posted invoices found for this customer.
                 </div>
               ) : (
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-950 text-slate-400 text-[10px] uppercase border-b border-slate-800">
-                    <tr>
-                      <th className="py-2 px-3">Invoice #</th>
-                      <th className="py-2 px-3">Date</th>
-                      <th className="py-2 px-3 text-right">Amount</th>
-                      <th className="py-2 px-3 text-right">Tender Paid</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800 font-mono text-[11px]">
-                    {customerInvoices.map((inv) => (
-                      <tr key={inv.id}>
-                        <td className="py-2 px-3 text-indigo-300 font-bold">{inv.docNumber}</td>
-                        <td className="py-2 px-3 text-slate-400">{new Date(inv.date).toLocaleDateString()}</td>
-                        <td className="py-2 px-3 text-right font-bold text-slate-100">₹{inv.netPayable.toFixed(2)}</td>
-                        <td className="py-2 px-3 text-right text-emerald-400">₹{inv.paidAmount.toFixed(2)}</td>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs min-w-[500px]">
+                    <thead className="bg-slate-950 text-slate-400 text-[10px] uppercase border-b border-slate-800">
+                      <tr>
+                        <th className="py-2 px-3">Invoice #</th>
+                        <th className="py-2 px-3">Date</th>
+                        <th className="py-2 px-3 text-right">Amount</th>
+                        <th className="py-2 px-3 text-right">Tender Paid</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800 font-mono text-[11px]">
+                      {customerInvoices.map((inv) => (
+                        <tr key={inv.id}>
+                          <td className="py-2 px-3 text-indigo-300 font-bold">{inv.docNumber}</td>
+                          <td className="py-2 px-3 text-slate-400">{new Date(inv.date).toLocaleDateString()}</td>
+                          <td className="py-2 px-3 text-right font-bold text-slate-100">₹{inv.netPayable.toFixed(2)}</td>
+                          <td className="py-2 px-3 text-right text-emerald-400">₹{inv.paidAmount.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
 

@@ -134,7 +134,7 @@ export default function PricingView() {
       {activeTab === 'list' && (
         <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[750px]">
               <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                 <tr>
                   <th className="py-2.5 px-3">Product Name</th>
@@ -271,7 +271,7 @@ export default function PricingView() {
       {activeTab === 'history' && (
         <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[750px]">
               <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                 <tr>
                   <th className="py-2.5 px-3">Proposal #</th>

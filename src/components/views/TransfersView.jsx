@@ -140,7 +140,7 @@ export default function TransfersView() {
       {activeTab === 'list' && (
         <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[750px]">
               <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                 <tr>
                   <th className="py-2.5 px-3">Transfer #</th>
@@ -348,66 +348,68 @@ export default function TransfersView() {
             </div>
 
             <div className="px-5 space-y-3 text-xs">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase text-[10px]">
-                  <tr>
-                    <th className="py-2 px-2">Item</th>
-                    <th className="py-2 px-2 text-center">Dispatched</th>
-                    <th className="py-2 px-2 text-center">Accepted</th>
-                    <th className="py-2 px-2 text-center">Damaged / Quarantine</th>
-                    <th className="py-2 px-2 text-center">Shortage Variance</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {Object.values(receiptQuantities).map(r => {
-                    const disp = Number(r.dispatchedQty || 0);
-                    const acc = Number(r.receivedQty || 0);
-                    const dmg = Number(r.damagedQty || 0);
-                    const shortage = disp - (acc + dmg);
-                    return (
-                      <tr key={r.productId}>
-                        <td className="py-2 px-2 font-semibold text-slate-200">{r.productName}</td>
-                        <td className="py-2 px-2 text-center font-bold text-slate-300">{disp}</td>
-                        <td className="py-2 px-2 text-center">
-                          <input
-                            type="number"
-                            min="0"
-                            max={disp}
-                            value={r.receivedQty}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              setReceiptQuantities(prev => ({
-                                ...prev,
-                                [r.productId]: { ...prev[r.productId], receivedQty: val }
-                              }));
-                            }}
-                            className="w-16 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-center font-bold text-emerald-400"
-                          />
-                        </td>
-                        <td className="py-2 px-2 text-center">
-                          <input
-                            type="number"
-                            min="0"
-                            max={disp - acc}
-                            value={r.damagedQty}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              setReceiptQuantities(prev => ({
-                                ...prev,
-                                [r.productId]: { ...prev[r.productId], damagedQty: val }
-                              }));
-                            }}
-                            className="w-16 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-center font-bold text-amber-400"
-                          />
-                        </td>
-                        <td className="py-2 px-2 text-center font-mono font-bold text-rose-400">
-                          {shortage > 0 ? `${shortage} units` : '0'}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs min-w-[600px]">
+                  <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase text-[10px]">
+                    <tr>
+                      <th className="py-2 px-2">Item</th>
+                      <th className="py-2 px-2 text-center">Dispatched</th>
+                      <th className="py-2 px-2 text-center">Accepted</th>
+                      <th className="py-2 px-2 text-center">Damaged / Quarantine</th>
+                      <th className="py-2 px-2 text-center">Shortage Variance</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {Object.values(receiptQuantities).map(r => {
+                      const disp = Number(r.dispatchedQty || 0);
+                      const acc = Number(r.receivedQty || 0);
+                      const dmg = Number(r.damagedQty || 0);
+                      const shortage = disp - (acc + dmg);
+                      return (
+                        <tr key={r.productId}>
+                          <td className="py-2 px-2 font-semibold text-slate-200">{r.productName}</td>
+                          <td className="py-2 px-2 text-center font-bold text-slate-300">{disp}</td>
+                          <td className="py-2 px-2 text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              max={disp}
+                              value={r.receivedQty}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                setReceiptQuantities(prev => ({
+                                  ...prev,
+                                  [r.productId]: { ...prev[r.productId], receivedQty: val }
+                                }));
+                              }}
+                              className="w-16 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-center font-bold text-emerald-400"
+                            />
+                          </td>
+                          <td className="py-2 px-2 text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              max={disp - acc}
+                              value={r.damagedQty}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                setReceiptQuantities(prev => ({
+                                  ...prev,
+                                  [r.productId]: { ...prev[r.productId], damagedQty: val }
+                                }));
+                              }}
+                              className="w-16 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-center font-bold text-amber-400"
+                            />
+                          </td>
+                          <td className="py-2 px-2 text-center font-mono font-bold text-rose-400">
+                            {shortage > 0 ? `${shortage} units` : '0'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <div className="px-5 py-3 border-t border-slate-800 flex justify-end gap-2.5">
