@@ -2172,28 +2172,32 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-4 space-y-4">
+    <div className="max-w-7xl mx-auto px-2 sm:px-4 py-3 sm:py-4 space-y-4">
       {/* Top Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-3 rounded-xl shadow-md">
-        <div className="flex items-center gap-2">
-          <Icon className={`w-5 h-5 ${currentConfig.color}`} />
-          <div>
-            <h3 className="font-bold text-slate-100 text-sm">{currentConfig.title}</h3>
-            <p className="text-[11px] text-slate-400">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-3 sm:p-3.5 rounded-xl shadow-md">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="p-2 rounded-lg bg-slate-950 border border-slate-800 shrink-0">
+            <Icon className={`w-5 h-5 ${currentConfig.color}`} />
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-bold text-slate-100 text-sm truncate sm:overflow-visible sm:whitespace-normal">
+              {currentConfig.title}
+            </h3>
+            <p className="text-[11px] text-slate-400 line-clamp-1 sm:line-clamp-none">
               Manage {currentConfig.label.toLowerCase()} definitions, attributes, codes & relationships
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+          <div className="relative flex-1 min-w-[160px] sm:w-56 sm:flex-none">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-500" />
             <input
               type="text"
               placeholder={`Search ${currentConfig.label.toLowerCase()}s...`}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-56"
+              className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
             />
           </div>
 
@@ -2201,7 +2205,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
             <select
               value={supplierSupplyFilter}
               onChange={(e) => setSupplierSupplyFilter(e.target.value)}
-              className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-medium"
+              className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-medium shrink-0"
               title="Filter by Local or Interstate"
             >
               <option value="ALL">All Supply</option>
@@ -2210,33 +2214,35 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
             </select>
           )}
 
-          <ExportButtons
-            data={getExportData()}
-            filename={`${currentConfig.label.toUpperCase()}_MASTER`}
-            title={currentConfig.title}
-            pdfOrientation={activeEntity === 'staff' || activeEntity === 'product' || activeEntity === 'supplier' || activeEntity === 'tax' ? 'landscape' : 'portrait'}
-          />
+          <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+            <ExportButtons
+              data={getExportData()}
+              filename={`${currentConfig.label.toUpperCase()}_MASTER`}
+              title={currentConfig.title}
+              pdfOrientation={activeEntity === 'staff' || activeEntity === 'product' || activeEntity === 'supplier' || activeEntity === 'tax' ? 'landscape' : 'portrait'}
+            />
 
-          {canPrint && (
-            <button
-              onClick={() => window.print()}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold shadow-sm transition"
-              title={`Print / Export ${currentConfig.label} Master List`}
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Print</span>
-            </button>
-          )}
+            {canPrint && (
+              <button
+                onClick={() => window.print()}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold shadow-sm transition shrink-0"
+                title={`Print / Export ${currentConfig.label} Master List`}
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print</span>
+              </button>
+            )}
 
-          {canAdd && (
-            <button
-              onClick={handleOpenAdd}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30 transition"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add {currentConfig.label}</span>
-            </button>
-          )}
+            {canAdd && (
+              <button
+                onClick={handleOpenAdd}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30 transition shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add {currentConfig.label}</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -2925,18 +2931,32 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
       {/* Add / Edit Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4">
           <div
-            className={`bg-slate-900 border border-slate-800 rounded-2xl w-full overflow-hidden shadow-2xl p-5 space-y-4 max-h-[92vh] flex flex-col ${
+            className={`bg-slate-900 border border-slate-800 rounded-2xl w-full overflow-hidden shadow-2xl p-4 sm:p-5 space-y-4 max-h-[92vh] flex flex-col ${
               activeEntity === 'staff' || activeEntity === 'product' ? 'max-w-3xl' : 'max-w-lg'
             }`}
           >
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3 shrink-0">
-              <h4 className="font-bold text-slate-100 text-sm flex items-center gap-2">
-                <Icon className={`w-4 h-4 ${currentConfig.color}`} />
-                {editingItem ? `Edit ${currentConfig.label}` : `Add New ${currentConfig.label}`}
-              </h4>
-              <button onClick={handleCloseModal} className="text-slate-400 hover:text-white">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 shrink-0 gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-1.5 rounded-lg bg-slate-950 border border-slate-800 shrink-0">
+                  <Icon className={`w-4 h-4 ${currentConfig.color}`} />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="font-bold text-slate-100 text-sm sm:text-base truncate">
+                    {editingItem ? `Edit ${currentConfig.label}` : `Add New ${currentConfig.label}`}
+                  </h4>
+                  <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">
+                    {editingItem ? `Update ${currentConfig.label.toLowerCase()} details` : `Configure master ${currentConfig.label.toLowerCase()} entity`}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition shrink-0"
+                title="Close modal"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -4182,50 +4202,50 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
               {activeEntity === 'staff' && (
                 <div className="space-y-4">
                   {/* Segmented Sub-Tab Switcher */}
-                  <div className="flex items-center gap-1.5 p-1 bg-slate-950 border border-slate-800 rounded-xl text-xs font-semibold">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-slate-950 border border-slate-800 rounded-xl text-xs font-semibold">
                     <button
                       type="button"
                       onClick={() => setStaffFormTab('personal')}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg transition ${
+                      className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg transition ${
                         staffFormTab === 'personal'
                           ? 'bg-indigo-600 text-white shadow-md'
                           : 'text-slate-400 hover:text-white hover:bg-slate-900'
                       }`}
                     >
-                      <User className="w-3.5 h-3.5" />
-                      <span>Personal Details</span>
+                      <User className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">Personal Details</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setStaffFormTab('employment')}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg transition ${
+                      className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg transition ${
                         staffFormTab === 'employment'
                           ? 'bg-indigo-600 text-white shadow-md'
                           : 'text-slate-400 hover:text-white hover:bg-slate-900'
                       }`}
                     >
-                      <Briefcase className="w-3.5 h-3.5" />
-                      <span>Employment Details</span>
+                      <Briefcase className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">Employment</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setStaffFormTab('credentials')}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg transition ${
+                      className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg transition ${
                         staffFormTab === 'credentials'
                           ? 'bg-indigo-600 text-white shadow-md'
                           : 'text-slate-400 hover:text-white hover:bg-slate-900'
                       }`}
                     >
-                      <KeyRound className="w-3.5 h-3.5" />
-                      <span>Login Credentials</span>
+                      <KeyRound className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">Credentials</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setStaffFormTab('discontinue')}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg transition ${
+                      className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg transition ${
                         staffFormTab === 'discontinue'
                           ? 'bg-rose-600 text-white shadow-md'
                           : formData.isDiscontinued
@@ -4233,10 +4253,10 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                           : 'text-slate-400 hover:text-white hover:bg-slate-900'
                       }`}
                     >
-                      <UserX className="w-3.5 h-3.5" />
-                      <span>Discontinue Details</span>
+                      <UserX className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">Discontinue</span>
                       {formData.isDiscontinued && (
-                        <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
+                        <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse shrink-0" />
                       )}
                     </button>
                   </div>
@@ -4857,9 +4877,9 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                   {/* Section 2: State, District & Address */}
                   <div className="p-3.5 bg-slate-900/60 border border-slate-800 rounded-xl space-y-3">
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-xs font-bold text-slate-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-800 text-xs font-bold text-slate-200 gap-1">
                       <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-emerald-400" />
+                        <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
                         <span>State & Geography</span>
                       </div>
                       <span className="text-[10px] text-slate-400 font-normal">
@@ -4995,9 +5015,9 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                   {/* Section 3: Financial & Bank Account Details */}
                   <div className="p-3.5 bg-slate-900/60 border border-slate-800 rounded-xl space-y-3">
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-xs font-bold text-slate-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-800 text-xs font-bold text-slate-200 gap-1">
                       <div className="flex items-center gap-2">
-                        <Landmark className="w-4 h-4 text-amber-400" />
+                        <Landmark className="w-4 h-4 text-amber-400 shrink-0" />
                         <span>Bank & Financial Details</span>
                       </div>
                       <span className="text-[10px] text-slate-400 font-normal">

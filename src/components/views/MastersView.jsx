@@ -282,16 +282,18 @@ export default function MastersView() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-4 space-y-4">
       {/* Top Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-3 rounded-xl shadow-md">
-        <div className="flex items-center gap-2">
-          <Database className="w-5 h-5 text-indigo-400" />
-          <div>
-            <h3 className="font-bold text-slate-100 text-sm">NexBill Master Data Hub</h3>
-            <p className="text-[11px] text-slate-400">Administrator management for Products, Customers, Suppliers & Warehouses</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-3 sm:p-3.5 rounded-xl shadow-md">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="p-2 rounded-lg bg-slate-950 border border-slate-800 shrink-0">
+            <Database className="w-5 h-5 text-indigo-400" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-bold text-slate-100 text-sm truncate sm:overflow-visible">NexBill Master Data Hub</h3>
+            <p className="text-[11px] text-slate-400 line-clamp-1 sm:line-clamp-none">Administrator management for Products, Customers, Suppliers & Warehouses</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <ExportButtons
             data={
               activeSubTab === 'products'
@@ -805,11 +807,18 @@ export default function MastersView() {
 
       {/* Add Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-5 shadow-2xl space-y-4">
-            <div className="border-b border-slate-800 pb-2 flex justify-between items-center">
-              <h3 className="font-bold text-slate-100 text-base">Add New {activeSubTab.slice(0, -1).toUpperCase()}</h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-white">✕</button>
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-4 sm:p-5 shadow-2xl space-y-4">
+            <div className="border-b border-slate-800 pb-3 flex justify-between items-center gap-3">
+              <h3 className="font-bold text-slate-100 text-sm sm:text-base truncate">Add New {activeSubTab.slice(0, -1).toUpperCase()}</h3>
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition shrink-0"
+                title="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
             {activeSubTab === 'products' && (
