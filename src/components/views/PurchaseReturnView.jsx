@@ -1339,9 +1339,10 @@ export default function PurchaseReturnView() {
       {/* MODAL 2: A4 PRINTABLE DEBIT NOTE VOUCHER                                  */}
       {/* ========================================================================= */}
       {printingReturn && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl max-h-[92vh] overflow-y-auto shadow-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3 print:hidden">
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 overflow-y-auto print:p-0 print:bg-white print:static print-modal-overlay">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl space-y-4 my-auto print:border-none print:shadow-none print:max-w-none print:w-full print:bg-white print-modal-card">
+            {/* Modal Controls (Hidden in Print) */}
+            <div className="px-5 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950 print:hidden text-xs">
               <h3 className="font-bold text-white text-sm flex items-center gap-2">
                 <Printer className="w-4 h-4 text-emerald-400" />
                 <span>Printable A4 Debit Note / Purchase Return Voucher</span>
@@ -1349,150 +1350,155 @@ export default function PurchaseReturnView() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => window.print()}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer"
                 >
                   <Printer className="w-4 h-4" />
                   <span>Print Document</span>
                 </button>
-                <button onClick={() => setPrintingReturn(null)} className="text-slate-400 hover:text-white">
+                <button onClick={() => setPrintingReturn(null)} className="text-slate-400 hover:text-white p-1 rounded-lg">
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            {/* A4 Printable Sheet */}
-            <div className="bg-white text-slate-900 p-8 rounded-xl shadow-lg font-sans text-xs space-y-4 print:p-0 print:shadow-none">
-              {/* Header */}
-              <div className="flex justify-between items-start border-b-2 border-slate-900 pb-4">
-                <div>
-                  <h1 className="text-xl font-black text-slate-900 tracking-tight">
-                    {activeCompany?.name || 'NEXBILL ENTERPRISES'}
-                  </h1>
-                  <p className="text-[11px] text-slate-600 mt-0.5">
-                    {activeStore?.address || 'Main Commercial Boulevard'}, {activeStore?.city || 'Mumbai'}, {activeStore?.state || 'Maharashtra'}
-                  </p>
-                  <p className="text-[11px] text-slate-600">
-                    GSTIN: <span className="font-mono font-bold">{activeCompany?.gstin || activeStore?.gstin || '27AABCN8891P1ZV'}</span> • Phone: {activeStore?.phone || '+91 98765 43210'}
-                  </p>
-                </div>
-
-                <div className="text-right">
-                  <span className="inline-block px-3 py-1 bg-slate-900 text-white font-bold text-xs uppercase tracking-wider rounded">
-                    DEBIT NOTE / PURCHASE RETURN
-                  </span>
-                  <div className="mt-2 text-[11px] space-y-0.5">
-                    <div><span className="text-slate-500 font-semibold">Debit Note #: </span><span className="font-mono font-bold">{printingReturn.docNumber}</span></div>
-                    <div><span className="text-slate-500 font-semibold">Date: </span><span>{new Date(printingReturn.date || printingReturn.postedAt).toLocaleDateString()}</span></div>
-                    {printingReturn.originalPurchaseDocNumber && (
-                      <div><span className="text-slate-500 font-semibold">Against Invoice: </span><span className="font-mono font-bold text-indigo-700">{printingReturn.originalPurchaseDocNumber}</span></div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Parties Block */}
-              <div className="grid grid-cols-2 gap-4 border border-slate-300 p-3 rounded-lg bg-slate-50 text-[11px]">
-                <div>
-                  <span className="font-bold text-slate-800 uppercase block mb-1">Debited Supplier (Party)</span>
-                  <div className="font-bold text-sm text-slate-900">{printingReturn.supplierName}</div>
-                  <div className="text-slate-600 mt-0.5">
-                    GSTIN: <span className="font-mono font-bold">{printingReturn.supplierGstin || 'Unregistered / Not Provided'}</span>
-                  </div>
-                </div>
-
-                <div>
-                  <span className="font-bold text-slate-800 uppercase block mb-1">Dispatching Branch</span>
-                  <div className="font-bold text-slate-900">{printingReturn.branchName || printingReturn.storeName || 'Main Store'}</div>
-                  <div className="text-slate-600">Return Reason: <span className="font-semibold text-slate-900">{printingReturn.reason}</span></div>
-                  {printingReturn.notes && <div className="text-slate-500 italic mt-0.5">Remarks: {printingReturn.notes}</div>}
-                </div>
-              </div>
-
-              {/* Items Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border border-slate-300 border-collapse min-w-[650px]">
-                  <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] border-b border-slate-300">
-                    <tr>
-                      <th className="p-2 border-r border-slate-300 text-center w-8">#</th>
-                      <th className="p-2 border-r border-slate-300">Item Description</th>
-                      <th className="p-2 border-r border-slate-300 text-center w-16">UOM</th>
-                      <th className="p-2 border-r border-slate-300 text-center w-16">Qty</th>
-                      <th className="p-2 border-r border-slate-300 text-right w-24">Unit Rate (₹)</th>
-                      <th className="p-2 border-r border-slate-300 text-center w-16">GST %</th>
-                      <th className="p-2 text-right w-28">Amount (₹)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {(printingReturn.lines || []).map((l, idx) => (
-                      <tr key={idx}>
-                        <td className="p-2 border-r border-slate-300 text-center font-mono text-[11px]">{idx + 1}</td>
-                        <td className="p-2 border-r border-slate-300">
-                          <span className="font-semibold text-slate-900 block">{l.name || l.productName}</span>
-                          <span className="text-[10px] text-slate-500 font-mono">SKU: {l.sku || '—'} {l.batchNo ? `| Batch: ${l.batchNo}` : ''}</span>
-                        </td>
-                        <td className="p-2 border-r border-slate-300 text-center">{l.uom || 'PCS'}</td>
-                        <td className="p-2 border-r border-slate-300 text-center font-bold font-mono text-rose-700">-{l.returnQty || l.qty}</td>
-                        <td className="p-2 border-r border-slate-300 text-right font-mono">₹{Number(l.costPrice || l.rate || 0).toFixed(2)}</td>
-                        <td className="p-2 border-r border-slate-300 text-center font-mono">{l.taxRate || 0}%</td>
-                        <td className="p-2 text-right font-bold font-mono">₹{Number(l.lineTotal || l.totalAmount || 0).toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Totals & Signatures */}
-              <div className="grid grid-cols-2 gap-6 pt-2">
-                <div className="text-[11px] space-y-2">
+            {/* Standard A4 Printable Debit Note Sheet */}
+            <div className="p-4 max-h-[82vh] overflow-y-auto flex justify-center print:p-0 print:max-h-none print:overflow-visible">
+              <div
+                data-printable-sheet="true"
+                className="printable-document printable-debit-note bg-white text-[#0f172a] p-8 rounded-lg shadow-lg font-sans text-xs w-[750px] space-y-5 print:shadow-none print:w-full print:p-6 print:rounded-none"
+              >
+                {/* Header */}
+                <div className="flex justify-between items-start border-b-2 border-[#0f172a] pb-4">
                   <div>
-                    <span className="font-bold text-slate-700 block">Amount in Words:</span>
-                    <span className="italic font-semibold text-slate-900">
-                      {printingReturn.amountInWords || numberToWords(printingReturn.totalDebitAmount || printingReturn.grandTotal || 0)}
-                    </span>
+                    <h1 className="text-xl font-black text-[#0f172a] tracking-tight">
+                      {activeCompany?.name || 'NEXBILL ENTERPRISES'}
+                    </h1>
+                    <p className="text-[11px] text-[#475569] mt-0.5">
+                      {activeStore?.address || 'Main Commercial Boulevard'}, {activeStore?.city || 'Mumbai'}, {activeStore?.state || 'Maharashtra'}
+                    </p>
+                    <p className="text-[11px] text-[#475569]">
+                      GSTIN: <span className="font-mono font-bold">{activeCompany?.gstin || activeStore?.gstin || '27AABCN8891P1ZV'}</span> • Phone: {activeStore?.phone || '+91 98765 43210'}
+                    </p>
                   </div>
-                  <p className="text-[10px] text-slate-500 pt-2">
-                    * This is a computer-generated debit note voucher. Returned merchandise has been debited against the vendor ledger account and adjusted from inventory.
-                  </p>
-                </div>
 
-                <div className="space-y-1 text-xs text-slate-800">
-                  <div className="flex justify-between py-1 border-b border-slate-200">
-                    <span>Taxable Subtotal:</span>
-                    <span className="font-mono font-semibold">₹{Number(printingReturn.subtotal || 0).toFixed(2)}</span>
-                  </div>
-                  {printingReturn.igstTotal > 0 ? (
-                    <div className="flex justify-between py-1 border-b border-slate-200">
-                      <span>Integrated GST (IGST):</span>
-                      <span className="font-mono font-semibold">₹{Number(printingReturn.igstTotal).toFixed(2)}</span>
+                  <div className="text-right">
+                    <span className="inline-block px-3 py-1 bg-[#0f172a] text-white font-bold text-xs uppercase tracking-wider rounded">
+                      DEBIT NOTE / PURCHASE RETURN
+                    </span>
+                    <div className="mt-2 text-[11px] space-y-0.5">
+                      <div><span className="text-[#64748b] font-semibold">Debit Note #: </span><span className="font-mono font-bold text-[#0f172a]">{printingReturn.docNumber}</span></div>
+                      <div><span className="text-[#64748b] font-semibold">Date: </span><span className="text-[#0f172a]">{new Date(printingReturn.date || printingReturn.postedAt).toLocaleDateString()}</span></div>
+                      {printingReturn.originalPurchaseDocNumber && (
+                        <div><span className="text-[#64748b] font-semibold">Against Invoice: </span><span className="font-mono font-bold text-indigo-700">{printingReturn.originalPurchaseDocNumber}</span></div>
+                      )}
                     </div>
-                  ) : (
-                    <>
-                      <div className="flex justify-between py-1 border-b border-slate-200">
-                        <span>Central GST (CGST):</span>
-                        <span className="font-mono font-semibold">₹{Number(printingReturn.cgstTotal || 0).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between py-1 border-b border-slate-200">
-                        <span>State GST (SGST):</span>
-                        <span className="font-mono font-semibold">₹{Number(printingReturn.sgstTotal || 0).toFixed(2)}</span>
-                      </div>
-                    </>
-                  )}
-                  <div className="flex justify-between py-1.5 text-sm font-bold text-slate-900 border-t-2 border-slate-900">
-                    <span>Net Debit Value:</span>
-                    <span className="font-mono">
-                      ₹{Number(printingReturn.totalDebitAmount ?? printingReturn.grandTotal ?? printingReturn.totalCreditAmount ?? 0).toFixed(2)}
-                    </span>
                   </div>
                 </div>
-              </div>
 
-              {/* Signatures */}
-              <div className="grid grid-cols-2 gap-8 pt-10 text-[11px] text-center">
-                <div className="border-t border-slate-400 pt-1">
-                  <span className="font-semibold text-slate-700">Vendor / Transporter Acknowledgment</span>
+                {/* Parties Block */}
+                <div className="grid grid-cols-2 gap-4 border border-[#cbd5e1] p-3 rounded-lg bg-[#f8fafc] text-[11px]">
+                  <div>
+                    <span className="font-bold text-[#334155] uppercase block mb-1">Debited Supplier (Party)</span>
+                    <div className="font-bold text-sm text-[#0f172a]">{printingReturn.supplierName}</div>
+                    <div className="text-[#475569] mt-0.5">
+                      GSTIN: <span className="font-mono font-bold">{printingReturn.supplierGstin || 'Unregistered / Not Provided'}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="font-bold text-[#334155] uppercase block mb-1">Dispatching Branch</span>
+                    <div className="font-bold text-[#0f172a]">{printingReturn.branchName || printingReturn.storeName || 'Main Store'}</div>
+                    <div className="text-[#475569]">Return Reason: <span className="font-semibold text-[#0f172a]">{printingReturn.reason}</span></div>
+                    {printingReturn.notes && <div className="text-[#64748b] italic mt-0.5">Remarks: {printingReturn.notes}</div>}
+                  </div>
                 </div>
-                <div className="border-t border-slate-400 pt-1">
-                  <span className="font-semibold text-slate-700">For {activeCompany?.name || 'NexBill ERP'} (Authorized Signatory)</span>
+
+                {/* Items Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border border-[#cbd5e1] border-collapse min-w-[650px]">
+                    <thead className="bg-[#f1f5f9] text-[#334155] font-bold uppercase text-[10px] border-b border-[#cbd5e1]">
+                      <tr>
+                        <th className="p-2 border-r border-[#cbd5e1] text-center w-8">#</th>
+                        <th className="p-2 border-r border-[#cbd5e1]">Item Description</th>
+                        <th className="p-2 border-r border-[#cbd5e1] text-center w-16">UOM</th>
+                        <th className="p-2 border-r border-[#cbd5e1] text-center w-16">Qty</th>
+                        <th className="p-2 border-r border-[#cbd5e1] text-right w-24">Unit Rate (₹)</th>
+                        <th className="p-2 border-r border-[#cbd5e1] text-center w-16">GST %</th>
+                        <th className="p-2 text-right w-28">Amount (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#cbd5e1]">
+                      {(printingReturn.lines || []).map((l, idx) => (
+                        <tr key={idx}>
+                          <td className="p-2 border-r border-[#cbd5e1] text-center font-mono text-[11px] text-[#64748b]">{idx + 1}</td>
+                          <td className="p-2 border-r border-[#cbd5e1]">
+                            <span className="font-semibold text-[#0f172a] block">{l.name || l.productName}</span>
+                            <span className="text-[10px] text-[#64748b] font-mono">SKU: {l.sku || '—'} {l.batchNo ? `| Batch: ${l.batchNo}` : ''}</span>
+                          </td>
+                          <td className="p-2 border-r border-[#cbd5e1] text-center text-[#0f172a]">{l.uom || 'PCS'}</td>
+                          <td className="p-2 border-r border-[#cbd5e1] text-center font-bold font-mono text-rose-700">-{l.returnQty || l.qty}</td>
+                          <td className="p-2 border-r border-[#cbd5e1] text-right font-mono text-[#0f172a]">₹{Number(l.costPrice || l.rate || 0).toFixed(2)}</td>
+                          <td className="p-2 border-r border-[#cbd5e1] text-center font-mono text-[#0f172a]">{l.taxRate || 0}%</td>
+                          <td className="p-2 text-right font-bold font-mono text-[#0f172a]">₹{Number(l.lineTotal || l.totalAmount || 0).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Totals & Signatures */}
+                <div className="grid grid-cols-2 gap-6 pt-2">
+                  <div className="text-[11px] space-y-2">
+                    <div>
+                      <span className="font-bold text-[#334155] block">Amount in Words:</span>
+                      <span className="italic font-semibold text-[#0f172a]">
+                        {printingReturn.amountInWords || numberToWords(printingReturn.totalDebitAmount || printingReturn.grandTotal || 0)}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-[#64748b] pt-2">
+                      * This is a computer-generated debit note voucher. Returned merchandise has been debited against the vendor ledger account and adjusted from inventory.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1 text-xs text-[#1e293b]">
+                    <div className="flex justify-between py-1 border-b border-[#cbd5e1]">
+                      <span className="text-[#475569]">Taxable Subtotal:</span>
+                      <span className="font-mono font-semibold text-[#0f172a]">₹{Number(printingReturn.subtotal || 0).toFixed(2)}</span>
+                    </div>
+                    {printingReturn.igstTotal > 0 ? (
+                      <div className="flex justify-between py-1 border-b border-[#cbd5e1]">
+                        <span className="text-[#475569]">Integrated GST (IGST):</span>
+                        <span className="font-mono font-semibold text-[#0f172a]">₹{Number(printingReturn.igstTotal).toFixed(2)}</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex justify-between py-1 border-b border-[#cbd5e1]">
+                          <span className="text-[#475569]">Central GST (CGST):</span>
+                          <span className="font-mono font-semibold text-[#0f172a]">₹{Number(printingReturn.cgstTotal || 0).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between py-1 border-b border-[#cbd5e1]">
+                          <span className="text-[#475569]">State GST (SGST):</span>
+                          <span className="font-mono font-semibold text-[#0f172a]">₹{Number(printingReturn.sgstTotal || 0).toFixed(2)}</span>
+                        </div>
+                      </>
+                    )}
+                    <div className="flex justify-between py-1.5 text-sm font-bold text-[#0f172a] border-t-2 border-[#0f172a]">
+                      <span>Net Debit Value:</span>
+                      <span className="font-mono">
+                        ₹{Number(printingReturn.totalDebitAmount ?? printingReturn.grandTotal ?? printingReturn.totalCreditAmount ?? 0).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Signatures */}
+                <div className="grid grid-cols-2 gap-8 pt-10 text-[11px] text-center">
+                  <div className="border-t border-[#94a3b8] pt-1">
+                    <span className="font-semibold text-[#334155]">Vendor / Transporter Acknowledgment</span>
+                  </div>
+                  <div className="border-t border-[#94a3b8] pt-1">
+                    <span className="font-semibold text-[#334155]">For {activeCompany?.name || 'NexBill ERP'} (Authorized Signatory)</span>
+                  </div>
                 </div>
               </div>
             </div>

@@ -192,6 +192,8 @@ html.light .shadow-xl {
 /* ========================================================================= */
 .printable-po-document,
 .printable-document,
+.printable-purchase-voucher,
+.printable-debit-note,
 .print-sheet,
 [data-printable-sheet="true"] {
   background-color: #ffffff !important;
@@ -203,15 +205,25 @@ html.light .shadow-xl {
 .printable-po-document,
 .printable-po-document *,
 .printable-document,
-.printable-document * {
+.printable-document *,
+.printable-purchase-voucher,
+.printable-purchase-voucher *,
+.printable-debit-note,
+.printable-debit-note * {
   -webkit-text-fill-color: initial;
 }
 
 /* Explicitly prevent Light Mode slate inversion from turning print fonts white */
 html.light .printable-po-document,
 html.light .printable-document,
+html.light .printable-purchase-voucher,
+html.light .printable-debit-note,
+html.light [data-printable-sheet="true"],
 html[data-theme="light"] .printable-po-document,
-html[data-theme="light"] .printable-document {
+html[data-theme="light"] .printable-document,
+html[data-theme="light"] .printable-purchase-voucher,
+html[data-theme="light"] .printable-debit-note,
+html[data-theme="light"] [data-printable-sheet="true"] {
   --color-slate-950: #020617;
   --color-slate-900: #0f172a;
   --color-slate-800: #1e293b;
@@ -229,8 +241,12 @@ html[data-theme="light"] .printable-document {
 /* Ensure badges/buttons with text-white inside printable docs retain white text over dark backgrounds */
 html.light .printable-po-document .text-white,
 html.light .printable-document .text-white,
+html.light .printable-purchase-voucher .text-white,
+html.light .printable-debit-note .text-white,
 html[data-theme="light"] .printable-po-document .text-white,
-html[data-theme="light"] .printable-document .text-white {
+html[data-theme="light"] .printable-document .text-white,
+html[data-theme="light"] .printable-purchase-voucher .text-white,
+html[data-theme="light"] .printable-debit-note .text-white {
   color: #ffffff !important;
 }
 
@@ -297,7 +313,9 @@ html[data-theme="light"] .printable-document .text-white {
   }
 
   .printable-po-document,
-  .printable-document {
+  .printable-document,
+  .printable-purchase-voucher,
+  .printable-debit-note {
     width: 100% !important;
     max-width: 100% !important;
     box-shadow: none !important;

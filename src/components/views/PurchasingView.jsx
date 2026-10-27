@@ -2254,9 +2254,10 @@ export default function PurchasingView() {
       {/* MODAL 2: A4 PRINT PURCHASE VOUCHER MODAL                                  */}
       {/* ========================================================================= */}
       {printingPurchase && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl max-h-[92vh] overflow-y-auto shadow-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3 print:hidden">
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 overflow-y-auto print:p-0 print:bg-white print:static print-modal-overlay">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl space-y-4 my-auto print:border-none print:shadow-none print:max-w-none print:w-full print:bg-white print-modal-card">
+            {/* Modal Controls (Hidden in Print) */}
+            <div className="px-5 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950 print:hidden text-xs">
               <div className="flex items-center gap-2">
                 <Printer className="w-5 h-5 text-emerald-400" />
                 <h3 className="font-bold text-white text-base">A4 Purchase Inward Receipt Preview</h3>
@@ -2280,211 +2281,216 @@ export default function PurchasingView() {
               </div>
             </div>
 
-            {/* Printable A4 Voucher Sheet */}
-            <div className="bg-white text-slate-900 p-8 rounded-xl shadow-lg font-sans text-xs space-y-5 print:p-0 print:m-0 print:border-none">
-              {/* Header */}
-              <div className="flex justify-between items-start border-b-2 border-slate-900 pb-4">
-                <div>
-                  <h1 className="text-xl font-extrabold uppercase tracking-wide text-slate-900">
-                    {activeCompany?.name || 'NexBill Enterprise'}
-                  </h1>
-                  <p className="text-xs text-slate-600 mt-1 max-w-sm">
-                    {printingPurchase.branchName || printingPurchase.storeName || 'Main Store'}
-                  </p>
-                  <p className="text-xs text-slate-600">
-                    GSTIN: {activeCompany?.gstin || '27AAACA1234F1Z9'} • State Code: 27
-                  </p>
+            {/* Standard A4 Printable Purchase Inward Voucher Sheet */}
+            <div className="p-4 max-h-[82vh] overflow-y-auto flex justify-center print:p-0 print:max-h-none print:overflow-visible">
+              <div
+                data-printable-sheet="true"
+                className="printable-document printable-purchase-voucher bg-white text-[#0f172a] p-8 rounded-lg shadow-lg font-sans text-xs w-[750px] space-y-5 print:shadow-none print:w-full print:p-6 print:rounded-none"
+              >
+                {/* Header */}
+                <div className="flex justify-between items-start border-b-2 border-[#0f172a] pb-4">
+                  <div>
+                    <h1 className="text-xl font-extrabold uppercase tracking-wide text-[#0f172a]">
+                      {activeCompany?.name || 'NexBill Enterprise'}
+                    </h1>
+                    <p className="text-xs text-[#475569] mt-1 max-w-sm">
+                      {printingPurchase.branchName || printingPurchase.storeName || 'Main Store'}
+                    </p>
+                    <p className="text-xs text-[#475569]">
+                      GSTIN: {activeCompany?.gstin || '27AAACA1234F1Z9'} • State Code: 27
+                    </p>
+                  </div>
+
+                  <div className="text-right">
+                    <div className="inline-block bg-[#0f172a] text-white font-bold px-3 py-1 text-xs rounded uppercase tracking-wider">
+                      {printingPurchase.isInitialStock || printingPurchase.entryType === 'INITIAL_STOCK' || printingPurchase.docNumber?.startsWith('INIT-')
+                        ? 'INITIAL STOCK INWARD VOUCHER'
+                        : 'GOODS INWARD RECEIPT'}
+                    </div>
+                    <div className="font-mono font-bold text-sm text-[#0f172a] mt-2">
+                      {printingPurchase.docNumber}
+                    </div>
+                    <div className="text-xs text-[#475569]">
+                      Date: {new Date(printingPurchase.date).toLocaleDateString()}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="text-right">
-                  <div className="inline-block bg-slate-900 text-white font-bold px-3 py-1 text-xs rounded uppercase tracking-wider">
-                    {printingPurchase.isInitialStock || printingPurchase.entryType === 'INITIAL_STOCK' || printingPurchase.docNumber?.startsWith('INIT-')
-                      ? 'INITIAL STOCK INWARD VOUCHER'
-                      : 'GOODS INWARD RECEIPT'}
-                  </div>
-                  <div className="font-mono font-bold text-sm text-slate-900 mt-2">
-                    {printingPurchase.docNumber}
-                  </div>
-                  <div className="text-xs text-slate-600">
-                    Date: {new Date(printingPurchase.date).toLocaleDateString()}
-                  </div>
-                </div>
-              </div>
-
-              {/* Vendor & Invoice Meta */}
-              <div className="grid grid-cols-2 gap-4 border border-slate-300 rounded p-3 text-xs">
-                {printingPurchase.isInitialStock || printingPurchase.entryType === 'INITIAL_STOCK' || printingPurchase.docNumber?.startsWith('INIT-') ? (
-                  <>
-                    <div>
-                      <span className="font-bold text-slate-700 uppercase text-[10px] block">Opening Inventory Cutover</span>
-                      <div className="font-bold text-sm text-slate-900 mt-0.5">
-                        {printingPurchase.supplierName || 'Opening Stock / Initial Inventory'}
-                      </div>
-                      <div className="text-slate-600 text-[11px] mt-0.5">
-                        Direct Stock Inward without Vendor Bill
-                      </div>
-                      <div className="text-slate-600 text-[11px]">
-                        Branch / Store: {printingPurchase.branchName || printingPurchase.storeName || 'Main Store'}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-bold text-slate-700 uppercase text-[10px] block">Cutover Reference:</span>
-                      <div className="font-mono font-bold text-sm text-slate-900 mt-0.5">
-                        Ref #: {printingPurchase.docNumber}
-                      </div>
-                      <div className="text-slate-600 text-[11px]">
-                        Cutover Date: {new Date(printingPurchase.date).toLocaleDateString()}
-                      </div>
-                      <div className="text-emerald-700 font-bold text-[11px] mt-0.5">
-                        Status: Stock Initialized
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div>
-                      <span className="font-bold text-slate-700 uppercase text-[10px] block">Supplier / Vendor:</span>
-                      <div className="font-bold text-sm text-slate-900 mt-0.5">{printingPurchase.supplierName}</div>
-                      <div className="text-slate-600 font-mono text-[11px]">
-                        GSTIN: {printingPurchase.supplierGstin || 'Unregistered'}
-                      </div>
-                      <div className="text-slate-600 text-[11px]">
-                        Supply Jurisdiction: {printingPurchase.supplyType || 'LOCAL'}
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <span className="font-bold text-slate-700 uppercase text-[10px] block">Vendor Invoice References:</span>
-                      <div className="font-mono font-bold text-sm text-slate-900 mt-0.5">
-                        Invoice #: {printingPurchase.supplierInvoiceNo}
-                      </div>
-                      <div className="text-slate-600 text-[11px]">
-                        Invoice Date: {printingPurchase.supplierInvoiceDate || new Date(printingPurchase.date).toLocaleDateString()}
-                      </div>
-                      {printingPurchase.poNumber && (
-                        <div className="text-indigo-700 font-mono font-bold text-[11px]">
-                          PO Ref: {printingPurchase.poNumber}
+                {/* Vendor & Invoice Meta */}
+                <div className="grid grid-cols-2 gap-4 border border-[#cbd5e1] rounded p-3 text-xs bg-[#f8fafc]">
+                  {printingPurchase.isInitialStock || printingPurchase.entryType === 'INITIAL_STOCK' || printingPurchase.docNumber?.startsWith('INIT-') ? (
+                    <>
+                      <div>
+                        <span className="font-bold text-[#334155] uppercase text-[10px] block">Opening Inventory Cutover</span>
+                        <div className="font-bold text-sm text-[#0f172a] mt-0.5">
+                          {printingPurchase.supplierName || 'Opening Stock / Initial Inventory'}
                         </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
+                        <div className="text-[#475569] text-[11px] mt-0.5">
+                          Direct Stock Inward without Vendor Bill
+                        </div>
+                        <div className="text-[#475569] text-[11px]">
+                          Branch / Store: {printingPurchase.branchName || printingPurchase.storeName || 'Main Store'}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-bold text-[#334155] uppercase text-[10px] block">Cutover Reference:</span>
+                        <div className="font-mono font-bold text-sm text-[#0f172a] mt-0.5">
+                          Ref #: {printingPurchase.docNumber}
+                        </div>
+                        <div className="text-[#475569] text-[11px]">
+                          Cutover Date: {new Date(printingPurchase.date).toLocaleDateString()}
+                        </div>
+                        <div className="text-emerald-700 font-bold text-[11px] mt-0.5">
+                          Status: Stock Initialized
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <span className="font-bold text-[#334155] uppercase text-[10px] block">Supplier / Vendor:</span>
+                        <div className="font-bold text-sm text-[#0f172a] mt-0.5">{printingPurchase.supplierName}</div>
+                        <div className="text-[#475569] font-mono text-[11px]">
+                          GSTIN: {printingPurchase.supplierGstin || 'Unregistered'}
+                        </div>
+                        <div className="text-[#475569] text-[11px]">
+                          Supply Jurisdiction: {printingPurchase.supplyType || 'LOCAL'}
+                        </div>
+                      </div>
 
-              {/* Product Lines Grid */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border border-slate-300 min-w-[650px]">
-                <thead className="bg-slate-100 text-slate-700 uppercase text-[10px] border-b border-slate-300">
-                  <tr>
-                    <th className="py-2 px-2 border-r border-slate-300 w-8 text-center">#</th>
-                    <th className="py-2 px-3 border-r border-slate-300">Item Description</th>
-                    <th className="py-2 px-2 border-r border-slate-300 text-center">Qty</th>
-                    <th className="py-2 px-2 border-r border-slate-300 text-right">Cost (₹)</th>
-                    <th className="py-2 px-2 border-r border-slate-300 text-right">Unit Landed</th>
-                    <th className="py-2 px-2 border-r border-slate-300 text-right">MRP (₹)</th>
-                    <th className="py-2 px-2 border-r border-slate-300 text-right">Selling (₹)</th>
-                    <th className="py-2 px-2 border-r border-slate-300 text-center">Margin</th>
-                    <th className="py-2 px-2 border-r border-slate-300 text-center">GST</th>
-                    <th className="py-2 px-3 text-right">Total (₹)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-300 font-mono text-[11px]">
-                  {printingPurchase.lines?.map((line, idx) => (
-                    <tr key={idx}>
-                      <td className="py-2 px-2 text-center border-r border-slate-300 text-slate-500">{idx + 1}</td>
-                      <td className="py-2 px-3 border-r border-slate-300 font-sans font-semibold text-slate-900">
-                        {line.name}
-                        {line.batchNo && <span className="block text-[10px] text-slate-500 font-mono">Batch: {line.batchNo}</span>}
-                      </td>
-                      <td className="py-2 px-2 border-r border-slate-300 text-center font-bold">{line.qty} {line.uom || 'PCS'}</td>
-                      <td className="py-2 px-2 border-r border-slate-300 text-right">₹{Number(line.costPrice || line.rate || 0).toFixed(2)}</td>
-                      <td className="py-2 px-2 border-r border-slate-300 text-right">₹{Number(line.singleUnitPrice || line.costPrice || 0).toFixed(2)}</td>
-                      <td className="py-2 px-2 border-r border-slate-300 text-right">₹{Number(line.mrp || 0).toFixed(2)}</td>
-                      <td className="py-2 px-2 border-r border-slate-300 text-right">₹{Number(line.sellingPrice || 0).toFixed(2)}</td>
-                      <td className="py-2 px-2 border-r border-slate-300 text-center font-sans">{line.marginPercent || 0}%</td>
-                      <td className="py-2 px-2 border-r border-slate-300 text-center">
-                        {line.taxRate}%
-                        <span className="block text-[9px] text-slate-500 font-sans">
-                          ({(line.taxType || (line.isTaxInclusive ? 'inclusive' : 'exclusive')) === 'inclusive' ? 'Incl' : 'Excl'})
-                        </span>
-                      </td>
-                      <td className="py-2 px-3 text-right font-bold text-slate-900">₹{Number(line.lineTotal || 0).toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              </div>
-
-              {/* Totals & Tax Split-ups */}
-              <div className="flex justify-between items-start pt-2 border-t border-slate-300 text-xs">
-                <div className="space-y-1 max-w-sm">
-                  <div className="font-bold text-slate-700">Amount in Words:</div>
-                  <div className="italic text-slate-800 leading-snug">
-                    {printingPurchase.amountInWords || numberToWords(printingPurchase.netAmount || printingPurchase.grandTotal)}
-                  </div>
-                  {printingPurchase.notes && (
-                    <div className="text-[11px] text-slate-600 pt-2">
-                      <span className="font-bold">Remarks: </span>
-                      {printingPurchase.notes}
-                    </div>
+                      <div className="text-right">
+                        <span className="font-bold text-[#334155] uppercase text-[10px] block">Vendor Invoice References:</span>
+                        <div className="font-mono font-bold text-sm text-[#0f172a] mt-0.5">
+                          Invoice #: {printingPurchase.supplierInvoiceNo}
+                        </div>
+                        <div className="text-[#475569] text-[11px]">
+                          Invoice Date: {printingPurchase.supplierInvoiceDate || new Date(printingPurchase.date).toLocaleDateString()}
+                        </div>
+                        {printingPurchase.poNumber && (
+                          <div className="text-indigo-700 font-mono font-bold text-[11px]">
+                            PO Ref: {printingPurchase.poNumber}
+                          </div>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
 
-                <div className="w-64 space-y-1 font-mono text-xs text-right">
-                  <div className="flex justify-between">
-                    <span className="font-sans text-slate-600">Taxable Value:</span>
-                    <span>₹{Number(printingPurchase.subtotal || 0).toFixed(2)}</span>
-                  </div>
-                  {printingPurchase.discountAmount > 0 && (
-                    <div className="flex justify-between text-emerald-700">
-                      <span className="font-sans">Discount:</span>
-                      <span>-₹{Number(printingPurchase.discountAmount).toFixed(2)}</span>
-                    </div>
-                  )}
-                  {printingPurchase.otherCharges > 0 && (
-                    <div className="flex justify-between text-slate-700">
-                      <span className="font-sans">Other Charges:</span>
-                      <span>+₹{Number(printingPurchase.otherCharges).toFixed(2)}</span>
-                    </div>
-                  )}
-                  {printingPurchase.cgstTotal > 0 && (
-                    <div className="flex justify-between text-slate-600">
-                      <span className="font-sans">CGST:</span>
-                      <span>₹{Number(printingPurchase.cgstTotal).toFixed(2)}</span>
-                    </div>
-                  )}
-                  {printingPurchase.sgstTotal > 0 && (
-                    <div className="flex justify-between text-slate-600">
-                      <span className="font-sans">SGST:</span>
-                      <span>₹{Number(printingPurchase.sgstTotal).toFixed(2)}</span>
-                    </div>
-                  )}
-                  {printingPurchase.igstTotal > 0 && (
-                    <div className="flex justify-between text-slate-600">
-                      <span className="font-sans">IGST:</span>
-                      <span>₹{Number(printingPurchase.igstTotal).toFixed(2)}</span>
-                    </div>
-                  )}
-                  {printingPurchase.roundOff !== 0 && (
-                    <div className="flex justify-between text-slate-500">
-                      <span className="font-sans">Round Off:</span>
-                      <span>{Number(printingPurchase.roundOff) >= 0 ? `+₹${Number(printingPurchase.roundOff).toFixed(2)}` : `-₹${Math.abs(Number(printingPurchase.roundOff)).toFixed(2)}`}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between font-bold text-sm border-t-2 border-slate-900 pt-1 text-slate-900">
-                    <span className="font-sans">Grand Total:</span>
-                    <span>₹{Number(printingPurchase.netAmount || printingPurchase.grandTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                  </div>
+                {/* Product Lines Grid */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border border-[#cbd5e1] min-w-[650px]">
+                    <thead className="bg-[#f1f5f9] text-[#334155] uppercase text-[10px] border-b border-[#cbd5e1]">
+                      <tr>
+                        <th className="py-2 px-2 border-r border-[#cbd5e1] w-8 text-center font-bold">#</th>
+                        <th className="py-2 px-3 border-r border-[#cbd5e1] font-bold">Item Description</th>
+                        <th className="py-2 px-2 border-r border-[#cbd5e1] text-center font-bold">Qty</th>
+                        <th className="py-2 px-2 border-r border-[#cbd5e1] text-right font-bold">Cost (₹)</th>
+                        <th className="py-2 px-2 border-r border-[#cbd5e1] text-right font-bold">Unit Landed</th>
+                        <th className="py-2 px-2 border-r border-[#cbd5e1] text-right font-bold">MRP (₹)</th>
+                        <th className="py-2 px-2 border-r border-[#cbd5e1] text-right font-bold">Selling (₹)</th>
+                        <th className="py-2 px-2 border-r border-[#cbd5e1] text-center font-bold">Margin</th>
+                        <th className="py-2 px-2 border-r border-[#cbd5e1] text-center font-bold">GST</th>
+                        <th className="py-2 px-3 text-right font-bold">Total (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#cbd5e1] font-mono text-[11px]">
+                      {printingPurchase.lines?.map((line, idx) => (
+                        <tr key={idx}>
+                          <td className="py-2 px-2 text-center border-r border-[#cbd5e1] text-[#64748b]">{idx + 1}</td>
+                          <td className="py-2 px-3 border-r border-[#cbd5e1] font-sans font-semibold text-[#0f172a]">
+                            {line.name}
+                            {line.batchNo && <span className="block text-[10px] text-[#64748b] font-mono">Batch: {line.batchNo}</span>}
+                          </td>
+                          <td className="py-2 px-2 border-r border-[#cbd5e1] text-center font-bold text-[#0f172a]">{line.qty} {line.uom || 'PCS'}</td>
+                          <td className="py-2 px-2 border-r border-[#cbd5e1] text-right text-[#0f172a]">₹{Number(line.costPrice || line.rate || 0).toFixed(2)}</td>
+                          <td className="py-2 px-2 border-r border-[#cbd5e1] text-right text-[#0f172a]">₹{Number(line.singleUnitPrice || line.costPrice || 0).toFixed(2)}</td>
+                          <td className="py-2 px-2 border-r border-[#cbd5e1] text-right text-[#0f172a]">₹{Number(line.mrp || 0).toFixed(2)}</td>
+                          <td className="py-2 px-2 border-r border-[#cbd5e1] text-right text-[#0f172a]">₹{Number(line.sellingPrice || 0).toFixed(2)}</td>
+                          <td className="py-2 px-2 border-r border-[#cbd5e1] text-center font-sans text-[#334155]">{line.marginPercent || 0}%</td>
+                          <td className="py-2 px-2 border-r border-[#cbd5e1] text-center text-[#334155]">
+                            {line.taxRate}%
+                            <span className="block text-[9px] text-[#64748b] font-sans">
+                              ({(line.taxType || (line.isTaxInclusive ? 'inclusive' : 'exclusive')) === 'inclusive' ? 'Incl' : 'Excl'})
+                            </span>
+                          </td>
+                          <td className="py-2 px-3 text-right font-bold text-[#0f172a]">₹{Number(line.lineTotal || 0).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
 
-              {/* Signatures */}
-              <div className="grid grid-cols-2 gap-8 pt-10 text-center text-xs">
-                <div>
-                  <div className="border-t border-slate-400 pt-1 font-semibold text-slate-700">Received By (Storekeeper / Branch)</div>
+                {/* Totals & Tax Split-ups */}
+                <div className="flex justify-between items-start pt-2 border-t border-[#cbd5e1] text-xs">
+                  <div className="space-y-1 max-w-sm">
+                    <div className="font-bold text-[#334155]">Amount in Words:</div>
+                    <div className="italic text-[#1e293b] leading-snug">
+                      {printingPurchase.amountInWords || numberToWords(printingPurchase.netAmount || printingPurchase.grandTotal)}
+                    </div>
+                    {printingPurchase.notes && (
+                      <div className="text-[11px] text-[#475569] pt-2">
+                        <span className="font-bold">Remarks: </span>
+                        {printingPurchase.notes}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="w-64 space-y-1 font-mono text-xs text-right">
+                    <div className="flex justify-between">
+                      <span className="font-sans text-[#475569]">Taxable Value:</span>
+                      <span className="text-[#0f172a]">₹{Number(printingPurchase.subtotal || 0).toFixed(2)}</span>
+                    </div>
+                    {printingPurchase.discountAmount > 0 && (
+                      <div className="flex justify-between text-emerald-700">
+                        <span className="font-sans">Discount:</span>
+                        <span>-₹{Number(printingPurchase.discountAmount).toFixed(2)}</span>
+                      </div>
+                    )}
+                    {printingPurchase.otherCharges > 0 && (
+                      <div className="flex justify-between text-[#334155]">
+                        <span className="font-sans">Other Charges:</span>
+                        <span className="text-[#0f172a]">+₹{Number(printingPurchase.otherCharges).toFixed(2)}</span>
+                      </div>
+                    )}
+                    {printingPurchase.cgstTotal > 0 && (
+                      <div className="flex justify-between text-[#475569]">
+                        <span className="font-sans">CGST:</span>
+                        <span className="text-[#0f172a]">₹{Number(printingPurchase.cgstTotal).toFixed(2)}</span>
+                      </div>
+                    )}
+                    {printingPurchase.sgstTotal > 0 && (
+                      <div className="flex justify-between text-[#475569]">
+                        <span className="font-sans">SGST:</span>
+                        <span className="text-[#0f172a]">₹{Number(printingPurchase.sgstTotal).toFixed(2)}</span>
+                      </div>
+                    )}
+                    {printingPurchase.igstTotal > 0 && (
+                      <div className="flex justify-between text-[#475569]">
+                        <span className="font-sans">IGST:</span>
+                        <span className="text-[#0f172a]">₹{Number(printingPurchase.igstTotal).toFixed(2)}</span>
+                      </div>
+                    )}
+                    {printingPurchase.roundOff !== 0 && (
+                      <div className="flex justify-between text-[#64748b]">
+                        <span className="font-sans">Round Off:</span>
+                        <span className="text-[#0f172a]">{Number(printingPurchase.roundOff) >= 0 ? `+₹${Number(printingPurchase.roundOff).toFixed(2)}` : `-₹${Math.abs(Number(printingPurchase.roundOff)).toFixed(2)}`}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-bold text-sm border-t-2 border-[#0f172a] pt-1 text-[#0f172a]">
+                      <span className="font-sans">Grand Total:</span>
+                      <span>₹{Number(printingPurchase.netAmount || printingPurchase.grandTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div className="border-t border-slate-400 pt-1 font-semibold text-slate-700">Authorized Signature & Seal</div>
+
+                {/* Signatures */}
+                <div className="grid grid-cols-2 gap-8 pt-10 text-center text-xs">
+                  <div>
+                    <div className="border-t border-[#94a3b8] pt-1 font-semibold text-[#334155]">Received By (Storekeeper / Branch)</div>
+                  </div>
+                  <div>
+                    <div className="border-t border-[#94a3b8] pt-1 font-semibold text-[#334155]">Authorized Signature & Seal</div>
+                  </div>
                 </div>
               </div>
             </div>
