@@ -22,6 +22,7 @@ import {
   INITIAL_STATES,
   DEFAULT_PO_TERMS,
 } from '../data/initialData.js';
+import { invalidateDatabaseIndexes } from './indexingService.js';
 
 const STORAGE_KEY = 'NEXBILL_ERP_DATABASE_V2';
 
@@ -393,6 +394,7 @@ export function getDatabase() {
 export function saveDatabase(db) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+    invalidateDatabaseIndexes();
     return true;
   } catch (e) {
     console.error('Storage quota or serialization error:', e);

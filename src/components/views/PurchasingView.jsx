@@ -40,6 +40,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import ExportButtons from '../common/ExportButtons.jsx';
+import AjaxTablePagination from '../common/AjaxTablePagination.jsx';
 import { getProductStockRates, getLatestHistoricalPurchaseRate, calculatePurchaseLine } from '../../services/purchaseRateHelper.js';
 
 export { getProductStockRates, getLatestHistoricalPurchaseRate, calculatePurchaseLine };
@@ -55,6 +56,12 @@ export default function PurchasingView() {
   const [listSearchQuery, setListSearchQuery] = useState('');
   const [listBranchFilter, setListBranchFilter] = useState('ALL');
   const [listSupplierFilter, setListSupplierFilter] = useState('ALL');
+  const [listPage, setListPage] = useState(1);
+  const [listPageSize, setListPageSize] = useState(50);
+
+  useEffect(() => {
+    setListPage(1);
+  }, [listTypeFilter, listBranchFilter, listSupplierFilter, listSearchQuery]);
 
   // Purchase Form State
   const [editingPurchaseId, setEditingPurchaseId] = useState(null);
@@ -782,6 +789,12 @@ export default function PurchasingView() {
     return list.sort((a, b) => new Date(b.date || b.postedAt) - new Date(a.date || a.postedAt));
   }, [db.purchases, listTypeFilter, listBranchFilter, listSupplierFilter, listSearchQuery]);
 
+  const totalInwardFiltered = filteredPurchases.length;
+  const totalInwardPages = Math.ceil(totalInwardFiltered / listPageSize) || 1;
+  const safeListPage = Math.min(Math.max(1, listPage), totalInwardPages);
+  const startInwardIdx = (safeListPage - 1) * listPageSize;
+  const paginatedPurchases = filteredPurchases.slice(startInwardIdx, startInwardIdx + listPageSize);
+
   // Available Purchase Orders for the PO Selector Modal
   const availablePOs = useMemo(() => {
     return (db.purchaseOrders || []).filter((po) => po.status !== 'CANCELLED');
@@ -980,7 +993,7 @@ export default function PurchasingView() {
                       </td>
                     </tr>
                   ) : (
-                    filteredPurchases.map((p) => {
+                    paginatedPurchases.map((p) => {
                       const branchName =
                         p.branchName ||
                         p.storeName ||
@@ -1117,6 +1130,21 @@ export default function PurchasingView() {
                 </tbody>
               </table>
             </div>
+
+            {/* Inward Register Pagination */}
+            <AjaxTablePagination
+              totalCount={totalInwardFiltered}
+              page={safeListPage}
+              pageSize={listPageSize}
+              totalPages={totalInwardPages}
+              startIndex={totalInwardFiltered > 0 ? startInwardIdx + 1 : 0}
+              endIndex={Math.min(startInwardIdx + listPageSize, totalInwardFiltered)}
+              onPageChange={(p) => setListPage(p)}
+              onPageSizeChange={(ps) => {
+                setListPageSize(ps);
+                setListPage(1);
+              }}
+            />
           </div>
         </div>
       )}

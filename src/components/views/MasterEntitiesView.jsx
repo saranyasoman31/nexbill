@@ -1,5 +1,5 @@
 // MasterEntitiesView: Comprehensive Master Data Management for all core ERP business entities
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { saveDatabase, logAuditEvent, logBacklog } from '../../services/storageService.js';
 import { INITIAL_STATES } from '../../data/initialData.js';
@@ -47,6 +47,8 @@ import {
   Building2,
 } from 'lucide-react';
 import ExportButtons from '../common/ExportButtons.jsx';
+import AjaxTablePagination from '../common/AjaxTablePagination.jsx';
+import { fetchMasterEntitiesAjax } from '../../services/indexingService.js';
 
 // Reusable Multi-Select Dropdown for Multiple Brand and Supplier Selection
 function MultiSelectDropdown({ label, options, selectedValues = [], onChange, placeholder, emptyText }) {
@@ -210,6 +212,47 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
   const [staffFormTab, setStaffFormTab] = useState('personal');
   const [showStaffPassword, setShowStaffPassword] = useState(false);
 
+  // AJAX and Database Table Indexing State for High Scale (3 Lakh+ Products)
+  const [entityPage, setEntityPage] = useState(1);
+  const [entityPageSize, setEntityPageSize] = useState(50);
+  const [entityLoading, setEntityLoading] = useState(false);
+  const [entityResult, setEntityResult] = useState({
+    data: [],
+    allFiltered: [],
+    totalCount: 0,
+    page: 1,
+    pageSize: 50,
+    totalPages: 1,
+    startIndex: 0,
+    endIndex: 0,
+    executionTimeMs: 0,
+  });
+
+  const loadEntityData = useCallback(async () => {
+    setEntityLoading(true);
+    try {
+      const res = await fetchMasterEntitiesAjax(db, activeEntity, {
+        search,
+        supplierSupplyFilter,
+        page: entityPage,
+        pageSize: entityPageSize,
+      });
+      setEntityResult(res);
+    } catch (e) {
+      console.error('Failed to fetch master entities via AJAX:', e);
+    } finally {
+      setEntityLoading(false);
+    }
+  }, [db, activeEntity, search, supplierSupplyFilter, entityPage, entityPageSize]);
+
+  useEffect(() => {
+    loadEntityData();
+  }, [loadEntityData]);
+
+  useEffect(() => {
+    setEntityPage(1);
+  }, [activeEntity, search, supplierSupplyFilter]);
+
   // Sync prop changes
   useEffect(() => {
     if (defaultEntity) {
@@ -350,16 +393,9 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
   const canDelete = hasPermission(activeEntity, 'delete');
   const canPrint = hasPermission(activeEntity, 'print');
 
-  // Filter items
-  const filteredList = rawList.filter((item) => {
-    const q = search.toLowerCase();
-    const matchesSearch = Object.values(item).some((val) => typeof val === 'string' && val.toLowerCase().includes(q));
-    if (activeEntity === 'supplier' && supplierSupplyFilter !== 'ALL') {
-      const sType = item.supplyType || (item.stateCode !== '27' ? 'INTERSTATE' : 'LOCAL');
-      return matchesSearch && sType === supplierSupplyFilter;
-    }
-    return matchesSearch;
-  });
+  // Filtered and paginated datasets powered by Database Table Indexing
+  const filteredList = entityResult.allFiltered || [];
+  const displayList = entityResult.data || [];
 
   const getExportData = () => {
     return filteredList.map((item, idx) => {
@@ -2297,16 +2333,20 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
-              {filteredList.length === 0 ? (
+              {displayList.length === 0 ? (
                 <tr>
                   <td colSpan={currentConfig.columns.length + 2} className="py-8 text-center text-slate-500 font-sans">
-                    No {currentConfig.label.toLowerCase()} records found. Click "Add {currentConfig.label}" to create one.
+                    {entityLoading
+                      ? 'Loading records via indexed engine...'
+                      : `No ${currentConfig.label.toLowerCase()} records found. Click "Add ${currentConfig.label}" to create one.`}
                   </td>
                 </tr>
               ) : (
-                filteredList.map((item, index) => (
+                displayList.map((item, index) => (
                   <tr key={item.id} className="hover:bg-slate-800/40 transition">
-                    <td className="py-2.5 px-3 text-slate-500 font-sans">{index + 1}</td>
+                    <td className="py-2.5 px-3 text-slate-500 font-sans">
+                      {(entityResult.page - 1) * entityResult.pageSize + index + 1}
+                    </td>
 
                     {/* Specific rendering for each entity */}
                     {activeEntity === 'main_category' && (
@@ -2927,6 +2967,23 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
             </tbody>
           </table>
         </div>
+
+        {/* AJAX Table Pagination Bar */}
+        <AjaxTablePagination
+          totalCount={entityResult.totalCount}
+          page={entityResult.page}
+          pageSize={entityResult.pageSize}
+          totalPages={entityResult.totalPages}
+          startIndex={entityResult.startIndex}
+          endIndex={entityResult.endIndex}
+          isLoading={entityLoading}
+          executionTimeMs={entityResult.executionTimeMs}
+          onPageChange={(p) => setEntityPage(p)}
+          onPageSizeChange={(ps) => {
+            setEntityPageSize(ps);
+            setEntityPage(1);
+          }}
+        />
       </div>
 
       {/* Add / Edit Modal */}

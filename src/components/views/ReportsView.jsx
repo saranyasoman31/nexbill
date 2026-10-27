@@ -1,31 +1,35 @@
-// ReportsView: Comprehensive ERP Intelligence, Sales, Purchases, Stock Valuation, GST & Tally Exports
-import React, { useState, useEffect, useMemo } from 'react';
+// ReportsView: Comprehensive Enterprise Intelligence, Sales, Purchases, Stock Valuation, GST & Tally Exports
+// Powered by Database Table Indexing & Asynchronous AJAX Query Engine for 3 Lakh+ Products & Multi-Year Datasets
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { TallyExportService } from '../../services/tallyExportService.js';
 import {
   BarChart3,
   TrendingUp,
-  FileSpreadsheet,
-  DownloadCloud,
-  ShieldAlert,
   Boxes,
   Truck,
   ShoppingCart,
-  DollarSign,
   Percent,
   Search,
   Calendar,
-  Filter,
   CheckCircle2,
   Printer,
   FileCode,
-  Activity,
   PackageCheck,
-  Store,
-  Layers,
+  RotateCw,
+  ShieldAlert,
+  Zap,
 } from 'lucide-react';
 import ExportButtons from '../common/ExportButtons.jsx';
 import BacklogReportView from './BacklogReportView.jsx';
+import AjaxTablePagination from '../common/AjaxTablePagination.jsx';
+import DateRangeFilter from '../common/DateRangeFilter.jsx';
+import {
+  fetchSalesReportAjax,
+  fetchPurchasesReportAjax,
+  fetchInitialStockReportAjax,
+  fetchStockValuationReportAjax,
+} from '../../services/indexingService.js';
 
 export default function ReportsView({ initialReportTab = null }) {
   const {
@@ -55,173 +59,236 @@ export default function ReportsView({ initialReportTab = null }) {
     if (setReportsSubTab) setReportsSubTab(tab);
   };
 
-  const [dateFilter, setDateFilter] = useState('ALL'); // ALL | TODAY | MONTH
-  const [search, setSearch] = useState('');
-
-  // 1. Sales Data
-  const postedInvoices = (db.invoices || []).filter((i) => i.status === 'POSTED');
-  const totalRevenue = postedInvoices.reduce((sum, i) => sum + i.netPayable, 0);
-  const totalTax = postedInvoices.reduce((sum, i) => sum + (i.totalTax || 0), 0);
-  const totalInvoices = postedInvoices.length;
-
-  // Tender Split
-  let cashTotal = 0;
-  let upiTotal = 0;
-  let cardTotal = 0;
-  let creditTotal = 0;
-  postedInvoices.forEach((inv) => {
-    (inv.tenders || []).forEach((t) => {
-      const amt = Number(t.amount) || 0;
-      if (t.method === 'CASH') cashTotal += amt;
-      else if (t.method === 'UPI') upiTotal += amt;
-      else if (t.method === 'CARD' || t.method?.includes('CARD')) cardTotal += amt;
-      else if (t.method === 'CREDIT') creditTotal += amt;
-    });
+  // --- 1. SALES REPORT STATE (AJAX & INDEXED) ---
+  const [salesDateFilter, setSalesDateFilter] = useState('ALL');
+  const [salesCustomFrom, setSalesCustomFrom] = useState('');
+  const [salesCustomTo, setSalesCustomTo] = useState('');
+  const [salesSearch, setSalesSearch] = useState('');
+  const [salesPage, setSalesPage] = useState(1);
+  const [salesPageSize, setSalesPageSize] = useState(50);
+  const [salesLoading, setSalesLoading] = useState(false);
+  const [salesResult, setSalesResult] = useState({
+    data: [],
+    allFiltered: [],
+    totalCount: 0,
+    page: 1,
+    pageSize: 50,
+    totalPages: 1,
+    startIndex: 0,
+    endIndex: 0,
+    metrics: {
+      totalRevenue: 0,
+      totalTax: 0,
+      totalInvoices: 0,
+      cashTotal: 0,
+      upiTotal: 0,
+      cardTotal: 0,
+      creditTotal: 0,
+    },
+    executionTimeMs: 0,
   });
 
-  // 2. Purchase & Inward Data (Clean Separation of Purchases vs Initial Stock)
+  const loadSalesReport = useCallback(async () => {
+    setSalesLoading(true);
+    try {
+      const res = await fetchSalesReportAjax(db, {
+        dateFilter: salesDateFilter,
+        customFromDate: salesCustomFrom,
+        customToDate: salesCustomTo,
+        search: salesSearch,
+        statusFilter: 'POSTED',
+        storeFilter: 'ALL',
+        page: salesPage,
+        pageSize: salesPageSize,
+      });
+      setSalesResult(res);
+    } catch (e) {
+      console.error('Failed to load sales report via AJAX:', e);
+    } finally {
+      setSalesLoading(false);
+    }
+  }, [db, salesDateFilter, salesCustomFrom, salesCustomTo, salesSearch, salesPage, salesPageSize]);
+
+  useEffect(() => {
+    if (activeReportTab === 'sales' || activeReportTab === 'gst') {
+      loadSalesReport();
+    }
+  }, [activeReportTab, loadSalesReport]);
+
+  // Reset sales page on filter change
+  useEffect(() => {
+    setSalesPage(1);
+  }, [salesDateFilter, salesCustomFrom, salesCustomTo, salesSearch]);
+
+  // --- 2. PURCHASES REPORT STATE (AJAX & INDEXED) ---
+  const [purchasesDateFilter, setPurchasesDateFilter] = useState('ALL');
+  const [purchasesCustomFrom, setPurchasesCustomFrom] = useState('');
+  const [purchasesCustomTo, setPurchasesCustomTo] = useState('');
   const [purchasesFilterMode, setPurchasesFilterMode] = useState('purchases_only'); // 'purchases_only' | 'initial_stock_only' | 'all'
-  const allInwardPurchases = db.purchases || [];
-  const standardPurchases = allInwardPurchases.filter(
-    (p) => !p.isInitialStock && p.entryType !== 'INITIAL_STOCK' && !p.docNumber?.startsWith('INIT-')
-  );
-  const initialStockInwardPurchases = allInwardPurchases.filter(
-    (p) => p.isInitialStock || p.entryType === 'INITIAL_STOCK' || p.docNumber?.startsWith('INIT-')
-  );
+  const [purchasesSearch, setPurchasesSearch] = useState('');
+  const [purchasesSupplierFilter, setPurchasesSupplierFilter] = useState('ALL');
+  const [purchasesPage, setPurchasesPage] = useState(1);
+  const [purchasesPageSize, setPurchasesPageSize] = useState(50);
+  const [purchasesLoading, setPurchasesLoading] = useState(false);
+  const [purchasesResult, setPurchasesResult] = useState({
+    data: [],
+    allFiltered: [],
+    totalCount: 0,
+    page: 1,
+    pageSize: 50,
+    totalPages: 1,
+    startIndex: 0,
+    endIndex: 0,
+    metrics: {
+      standardPurchasesAmount: 0,
+      standardPurchaseTax: 0,
+      initialStockInwardAmount: 0,
+      totalRecords: 0,
+    },
+    executionTimeMs: 0,
+  });
 
-  // Standard Purchases KPI totals (Does NOT count Initial Stock into purchase expenses or ITC)
-  const standardPurchasesAmount = standardPurchases.reduce((sum, p) => sum + (Number(p.netAmount || p.grandTotal) || 0), 0);
-  const standardPurchaseTax = standardPurchases.reduce((sum, p) => sum + (Number(p.totalTax) || 0), 0);
-  const initialStockInwardAmount = initialStockInwardPurchases.reduce((sum, p) => sum + (Number(p.netAmount || p.grandTotal) || 0), 0);
+  const loadPurchasesReport = useCallback(async () => {
+    setPurchasesLoading(true);
+    try {
+      const res = await fetchPurchasesReportAjax(db, {
+        dateFilter: purchasesDateFilter,
+        customFromDate: purchasesCustomFrom,
+        customToDate: purchasesCustomTo,
+        purchasesFilterMode,
+        search: purchasesSearch,
+        supplierFilter: purchasesSupplierFilter,
+        page: purchasesPage,
+        pageSize: purchasesPageSize,
+      });
+      setPurchasesResult(res);
+    } catch (e) {
+      console.error('Failed to load purchases report via AJAX:', e);
+    } finally {
+      setPurchasesLoading(false);
+    }
+  }, [db, purchasesDateFilter, purchasesCustomFrom, purchasesCustomTo, purchasesFilterMode, purchasesSearch, purchasesSupplierFilter, purchasesPage, purchasesPageSize]);
 
-  const displayPurchases = purchasesFilterMode === 'purchases_only'
-    ? standardPurchases
-    : purchasesFilterMode === 'initial_stock_only'
-    ? initialStockInwardPurchases
-    : allInwardPurchases;
+  useEffect(() => {
+    if (activeReportTab === 'purchases') {
+      loadPurchasesReport();
+    }
+  }, [activeReportTab, loadPurchasesReport]);
 
-  // 2.5 Dedicated Initial Stock Report Data
+  useEffect(() => {
+    setPurchasesPage(1);
+  }, [purchasesDateFilter, purchasesCustomFrom, purchasesCustomTo, purchasesFilterMode, purchasesSearch, purchasesSupplierFilter]);
+
+  // --- 3. INITIAL STOCK REPORT STATE (AJAX & INDEXED) ---
   const [initialStockWarehouseFilter, setInitialStockWarehouseFilter] = useState('ALL');
   const [initialStockSearch, setInitialStockSearch] = useState('');
+  const [initialStockPage, setInitialStockPage] = useState(1);
+  const [initialStockPageSize, setInitialStockPageSize] = useState(50);
+  const [initialStockLoading, setInitialStockLoading] = useState(false);
+  const [initialStockResult, setInitialStockResult] = useState({
+    data: [],
+    allFiltered: [],
+    totalCount: 0,
+    page: 1,
+    pageSize: 50,
+    totalPages: 1,
+    startIndex: 0,
+    endIndex: 0,
+    metrics: {
+      totalValuation: 0,
+      totalUnits: 0,
+      docCount: 0,
+    },
+    executionTimeMs: 0,
+  });
 
-  const initialStockRecords = useMemo(() => {
-    const list = (db.initialStocks || []).map((item) => {
-      const prod = (db.products || []).find((p) => p.id === item.productId);
-      const wh = (db.warehouses || []).find((w) => w.id === item.warehouseId);
-      const qty = Number(item.quantity || 0);
-      const rate = Number(item.valuationRate || prod?.costRate || 0);
-      const totalVal = Number(item.totalValuation) || (qty * rate);
-      return {
-        ...item,
-        productName: item.productName || prod?.name || item.productId,
-        sku: prod?.sku || '',
-        category: prod?.category || '',
-        warehouseName: wh?.name || item.warehouseId,
-        qty,
-        rate,
-        totalVal,
-      };
-    });
-    return list;
-  }, [db.initialStocks, db.products, db.warehouses]);
+  const loadInitialStockReport = useCallback(async () => {
+    setInitialStockLoading(true);
+    try {
+      const res = await fetchInitialStockReportAjax(db, {
+        warehouseFilter: initialStockWarehouseFilter,
+        search: initialStockSearch,
+        page: initialStockPage,
+        pageSize: initialStockPageSize,
+      });
+      setInitialStockResult(res);
+    } catch (e) {
+      console.error('Failed to load initial stock report via AJAX:', e);
+    } finally {
+      setInitialStockLoading(false);
+    }
+  }, [db, initialStockWarehouseFilter, initialStockSearch, initialStockPage, initialStockPageSize]);
 
-  const filteredInitialStockRecords = useMemo(() => {
-    return initialStockRecords.filter((item) => {
-      if (initialStockWarehouseFilter !== 'ALL' && item.warehouseId !== initialStockWarehouseFilter) {
-        return false;
-      }
-      if (initialStockSearch.trim()) {
-        const q = initialStockSearch.trim().toLowerCase();
-        return (
-          item.docNumber?.toLowerCase().includes(q) ||
-          item.productName?.toLowerCase().includes(q) ||
-          item.sku?.toLowerCase().includes(q) ||
-          item.notes?.toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [initialStockRecords, initialStockWarehouseFilter, initialStockSearch]);
+  useEffect(() => {
+    if (activeReportTab === 'initial_stock') {
+      loadInitialStockReport();
+    }
+  }, [activeReportTab, loadInitialStockReport]);
 
-  const totalInitialStockValuation = initialStockRecords.reduce((sum, i) => sum + i.totalVal, 0);
-  const totalInitialStockUnits = initialStockRecords.reduce((sum, i) => sum + i.qty, 0);
-  const initialStockDocCount = new Set(initialStockRecords.map((i) => i.docNumber)).size;
+  useEffect(() => {
+    setInitialStockPage(1);
+  }, [initialStockWarehouseFilter, initialStockSearch]);
 
-  // 3. Stock Report Data (with Condition Breakdown: Initial Stock, Purchased, Sales, Current Balance)
+  // --- 4. STOCK VALUATION & LEDGER STATE (AJAX & COMPOUND INDEXED) ---
   const [stockWarehouseFilter, setStockWarehouseFilter] = useState('ALL');
   const [stockSearch, setStockSearch] = useState('');
+  const [stockStatusFilter, setStockStatusFilter] = useState('ALL');
+  const [stockPage, setStockPage] = useState(1);
+  const [stockPageSize, setStockPageSize] = useState(50);
+  const [stockLoading, setStockLoading] = useState(false);
+  const [stockResult, setStockResult] = useState({
+    data: [],
+    allFiltered: [],
+    totalCount: 0,
+    page: 1,
+    pageSize: 50,
+    totalPages: 1,
+    startIndex: 0,
+    endIndex: 0,
+    metrics: {
+      totalValuation: 0,
+      totalUnits: 0,
+      lowStockCount: 0,
+      totalTrackedSkus: 0,
+    },
+    executionTimeMs: 0,
+  });
 
-  const stockReportLedger = useMemo(() => {
-    return (db.stockBalances || []).map((b) => {
-      const prod = (db.products || []).find((p) => p.id === b.productId);
-      const wh = (db.warehouses || []).find((w) => w.id === b.warehouseId);
+  const loadStockReport = useCallback(async () => {
+    setStockLoading(true);
+    try {
+      const res = await fetchStockValuationReportAjax(db, {
+        warehouseFilter: stockWarehouseFilter,
+        search: stockSearch,
+        stockStatusFilter,
+        page: stockPage,
+        pageSize: stockPageSize,
+      });
+      setStockResult(res);
+    } catch (e) {
+      console.error('Failed to load stock valuation report via AJAX:', e);
+    } finally {
+      setStockLoading(false);
+    }
+  }, [db, stockWarehouseFilter, stockSearch, stockStatusFilter, stockPage, stockPageSize]);
 
-      const movements = (db.stockMovements || []).filter(
-        (m) => m.productId === b.productId && m.warehouseId === b.warehouseId
-      );
+  useEffect(() => {
+    if (activeReportTab === 'stock') {
+      loadStockReport();
+    }
+  }, [activeReportTab, loadStockReport]);
 
-      const initialStockQty = movements
-        .filter((m) => m.docType === 'INITIAL_STOCK')
-        .reduce((sum, m) => sum + (Number(m.qtyChange ?? m.quantityDelta ?? m.quantity) || 0), 0);
+  useEffect(() => {
+    setStockPage(1);
+  }, [stockWarehouseFilter, stockSearch, stockStatusFilter]);
 
-      const purchasedInwardQty = movements
-        .filter((m) => m.docType === 'PURCHASE_IN' || m.docType === 'PURCHASE')
-        .reduce((sum, m) => sum + (Number(m.qtyChange ?? m.quantityDelta ?? m.quantity) || 0), 0);
-
-      const salesOutwardQty = Math.abs(
-        movements
-          .filter((m) => m.docType === 'SALES_OUT' || m.docType === 'POS_SALE' || m.docType === 'SALE')
-          .reduce((sum, m) => sum + (Number(m.qtyChange ?? m.quantityDelta ?? m.quantity) || 0), 0)
-      );
-
-      const currentStock = Number(b.quantity || 0);
-      const valRate = Number(b.valuationRate || prod?.costRate || 0);
-      const totalVal = currentStock * valRate;
-      const isLow = currentStock <= (prod?.minStockAlert || 5);
-
-      return {
-        id: b.id,
-        warehouseId: b.warehouseId,
-        warehouseName: wh?.name || b.warehouseId,
-        productId: b.productId,
-        productName: prod?.name || b.productId,
-        sku: prod?.sku || '',
-        category: prod?.category || '',
-        initialStockQty,
-        purchasedInwardQty,
-        salesOutwardQty,
-        currentStock,
-        valRate,
-        totalVal,
-        isLow,
-      };
-    });
-  }, [db.stockBalances, db.products, db.warehouses, db.stockMovements]);
-
-  const filteredStockLedger = useMemo(() => {
-    return stockReportLedger.filter((s) => {
-      if (stockWarehouseFilter !== 'ALL' && s.warehouseId !== stockWarehouseFilter) return false;
-      if (stockSearch.trim()) {
-        const q = stockSearch.trim().toLowerCase();
-        return (
-          s.productName.toLowerCase().includes(q) ||
-          s.sku.toLowerCase().includes(q) ||
-          s.warehouseName.toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [stockReportLedger, stockWarehouseFilter, stockSearch]);
-
-  const stockValuationTotal = stockReportLedger.reduce((sum, b) => sum + b.totalVal, 0);
-  const lowStockProducts = stockReportLedger.filter((b) => b.isLow);
-
-  // 4. GST Breakdown
+  // --- 5. GST RETURN CALCULATIONS ---
+  const postedInvoices = salesResult.allFiltered || [];
   const totalCGST = postedInvoices.reduce((sum, i) => sum + (Number(i.cgstAmount) || 0), 0);
   const totalSGST = postedInvoices.reduce((sum, i) => sum + (Number(i.sgstAmount) || 0), 0);
   const totalIGST = postedInvoices.reduce((sum, i) => sum + (Number(i.igstAmount) || 0), 0);
 
-  // Tally Export Handler
+  // --- 6. TALLY EXPORT HANDLER ---
   const [tallyXmlOutput, setTallyXmlOutput] = useState('');
   const handleGenerateTally = () => {
     try {
@@ -250,9 +317,10 @@ export default function ReportsView({ initialReportTab = null }) {
     notify('success', 'Tally Prime XML file downloaded successfully.', 'Download Complete');
   };
 
+  // Full Export Data Generator (exports entire filtered dataset)
   const getReportExportData = () => {
     if (activeReportTab === 'sales') {
-      return postedInvoices.map((inv, idx) => ({
+      return (salesResult.allFiltered || []).map((inv, idx) => ({
         '#': idx + 1,
         'Invoice #': inv.docNumber,
         'Date': new Date(inv.date).toLocaleDateString(),
@@ -264,20 +332,23 @@ export default function ReportsView({ initialReportTab = null }) {
       }));
     }
     if (activeReportTab === 'purchases') {
-      return displayPurchases.map((p, idx) => ({
-        '#': idx + 1,
-        'Inward #': p.docNumber,
-        'Type': p.isInitialStock || p.entryType === 'INITIAL_STOCK' || p.docNumber?.startsWith('INIT-') ? 'INITIAL_STOCK' : 'PURCHASE',
-        'Date': new Date(p.date).toLocaleDateString(),
-        'Supplier': p.supplierName,
-        'Vendor Invoice #': p.isInitialStock || p.entryType === 'INITIAL_STOCK' || p.docNumber?.startsWith('INIT-') ? 'OPENING_STOCK' : p.supplierInvoiceNo,
-        'Taxable (₹)': p.subtotal?.toFixed(2) || '0.00',
-        'Tax (₹)': p.totalTax?.toFixed(2) || '0.00',
-        'Net Amount (₹)': p.netAmount?.toFixed(2) || '0.00',
-      }));
+      return (purchasesResult.allFiltered || []).map((p, idx) => {
+        const isInit = Boolean(p.isInitialStock || p.entryType === 'INITIAL_STOCK' || p.docNumber?.startsWith('INIT-'));
+        return {
+          '#': idx + 1,
+          'Inward #': p.docNumber,
+          'Type': isInit ? 'INITIAL_STOCK' : 'PURCHASE',
+          'Date': new Date(p.date).toLocaleDateString(),
+          'Supplier': p.supplierName,
+          'Vendor Invoice #': isInit ? 'OPENING_STOCK' : p.supplierInvoiceNo,
+          'Taxable (₹)': Number(p.subtotal || 0).toFixed(2),
+          'Tax (₹)': Number(p.totalTax || 0).toFixed(2),
+          'Net Amount (₹)': Number(p.netAmount || p.grandTotal || 0).toFixed(2),
+        };
+      });
     }
     if (activeReportTab === 'initial_stock') {
-      return filteredInitialStockRecords.map((item, idx) => ({
+      return (initialStockResult.allFiltered || []).map((item, idx) => ({
         '#': idx + 1,
         'Cutover Doc #': item.docNumber,
         'Effective Date': item.effectiveDate || item.date || '—',
@@ -285,13 +356,13 @@ export default function ReportsView({ initialReportTab = null }) {
         'Product Name': item.productName,
         'SKU': item.sku || '—',
         'Opening Qty': item.qty,
-        'Valuation Rate (₹)': item.rate.toFixed(2),
-        'Total Valuation (₹)': item.totalVal.toFixed(2),
+        'Valuation Rate (₹)': Number(item.rate).toFixed(2),
+        'Total Valuation (₹)': Number(item.totalVal).toFixed(2),
         'Source / Notes': item.notes || 'Initial Stock Cutover',
       }));
     }
     if (activeReportTab === 'stock') {
-      return filteredStockLedger.map((s, idx) => ({
+      return (stockResult.allFiltered || []).map((s, idx) => ({
         '#': idx + 1,
         'Warehouse': s.warehouseName,
         'Product Name': s.productName,
@@ -300,8 +371,8 @@ export default function ReportsView({ initialReportTab = null }) {
         'Purchased Inward Qty': s.purchasedInwardQty,
         'Sales Outward Qty': s.salesOutwardQty,
         'Available Current Stock': s.currentStock,
-        'Valuation Rate (₹)': s.valRate.toFixed(2),
-        'Total Asset Value (₹)': s.totalVal.toFixed(2),
+        'Valuation Rate (₹)': Number(s.valRate).toFixed(2),
+        'Total Asset Value (₹)': Number(s.totalVal).toFixed(2),
         'Status': s.isLow ? 'LOW STOCK' : 'ADEQUATE',
       }));
     }
@@ -353,9 +424,17 @@ export default function ReportsView({ initialReportTab = null }) {
             <BarChart3 className="w-5 h-5 text-indigo-400" />
           </div>
           <div className="min-w-0">
-            <h3 className="font-bold text-white text-sm truncate sm:overflow-visible">NexBill Financial & Operations Reports Hub</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-white text-sm truncate sm:overflow-visible">
+                NexBill Financial & Operations Reports Hub
+              </h3>
+              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-indigo-950 text-indigo-300 border border-indigo-800">
+                <Zap className="w-3 h-3 text-indigo-400" />
+                Indexed & AJAX Enabled
+              </span>
+            </div>
             <p className="text-[11px] text-slate-400 line-clamp-1 sm:line-clamp-none">
-              Executive business analytics, sales registers, vendor payables, GST tax liability & Tally export
+              High-speed queries for 3 Lakh+ catalogs, multi-year date range slices, vendor payables & GST tax registers
             </p>
           </div>
         </div>
@@ -372,7 +451,7 @@ export default function ReportsView({ initialReportTab = null }) {
 
           <button
             onClick={() => window.print()}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-semibold border border-slate-700 transition"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-semibold border border-slate-700 transition cursor-pointer"
           >
             <Printer className="w-3.5 h-3.5" />
             <span>Print Report</span>
@@ -381,10 +460,10 @@ export default function ReportsView({ initialReportTab = null }) {
       </div>
 
       {/* Report Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto text-xs font-medium">
+      <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto text-xs font-medium scrollbar-none">
         <button
           onClick={() => handleTabChange('sales')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition whitespace-nowrap cursor-pointer ${
             activeReportTab === 'sales'
               ? 'bg-indigo-600 text-white font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -396,7 +475,7 @@ export default function ReportsView({ initialReportTab = null }) {
 
         <button
           onClick={() => handleTabChange('purchases')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition whitespace-nowrap cursor-pointer ${
             activeReportTab === 'purchases'
               ? 'bg-indigo-600 text-white font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -408,7 +487,7 @@ export default function ReportsView({ initialReportTab = null }) {
 
         <button
           onClick={() => handleTabChange('initial_stock')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition whitespace-nowrap cursor-pointer ${
             activeReportTab === 'initial_stock'
               ? 'bg-amber-600 text-white font-semibold shadow-md shadow-amber-600/30'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -420,7 +499,7 @@ export default function ReportsView({ initialReportTab = null }) {
 
         <button
           onClick={() => handleTabChange('stock')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition whitespace-nowrap cursor-pointer ${
             activeReportTab === 'stock'
               ? 'bg-indigo-600 text-white font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -432,7 +511,7 @@ export default function ReportsView({ initialReportTab = null }) {
 
         <button
           onClick={() => handleTabChange('gst')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition whitespace-nowrap cursor-pointer ${
             activeReportTab === 'gst'
               ? 'bg-indigo-600 text-white font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -444,31 +523,31 @@ export default function ReportsView({ initialReportTab = null }) {
 
         <button
           onClick={() => handleTabChange('tally')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition whitespace-nowrap cursor-pointer ${
             activeReportTab === 'tally'
               ? 'bg-indigo-600 text-white font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
           }`}
         >
-          <DownloadCloud className="w-4 h-4" />
-          <span>Tally Prime XML Export</span>
+          <FileCode className="w-4 h-4" />
+          <span>Tally Prime Export</span>
         </button>
 
         <button
           onClick={() => handleTabChange('backlog')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition whitespace-nowrap cursor-pointer ${
             activeReportTab === 'backlog'
-              ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30'
+              ? 'bg-indigo-600 text-white font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
           }`}
         >
-          <Activity className="w-4 h-4 text-emerald-400" />
+          <BarChart3 className="w-4 h-4" />
           <span>Backlog Activity Report</span>
         </button>
 
         <button
           onClick={() => handleTabChange('audit')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition whitespace-nowrap cursor-pointer ${
             activeReportTab === 'audit'
               ? 'bg-indigo-600 text-white font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -482,19 +561,58 @@ export default function ReportsView({ initialReportTab = null }) {
       {/* 1. SALES REPORT TAB */}
       {activeReportTab === 'sales' && (
         <div className="space-y-4">
+          {/* Filter Bar with Date Range Preset (> 1 Year Support) & Search */}
+          <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-md">
+            <DateRangeFilter
+              selectedFilter={salesDateFilter}
+              onFilterChange={setSalesDateFilter}
+              customFromDate={salesCustomFrom}
+              customToDate={salesCustomTo}
+              onCustomFromChange={setSalesCustomFrom}
+              onCustomToChange={setSalesCustomTo}
+              disabled={salesLoading}
+            />
+
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Search invoice #, customer..."
+                  value={salesSearch}
+                  onChange={(e) => setSalesSearch(e.target.value)}
+                  className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-56 sm:w-64"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={loadSalesReport}
+                disabled={salesLoading}
+                className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition cursor-pointer"
+                title="Refresh AJAX Query"
+              >
+                <RotateCw className={`w-3.5 h-3.5 ${salesLoading ? 'animate-spin text-indigo-400' : ''}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* Metrics Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
               <span className="text-[11px] text-slate-400">Total Net Revenue</span>
               <div className="text-xl font-bold font-mono text-emerald-400">
-                ₹{totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                ₹{Number(salesResult.metrics.totalRevenue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </div>
-              <span className="text-[10px] text-slate-500">{totalInvoices} Invoices Posted</span>
+              <span className="text-[10px] text-slate-500 font-mono">
+                {salesResult.totalCount.toLocaleString('en-IN')} Invoices Posted
+              </span>
             </div>
 
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
               <span className="text-[11px] text-slate-400">Total Tax Collected</span>
               <div className="text-xl font-bold font-mono text-cyan-400">
-                ₹{totalTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                ₹{Number(salesResult.metrics.totalTax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </div>
               <span className="text-[10px] text-slate-500">CGST + SGST + IGST</span>
             </div>
@@ -502,7 +620,7 @@ export default function ReportsView({ initialReportTab = null }) {
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
               <span className="text-[11px] text-slate-400">Cash Collections</span>
               <div className="text-xl font-bold font-mono text-indigo-400">
-                ₹{cashTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                ₹{Number(salesResult.metrics.cashTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </div>
               <span className="text-[10px] text-indigo-300 font-semibold">Till Cash In</span>
             </div>
@@ -510,7 +628,7 @@ export default function ReportsView({ initialReportTab = null }) {
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
               <span className="text-[11px] text-slate-400">Digital (UPI + Card)</span>
               <div className="text-xl font-bold font-mono text-purple-400">
-                ₹{(upiTotal + cardTotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                ₹{Number((salesResult.metrics.upiTotal || 0) + (salesResult.metrics.cardTotal || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </div>
               <span className="text-[10px] text-purple-300 font-semibold">Bank Settlements</span>
             </div>
@@ -519,10 +637,23 @@ export default function ReportsView({ initialReportTab = null }) {
           {/* Sales Register Table */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
             <div className="p-3 border-b border-slate-800 flex justify-between items-center text-xs">
-              <span className="font-bold text-white">Posted Sales Invoices Register</span>
-              <span className="text-slate-400">{postedInvoices.length} Records</span>
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="w-4 h-4 text-indigo-400" />
+                <span className="font-bold text-white">Posted Sales Invoices Register</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {salesLoading && (
+                  <span className="text-[11px] text-amber-400 flex items-center gap-1 font-mono">
+                    <RotateCw className="w-3 h-3 animate-spin" /> Fetching slice...
+                  </span>
+                )}
+                <span className="text-slate-400 font-mono">
+                  {salesResult.totalCount.toLocaleString('en-IN')} Total Records
+                </span>
+              </div>
             </div>
-            <div className="overflow-x-auto">
+
+            <div className="overflow-x-auto relative">
               <table className="w-full text-left text-xs min-w-[850px]">
                 <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] border-b border-slate-800">
                   <tr>
@@ -536,22 +667,47 @@ export default function ReportsView({ initialReportTab = null }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800 font-mono text-[11px]">
-                  {postedInvoices.map((inv) => (
-                    <tr key={inv.id} className="hover:bg-slate-800/40">
-                      <td className="py-2 px-3 text-indigo-300 font-bold">{inv.docNumber}</td>
-                      <td className="py-2 px-3 text-slate-400 font-sans">{new Date(inv.date).toLocaleDateString()}</td>
-                      <td className="py-2 px-3 font-sans text-white">{inv.customerName}</td>
-                      <td className="py-2 px-3 text-right text-slate-300">₹{inv.taxableAmount?.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right text-cyan-400">₹{inv.totalTax?.toFixed(2)}</td>
-                      <td className="py-2 px-3 text-right font-bold text-emerald-400">₹{inv.netPayable?.toFixed(2)}</td>
-                      <td className="py-2 px-3 font-sans text-slate-400">
-                        {inv.tenders?.map((t) => t.method).join(', ') || 'CASH'}
+                  {salesResult.data.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="py-12 text-center text-slate-500 font-sans">
+                        {salesLoading ? 'Loading records via indexed search...' : 'No sales records found for selected period.'}
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    salesResult.data.map((inv) => (
+                      <tr key={inv.id} className="hover:bg-slate-800/40 transition">
+                        <td className="py-2 px-3 text-indigo-300 font-bold">{inv.docNumber}</td>
+                        <td className="py-2 px-3 text-slate-400 font-sans">{new Date(inv.date).toLocaleDateString()}</td>
+                        <td className="py-2 px-3 font-sans text-white">{inv.customerName || 'Walk-in'}</td>
+                        <td className="py-2 px-3 text-right text-slate-300">₹{Number(inv.taxableAmount || 0).toFixed(2)}</td>
+                        <td className="py-2 px-3 text-right text-cyan-400">₹{Number(inv.totalTax || 0).toFixed(2)}</td>
+                        <td className="py-2 px-3 text-right font-bold text-emerald-400">₹{Number(inv.netPayable || 0).toFixed(2)}</td>
+                        <td className="py-2 px-3 font-sans text-slate-400">
+                          {inv.tenders?.map((t) => t.method).join(', ') || 'CASH'}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
+
+            {/* Asynchronous AJAX Table Pagination Bar */}
+            <AjaxTablePagination
+              totalCount={salesResult.totalCount}
+              page={salesResult.page}
+              pageSize={salesResult.pageSize}
+              totalPages={salesResult.totalPages}
+              startIndex={salesResult.startIndex}
+              endIndex={salesResult.endIndex}
+              isLoading={salesLoading}
+              executionTimeMs={salesResult.executionTimeMs}
+              onPageChange={(p) => setSalesPage(p)}
+              onPageSizeChange={(ps) => {
+                setSalesPageSize(ps);
+                setSalesPage(1);
+              }}
+            />
           </div>
         </div>
       )}
@@ -559,8 +715,8 @@ export default function ReportsView({ initialReportTab = null }) {
       {/* 2. PURCHASES REPORT TAB */}
       {activeReportTab === 'purchases' && (
         <div className="space-y-4">
-          {/* Purchases vs Initial Stock Filter Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900 border border-slate-800 p-2.5 rounded-xl">
+          {/* Inward Purchases Mode & Filter Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-2.5 rounded-xl shadow-md">
             <div className="inline-flex rounded-lg p-1 bg-slate-950 border border-slate-800 text-xs">
               <button
                 type="button"
@@ -571,7 +727,7 @@ export default function ReportsView({ initialReportTab = null }) {
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Standard Purchases Only ({standardPurchases.length})
+                Standard Purchases Only
               </button>
               <button
                 type="button"
@@ -582,7 +738,7 @@ export default function ReportsView({ initialReportTab = null }) {
                     : 'text-amber-400/80 hover:text-amber-300'
                 }`}
               >
-                Initial Stock Only ({initialStockInwardPurchases.length})
+                Initial Stock Only
               </button>
               <button
                 type="button"
@@ -593,7 +749,7 @@ export default function ReportsView({ initialReportTab = null }) {
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                All Inward Records ({allInwardPurchases.length})
+                All Inward Records
               </button>
             </div>
 
@@ -616,6 +772,55 @@ export default function ReportsView({ initialReportTab = null }) {
             </div>
           </div>
 
+          {/* Date Range & Supplier Search Bar */}
+          <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-md">
+            <DateRangeFilter
+              selectedFilter={purchasesDateFilter}
+              onFilterChange={setPurchasesDateFilter}
+              customFromDate={purchasesCustomFrom}
+              customToDate={purchasesCustomTo}
+              onCustomFromChange={setPurchasesCustomFrom}
+              onCustomToChange={setPurchasesCustomTo}
+              disabled={purchasesLoading}
+            />
+
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={purchasesSupplierFilter}
+                onChange={(e) => setPurchasesSupplierFilter(e.target.value)}
+                className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 cursor-pointer"
+              >
+                <option value="ALL">All Suppliers</option>
+                {(db.suppliers || []).map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Search invoice, doc #, vendor..."
+                  value={purchasesSearch}
+                  onChange={(e) => setPurchasesSearch(e.target.value)}
+                  className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-56 sm:w-64"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={loadPurchasesReport}
+                disabled={purchasesLoading}
+                className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition cursor-pointer"
+                title="Refresh AJAX Query"
+              >
+                <RotateCw className={`w-3.5 h-3.5 ${purchasesLoading ? 'animate-spin text-indigo-400' : ''}`} />
+              </button>
+            </div>
+          </div>
+
           {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
@@ -623,20 +828,21 @@ export default function ReportsView({ initialReportTab = null }) {
                 {purchasesFilterMode === 'initial_stock_only' ? 'Initial Stock Valuation' : 'Total Inward Purchase Value'}
               </span>
               <div className="text-xl font-bold font-mono text-white">
-                ₹{displayPurchases
-                  .reduce((sum, p) => sum + (Number(p.netAmount || p.grandTotal) || 0), 0)
-                  .toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                ₹{Number(
+                  purchasesFilterMode === 'initial_stock_only'
+                    ? purchasesResult.metrics.initialStockInwardAmount
+                    : purchasesResult.metrics.standardPurchasesAmount + (purchasesFilterMode === 'all' ? purchasesResult.metrics.initialStockInwardAmount : 0)
+                ).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </div>
-              <span className="text-[10px] text-indigo-400 font-semibold">{displayPurchases.length} Inward Records</span>
+              <span className="text-[10px] text-indigo-400 font-semibold font-mono">
+                {purchasesResult.totalCount.toLocaleString('en-IN')} Inward Records
+              </span>
             </div>
 
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
               <span className="text-[11px] text-slate-400">Input Tax Credit (ITC) Available</span>
               <div className="text-xl font-bold font-mono text-emerald-400">
-                ₹{displayPurchases
-                  .filter((p) => !p.isInitialStock && p.entryType !== 'INITIAL_STOCK' && !p.docNumber?.startsWith('INIT-'))
-                  .reduce((sum, p) => sum + (Number(p.totalTax) || 0), 0)
-                  .toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                ₹{Number(purchasesResult.metrics.standardPurchaseTax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </div>
               <span className="text-[10px] text-emerald-300 font-semibold">
                 {purchasesFilterMode === 'initial_stock_only'
@@ -648,10 +854,10 @@ export default function ReportsView({ initialReportTab = null }) {
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
               <span className="text-[11px] text-slate-400">Opening Stock Inward Cutover</span>
               <div className="text-xl font-bold font-mono text-amber-400">
-                ₹{initialStockInwardAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                ₹{Number(purchasesResult.metrics.initialStockInwardAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </div>
               <span className="text-[10px] text-amber-300/80 font-semibold">
-                {initialStockInwardPurchases.length} Opening Batches Separated
+                Opening Inward Batches Separated
               </span>
             </div>
           </div>
@@ -659,8 +865,11 @@ export default function ReportsView({ initialReportTab = null }) {
           {/* Table */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
             <div className="p-3 border-b border-slate-800 font-bold text-white text-xs flex items-center justify-between">
-              <span>Vendor Inward & Purchase Invoices Register</span>
-              <span className="text-slate-400">{displayPurchases.length} Records</span>
+              <div className="flex items-center gap-2">
+                <Truck className="w-4 h-4 text-indigo-400" />
+                <span>Vendor Inward & Purchase Invoices Register</span>
+              </div>
+              <span className="text-slate-400 font-mono">{purchasesResult.totalCount.toLocaleString('en-IN')} Records</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs min-w-[850px]">
@@ -676,21 +885,21 @@ export default function ReportsView({ initialReportTab = null }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800 font-mono text-[11px]">
-                  {displayPurchases.length === 0 ? (
+                  {purchasesResult.data.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="py-8 text-center text-slate-500 font-sans">
-                        No inward goods records found for selected filter.
+                      <td colSpan="7" className="py-12 text-center text-slate-500 font-sans">
+                        {purchasesLoading ? 'Loading purchases via indexed engine...' : 'No inward goods records found for selected filter.'}
                       </td>
                     </tr>
                   ) : (
-                    displayPurchases.map((p) => {
+                    purchasesResult.data.map((p) => {
                       const isInit = Boolean(
                         p.isInitialStock ||
                         p.entryType === 'INITIAL_STOCK' ||
                         p.docNumber?.startsWith('INIT-')
                       );
                       return (
-                        <tr key={p.id} className="hover:bg-slate-800/40">
+                        <tr key={p.id} className="hover:bg-slate-800/40 transition">
                           <td className="py-2 px-3 text-indigo-300 font-bold">{p.docNumber}</td>
                           <td className="py-2 px-2 text-center">
                             {isInit ? (
@@ -707,7 +916,7 @@ export default function ReportsView({ initialReportTab = null }) {
                             {isInit ? (
                               <span className="text-slate-500 italic text-[11px]">Opening Stock</span>
                             ) : (
-                              <span className="font-bold">{p.supplierInvoiceNo}</span>
+                              <span className="font-bold">{p.supplierInvoiceNo || '—'}</span>
                             )}
                           </td>
                           <td className="py-2 px-3 font-sans text-white">{p.supplierName}</td>
@@ -723,6 +932,23 @@ export default function ReportsView({ initialReportTab = null }) {
                 </tbody>
               </table>
             </div>
+
+            {/* AJAX Pagination */}
+            <AjaxTablePagination
+              totalCount={purchasesResult.totalCount}
+              page={purchasesResult.page}
+              pageSize={purchasesResult.pageSize}
+              totalPages={purchasesResult.totalPages}
+              startIndex={purchasesResult.startIndex}
+              endIndex={purchasesResult.endIndex}
+              isLoading={purchasesLoading}
+              executionTimeMs={purchasesResult.executionTimeMs}
+              onPageChange={(p) => setPurchasesPage(p)}
+              onPageSizeChange={(ps) => {
+                setPurchasesPageSize(ps);
+                setPurchasesPage(1);
+              }}
+            />
           </div>
         </div>
       )}
@@ -735,7 +961,7 @@ export default function ReportsView({ initialReportTab = null }) {
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
               <span className="text-[11px] text-slate-400">Total Opening Stock Valuation</span>
               <div className="text-xl font-bold font-mono text-amber-400">
-                ₹{totalInitialStockValuation.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                ₹{Number(initialStockResult.metrics.totalValuation || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </div>
               <span className="text-[10px] text-amber-300/80 font-semibold">Total Cost Value</span>
             </div>
@@ -743,7 +969,7 @@ export default function ReportsView({ initialReportTab = null }) {
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
               <span className="text-[11px] text-slate-400">Total Opening Units</span>
               <div className="text-xl font-bold font-mono text-white">
-                {totalInitialStockUnits.toLocaleString()}
+                {Number(initialStockResult.metrics.totalUnits || 0).toLocaleString('en-IN')}
               </div>
               <span className="text-[10px] text-slate-500">Across All Products</span>
             </div>
@@ -751,23 +977,23 @@ export default function ReportsView({ initialReportTab = null }) {
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
               <span className="text-[11px] text-slate-400">Cutover Documents / Batches</span>
               <div className="text-xl font-bold font-mono text-indigo-400">
-                {initialStockDocCount}
+                {initialStockResult.metrics.docCount || 0}
               </div>
               <span className="text-[10px] text-indigo-300 font-semibold">Inward Cutover Batches</span>
             </div>
 
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
-              <span className="text-[11px] text-slate-400">Initialized Locations</span>
+              <span className="text-[11px] text-slate-400">Total Initialized Records</span>
               <div className="text-xl font-bold font-mono text-emerald-400">
-                {new Set(initialStockRecords.map((i) => i.warehouseId)).size}
+                {initialStockResult.totalCount.toLocaleString('en-IN')}
               </div>
-              <span className="text-[10px] text-emerald-300 font-semibold">Active Warehouses</span>
+              <span className="text-[10px] text-emerald-300 font-semibold">Audited Line Items</span>
             </div>
           </div>
 
-          {/* Search, Filter & Export Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs">
-            <div className="flex items-center gap-2">
+          {/* Search, Filter & Actions Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs shadow-md">
+            <div className="flex flex-wrap items-center gap-2">
               <div className="relative">
                 <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
                 <input
@@ -782,7 +1008,7 @@ export default function ReportsView({ initialReportTab = null }) {
               <select
                 value={initialStockWarehouseFilter}
                 onChange={(e) => setInitialStockWarehouseFilter(e.target.value)}
-                className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200"
+                className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 cursor-pointer"
               >
                 <option value="ALL">All Warehouses</option>
                 {(db.warehouses || []).map((w) => (
@@ -791,25 +1017,17 @@ export default function ReportsView({ initialReportTab = null }) {
                   </option>
                 ))}
               </select>
-            </div>
 
-            <ExportButtons
-              data={filteredInitialStockRecords.map((item, idx) => ({
-                '#': idx + 1,
-                'Cutover Doc #': item.docNumber,
-                'Effective Date': item.effectiveDate || item.date || '—',
-                'Warehouse': item.warehouseName,
-                'Product Name': item.productName,
-                'SKU': item.sku || '—',
-                'Opening Qty': item.qty,
-                'Valuation Rate (₹)': Number(item.rate).toFixed(2),
-                'Total Valuation (₹)': Number(item.totalVal).toFixed(2),
-                'Source / Notes': item.notes || 'Initial Stock Cutover',
-              }))}
-              filename="INITIAL_STOCK_REPORT"
-              title="INITIAL STOCK OPENING INVENTORY CUTOVER REPORT"
-              pdfOrientation="landscape"
-            />
+              <button
+                type="button"
+                onClick={loadInitialStockReport}
+                disabled={initialStockLoading}
+                className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition cursor-pointer"
+                title="Refresh AJAX Query"
+              >
+                <RotateCw className={`w-3.5 h-3.5 ${initialStockLoading ? 'animate-spin text-amber-400' : ''}`} />
+              </button>
+            </div>
           </div>
 
           {/* Initial Stock Records Table */}
@@ -819,7 +1037,7 @@ export default function ReportsView({ initialReportTab = null }) {
                 <PackageCheck className="w-4 h-4 text-amber-400" />
                 <span>Initial Stock Cutover Audit Ledger</span>
               </div>
-              <span className="text-slate-400">{filteredInitialStockRecords.length} Items</span>
+              <span className="text-slate-400 font-mono">{initialStockResult.totalCount.toLocaleString('en-IN')} Items</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs min-w-[850px]">
@@ -836,15 +1054,15 @@ export default function ReportsView({ initialReportTab = null }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800 font-mono text-[11px]">
-                  {filteredInitialStockRecords.length === 0 ? (
+                  {initialStockResult.data.length === 0 ? (
                     <tr>
                       <td colSpan="8" className="py-12 text-center text-slate-500 font-sans">
-                        No initial stock cutover records found matching current criteria.
+                        {initialStockLoading ? 'Loading opening stock records...' : 'No initial stock cutover records found matching current criteria.'}
                       </td>
                     </tr>
                   ) : (
-                    filteredInitialStockRecords.map((item, idx) => (
-                      <tr key={item.id || idx} className="hover:bg-slate-800/40">
+                    initialStockResult.data.map((item, idx) => (
+                      <tr key={item.id || idx} className="hover:bg-slate-800/40 transition">
                         <td className="py-2.5 px-3 text-amber-300 font-bold">{item.docNumber}</td>
                         <td className="py-2.5 px-3 text-slate-400 font-sans">{item.effectiveDate || item.date || '—'}</td>
                         <td className="py-2.5 px-3 font-sans text-slate-200">{item.warehouseName}</td>
@@ -853,8 +1071,8 @@ export default function ReportsView({ initialReportTab = null }) {
                           {item.sku && <span className="block text-[10px] text-slate-500 font-mono">SKU: {item.sku}</span>}
                         </td>
                         <td className="py-2.5 px-2 text-center font-bold text-white">{item.qty}</td>
-                        <td className="py-2.5 px-3 text-right text-slate-300">₹{item.rate.toFixed(2)}</td>
-                        <td className="py-2.5 px-3 text-right font-bold text-amber-400">₹{item.totalVal.toFixed(2)}</td>
+                        <td className="py-2.5 px-3 text-right text-slate-300">₹{Number(item.rate || 0).toFixed(2)}</td>
+                        <td className="py-2.5 px-3 text-right font-bold text-amber-400">₹{Number(item.totalVal || 0).toFixed(2)}</td>
                         <td className="py-2.5 px-3 font-sans text-slate-400 text-xs truncate max-w-[200px]">
                           {item.notes || 'Opening Stock Inward'}
                         </td>
@@ -864,6 +1082,23 @@ export default function ReportsView({ initialReportTab = null }) {
                 </tbody>
               </table>
             </div>
+
+            {/* AJAX Pagination */}
+            <AjaxTablePagination
+              totalCount={initialStockResult.totalCount}
+              page={initialStockResult.page}
+              pageSize={initialStockResult.pageSize}
+              totalPages={initialStockResult.totalPages}
+              startIndex={initialStockResult.startIndex}
+              endIndex={initialStockResult.endIndex}
+              isLoading={initialStockLoading}
+              executionTimeMs={initialStockResult.executionTimeMs}
+              onPageChange={(p) => setInitialStockPage(p)}
+              onPageSizeChange={(ps) => {
+                setInitialStockPageSize(ps);
+                setInitialStockPage(1);
+              }}
+            />
           </div>
         </div>
       )}
@@ -875,35 +1110,37 @@ export default function ReportsView({ initialReportTab = null }) {
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
               <span className="text-[11px] text-slate-400">Total Stock Valuation (Cost Basis)</span>
               <div className="text-xl font-bold font-mono text-cyan-400">
-                ₹{stockValuationTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                ₹{Number(stockResult.metrics.totalValuation || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </div>
-              <span className="text-[10px] text-slate-400">{filteredStockLedger.length} Tracked Balances</span>
+              <span className="text-[10px] text-slate-400 font-mono">
+                {stockResult.totalCount.toLocaleString('en-IN')} Tracked Balances
+              </span>
             </div>
 
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
-              <span className="text-[11px] text-slate-400">Total Initial Stock Inflow</span>
-              <div className="text-xl font-bold font-mono text-amber-400">
-                {stockReportLedger.reduce((sum, s) => sum + s.initialStockQty, 0).toLocaleString()} Units
+              <span className="text-[11px] text-slate-400">Total Current Stock Units</span>
+              <div className="text-xl font-bold font-mono text-emerald-400">
+                {Number(stockResult.metrics.totalUnits || 0).toLocaleString('en-IN')} Units
               </div>
-              <span className="text-[10px] text-amber-300 font-semibold">Opening Inventory Inflow</span>
+              <span className="text-[10px] text-emerald-300 font-semibold">Physical On-Hand Inventory</span>
             </div>
 
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
               <span className="text-[11px] text-slate-400">Low Stock Reorder Alerts</span>
               <div
                 className={`text-xl font-bold font-mono ${
-                  lowStockProducts.length > 0 ? 'text-amber-400' : 'text-slate-400'
+                  stockResult.metrics.lowStockCount > 0 ? 'text-amber-400' : 'text-slate-400'
                 }`}
               >
-                {lowStockProducts.length} Items Below Threshold
+                {stockResult.metrics.lowStockCount || 0} Items Below Threshold
               </div>
               <span className="text-[10px] text-amber-300 font-semibold">Immediate Purchase Indent Required</span>
             </div>
           </div>
 
-          {/* Search, Filter & Export Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs">
-            <div className="flex items-center gap-2">
+          {/* Search, Filter & Refresh Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs shadow-md">
+            <div className="flex flex-wrap items-center gap-2">
               <div className="relative">
                 <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
                 <input
@@ -918,7 +1155,7 @@ export default function ReportsView({ initialReportTab = null }) {
               <select
                 value={stockWarehouseFilter}
                 onChange={(e) => setStockWarehouseFilter(e.target.value)}
-                className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200"
+                className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 cursor-pointer"
               >
                 <option value="ALL">All Warehouses</option>
                 {(db.warehouses || []).map((w) => (
@@ -927,33 +1164,37 @@ export default function ReportsView({ initialReportTab = null }) {
                   </option>
                 ))}
               </select>
-            </div>
 
-            <ExportButtons
-              data={filteredStockLedger.map((s, idx) => ({
-                '#': idx + 1,
-                'Warehouse': s.warehouseName,
-                'Product Name': s.productName,
-                'SKU': s.sku,
-                'Initial Stock Qty': s.initialStockQty,
-                'Purchased Inward Qty': s.purchasedInwardQty,
-                'Sales Outward Qty': s.salesOutwardQty,
-                'Available Current Stock': s.currentStock,
-                'Valuation Rate': `₹${s.valRate.toFixed(2)}`,
-                'Total Asset Value': `₹${s.totalVal.toFixed(2)}`,
-                'Status': s.isLow ? 'LOW STOCK' : 'ADEQUATE',
-              }))}
-              filename="STOCK_LEDGER_VALUATION_REPORT"
-              title="STOCK VALUATION & MOVEMENT LEDGER (INITIAL vs PURCHASED vs SALES)"
-              pdfOrientation="landscape"
-            />
+              <select
+                value={stockStatusFilter}
+                onChange={(e) => setStockStatusFilter(e.target.value)}
+                className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 cursor-pointer"
+              >
+                <option value="ALL">All Stock Levels</option>
+                <option value="LOW_STOCK">Low Stock Only</option>
+                <option value="OUT_OF_STOCK">Out of Stock Only</option>
+              </select>
+
+              <button
+                type="button"
+                onClick={loadStockReport}
+                disabled={stockLoading}
+                className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition cursor-pointer"
+                title="Refresh AJAX Query"
+              >
+                <RotateCw className={`w-3.5 h-3.5 ${stockLoading ? 'animate-spin text-cyan-400' : ''}`} />
+              </button>
+            </div>
           </div>
 
           {/* Stock Table with Condition Breakdown */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
             <div className="p-3 border-b border-slate-800 font-bold text-white text-xs flex items-center justify-between">
-              <span>Warehouse Stock Balance Ledger (Initial Stock vs Purchased vs Outward Sales)</span>
-              <span className="text-slate-400">{filteredStockLedger.length} Records</span>
+              <div className="flex items-center gap-2">
+                <Boxes className="w-4 h-4 text-cyan-400" />
+                <span>Warehouse Stock Balance Ledger (Initial Stock vs Purchased vs Outward Sales)</span>
+              </div>
+              <span className="text-slate-400 font-mono">{stockResult.totalCount.toLocaleString('en-IN')} Records</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs min-w-[850px]">
@@ -971,15 +1212,15 @@ export default function ReportsView({ initialReportTab = null }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800 font-mono text-[11px]">
-                  {filteredStockLedger.length === 0 ? (
+                  {stockResult.data.length === 0 ? (
                     <tr>
-                      <td colSpan="9" className="py-8 text-center text-slate-500 font-sans">
-                        No stock records found matching current criteria.
+                      <td colSpan="9" className="py-12 text-center text-slate-500 font-sans">
+                        {stockLoading ? 'Loading stock balances via compound index...' : 'No stock records found matching current criteria.'}
                       </td>
                     </tr>
                   ) : (
-                    filteredStockLedger.map((s) => (
-                      <tr key={s.id} className="hover:bg-slate-800/40">
+                    stockResult.data.map((s) => (
+                      <tr key={s.id} className="hover:bg-slate-800/40 transition">
                         <td className="py-2 px-3 text-slate-400 font-sans">{s.warehouseName}</td>
                         <td className="py-2 px-3 font-sans font-bold text-white">
                           {s.productName}
@@ -989,8 +1230,8 @@ export default function ReportsView({ initialReportTab = null }) {
                         <td className="py-2 px-2 text-center font-bold text-indigo-300">{s.purchasedInwardQty}</td>
                         <td className="py-2 px-2 text-center font-bold text-rose-400">{s.salesOutwardQty}</td>
                         <td className="py-2 px-3 text-center font-bold text-emerald-400 bg-emerald-950/20">{s.currentStock}</td>
-                        <td className="py-2 px-3 text-right text-slate-300">₹{s.valRate.toFixed(2)}</td>
-                        <td className="py-2 px-3 text-right font-bold text-cyan-400">₹{s.totalVal.toFixed(2)}</td>
+                        <td className="py-2 px-3 text-right text-slate-300">₹{Number(s.valRate || 0).toFixed(2)}</td>
+                        <td className="py-2 px-3 text-right font-bold text-cyan-400">₹{Number(s.totalVal || 0).toFixed(2)}</td>
                         <td className="py-2 px-3 text-center font-sans">
                           {s.isLow ? (
                             <span className="px-1.5 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800 text-[10px] font-bold">
@@ -1008,6 +1249,23 @@ export default function ReportsView({ initialReportTab = null }) {
                 </tbody>
               </table>
             </div>
+
+            {/* AJAX Pagination */}
+            <AjaxTablePagination
+              totalCount={stockResult.totalCount}
+              page={stockResult.page}
+              pageSize={stockResult.pageSize}
+              totalPages={stockResult.totalPages}
+              startIndex={stockResult.startIndex}
+              endIndex={stockResult.endIndex}
+              isLoading={stockLoading}
+              executionTimeMs={stockResult.executionTimeMs}
+              onPageChange={(p) => setStockPage(p)}
+              onPageSizeChange={(ps) => {
+                setStockPageSize(ps);
+                setStockPage(1);
+              }}
+            />
           </div>
         </div>
       )}
@@ -1015,34 +1273,112 @@ export default function ReportsView({ initialReportTab = null }) {
       {/* 4. GST STATUTORY (GSTR-1) TAB */}
       {activeReportTab === 'gst' && (
         <div className="space-y-4">
+          {/* Date Filter Bar */}
+          <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-md">
+            <DateRangeFilter
+              selectedFilter={salesDateFilter}
+              onFilterChange={setSalesDateFilter}
+              customFromDate={salesCustomFrom}
+              customToDate={salesCustomTo}
+              onCustomFromChange={setSalesCustomFrom}
+              onCustomToChange={setSalesCustomTo}
+              disabled={salesLoading}
+            />
+
+            <span className="text-xs text-slate-400 font-mono">
+              {postedInvoices.length.toLocaleString('en-IN')} Taxable Outward Invoices
+            </span>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
               <span className="text-[11px] text-slate-400">Total CGST (Central GST)</span>
-              <div className="text-xl font-bold font-mono text-emerald-400">₹{totalCGST.toFixed(2)}</div>
+              <div className="text-xl font-bold font-mono text-emerald-400">
+                ₹{totalCGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </div>
               <span className="text-[10px] text-slate-500">50% Intra-State Share</span>
             </div>
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
               <span className="text-[11px] text-slate-400">Total SGST (State GST)</span>
-              <div className="text-xl font-bold font-mono text-emerald-400">₹{totalSGST.toFixed(2)}</div>
+              <div className="text-xl font-bold font-mono text-emerald-400">
+                ₹{totalSGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </div>
               <span className="text-[10px] text-slate-500">50% Intra-State Share</span>
             </div>
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
               <span className="text-[11px] text-slate-400">Total IGST (Integrated GST)</span>
-              <div className="text-xl font-bold font-mono text-purple-400">₹{totalIGST.toFixed(2)}</div>
+              <div className="text-xl font-bold font-mono text-purple-400">
+                ₹{totalIGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </div>
               <span className="text-[10px] text-slate-500">100% Inter-State Consignments</span>
             </div>
           </div>
 
-          <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-2 text-xs">
-            <h4 className="font-bold text-white flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              GSTR-1 Monthly Return Summary Matrix
-            </h4>
-            <p className="text-slate-400 leading-relaxed text-[11px]">
-              Taxes calculated dynamically based on store origin state code ({activeCompany?.stateCode}) vs customer
-              destination state. B2B registered supplies with GSTIN are segregated from B2C consumer supplies for portal
-              filing.
-            </p>
+          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
+            <div className="p-3 border-b border-slate-800 font-bold text-white text-xs flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Percent className="w-4 h-4 text-indigo-400" />
+                <span>GSTR-1 Outward Supplies Matrix</span>
+              </div>
+              <span className="text-slate-400 font-mono">{salesResult.totalCount.toLocaleString('en-IN')} Records</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs min-w-[850px]">
+                <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] border-b border-slate-800">
+                  <tr>
+                    <th className="py-2.5 px-3">Invoice #</th>
+                    <th className="py-2.5 px-3">Date</th>
+                    <th className="py-2.5 px-3">Customer / GSTIN</th>
+                    <th className="py-2.5 px-3 text-right">Taxable (₹)</th>
+                    <th className="py-2.5 px-3 text-right">CGST (₹)</th>
+                    <th className="py-2.5 px-3 text-right">SGST (₹)</th>
+                    <th className="py-2.5 px-3 text-right">IGST (₹)</th>
+                    <th className="py-2.5 px-3 text-right">Total GST (₹)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800 font-mono text-[11px]">
+                  {salesResult.data.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="py-12 text-center text-slate-500 font-sans">
+                        No statutory records found for selected period.
+                      </td>
+                    </tr>
+                  ) : (
+                    salesResult.data.map((inv) => (
+                      <tr key={inv.id} className="hover:bg-slate-800/40 transition">
+                        <td className="py-2 px-3 text-indigo-300 font-bold">{inv.docNumber}</td>
+                        <td className="py-2 px-3 text-slate-400 font-sans">{new Date(inv.date).toLocaleDateString()}</td>
+                        <td className="py-2 px-3 font-sans text-white">
+                          <div>{inv.customerName}</div>
+                          <div className="text-[10px] text-slate-400 font-mono">{inv.customerGstin || 'URP (Consumer)'}</div>
+                        </td>
+                        <td className="py-2 px-3 text-right text-slate-300">₹{Number(inv.taxableAmount || 0).toFixed(2)}</td>
+                        <td className="py-2 px-3 text-right text-emerald-400">₹{Number(inv.cgstAmount || 0).toFixed(2)}</td>
+                        <td className="py-2 px-3 text-right text-emerald-400">₹{Number(inv.sgstAmount || 0).toFixed(2)}</td>
+                        <td className="py-2 px-3 text-right text-purple-400">₹{Number(inv.igstAmount || 0).toFixed(2)}</td>
+                        <td className="py-2 px-3 text-right font-bold text-cyan-400">₹{Number(inv.totalTax || 0).toFixed(2)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <AjaxTablePagination
+              totalCount={salesResult.totalCount}
+              page={salesResult.page}
+              pageSize={salesResult.pageSize}
+              totalPages={salesResult.totalPages}
+              startIndex={salesResult.startIndex}
+              endIndex={salesResult.endIndex}
+              isLoading={salesLoading}
+              executionTimeMs={salesResult.executionTimeMs}
+              onPageChange={(p) => setSalesPage(p)}
+              onPageSizeChange={(ps) => {
+                setSalesPageSize(ps);
+                setSalesPage(1);
+              }}
+            />
           </div>
         </div>
       )}
@@ -1065,14 +1401,14 @@ export default function ReportsView({ initialReportTab = null }) {
               <div className="flex gap-2">
                 <button
                   onClick={handleGenerateTally}
-                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow transition"
+                  className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow transition cursor-pointer"
                 >
                   Generate XML Batch
                 </button>
                 {tallyXmlOutput && (
                   <button
                     onClick={handleDownloadXml}
-                    className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow flex items-center gap-1.5 transition"
+                    className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow flex items-center gap-1.5 transition cursor-pointer"
                   >
                     <DownloadCloud className="w-4 h-4" /> Download XML
                   </button>
