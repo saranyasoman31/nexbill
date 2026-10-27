@@ -100,16 +100,21 @@ export default function PricingView() {
             data={
               activeTab === 'list'
                 ? db.products.map((p, idx) => {
-                    const margin = (((p.sellingRate - p.costRate) / p.sellingRate) * 100).toFixed(1);
+                    const cost = Number(p.costRate || 0);
+                    const mrp = Number(p.mrp || 0);
+                    const selling = Number(p.sellingRate || 0);
+                    const margin = selling > 0 ? (((selling - cost) / selling) * 100).toFixed(1) : '—';
+                    const diff = Number((selling - cost).toFixed(2));
                     return {
                       '#': idx + 1,
                       'Product Name': p.name,
                       'SKU': p.sku,
-                      'Cost Price (WAC)': `₹${p.costRate?.toFixed(2)}`,
-                      'MRP': `₹${p.mrp?.toFixed(2)}`,
-                      'Active Selling Rate': `₹${p.sellingRate?.toFixed(2)}`,
-                      'GST %': `${p.taxRate}%`,
-                      'Statutory Margin %': `${margin}%`
+                      'Cost Price (WAC)': `₹${cost.toFixed(2)}`,
+                      'MRP': mrp > 0 ? `₹${mrp.toFixed(2)}` : 'null',
+                      'Active Selling Rate': selling > 0 ? `₹${selling.toFixed(2)}` : 'null',
+                      'Price Difference (SP - CP)': selling > 0 ? `₹${diff >= 0 ? '+' : ''}${diff.toFixed(2)}` : '—',
+                      'GST %': `${p.taxRate || 0}%`,
+                      'Statutory Margin %': margin !== '—' ? `${margin}%` : '—'
                     };
                   })
                 : db.rateChanges.map((rc, idx) => ({
@@ -149,18 +154,43 @@ export default function PricingView() {
               </thead>
               <tbody className="divide-y divide-slate-800/60">
                 {db.products.map(p => {
-                  const margin = (((p.sellingRate - p.costRate) / p.sellingRate) * 100).toFixed(1);
+                  const cost = Number(p.costRate || 0);
+                  const mrp = Number(p.mrp || 0);
+                  const selling = Number(p.sellingRate || 0);
+                  const margin = selling > 0 ? (((selling - cost) / selling) * 100).toFixed(1) : null;
+                  const diff = Number((selling - cost).toFixed(2));
                   return (
                     <tr key={p.id} className="hover:bg-slate-800/40 transition">
                       <td className="py-2.5 px-3 font-semibold text-slate-200">{p.name}</td>
                       <td className="py-2.5 px-3 font-mono text-slate-400">{p.sku}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-slate-400">₹{p.costRate.toFixed(2)}</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-amber-300">₹{p.mrp.toFixed(2)}</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-400 text-sm">
-                        ₹{p.sellingRate.toFixed(2)}
+                      <td className="py-2.5 px-3 text-right font-mono text-slate-300">₹{cost.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right font-mono">
+                        {mrp > 0 ? (
+                          <span className="font-bold text-amber-300">₹{mrp.toFixed(2)}</span>
+                        ) : (
+                          <span className="text-slate-500 italic">null</span>
+                        )}
                       </td>
-                      <td className="py-2.5 px-2 text-center text-slate-300">{p.taxRate}%</td>
-                      <td className="py-2.5 px-3 text-center font-mono text-indigo-300 font-semibold">{margin}%</td>
+                      <td className="py-2.5 px-3 text-right font-mono">
+                        {selling > 0 ? (
+                          <span className="font-bold text-emerald-400 text-sm">₹{selling.toFixed(2)}</span>
+                        ) : (
+                          <span className="text-slate-500 italic">null</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-2 text-center text-slate-300">{p.taxRate || 0}%</td>
+                      <td className="py-2.5 px-3 text-center font-mono">
+                        {selling > 0 ? (
+                          <div>
+                            <span className="text-indigo-300 font-semibold">{margin}%</span>
+                            <span className="block text-[10px] text-emerald-400">
+                              (Diff: {diff >= 0 ? '+' : ''}₹{diff.toFixed(2)})
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-500 italic text-[11px]">—</span>
+                        )}
+                      </td>
                       <td className="py-2.5 px-3 text-center">
                         <button
                           onClick={() => {

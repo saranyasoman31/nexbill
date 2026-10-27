@@ -19,6 +19,15 @@ import {
   RotateCw,
   ShieldAlert,
   Zap,
+  ListOrdered,
+  FileText,
+  Filter,
+  Layers,
+  Tag,
+  ChevronRight,
+  ChevronDown,
+  ShoppingBag,
+  X,
 } from 'lucide-react';
 import ExportButtons from '../common/ExportButtons.jsx';
 import BacklogReportView from './BacklogReportView.jsx';
@@ -121,18 +130,26 @@ export default function ReportsView({ initialReportTab = null }) {
   }, [salesDateFilter, salesCustomFrom, salesCustomTo, salesSearch]);
 
   // --- 2. PURCHASES REPORT STATE (AJAX & INDEXED) ---
+  const [purchasesViewMode, setPurchasesViewMode] = useState('detailed'); // 'detailed' (Item-Wise) | 'summary' (Invoice-Wise)
   const [purchasesDateFilter, setPurchasesDateFilter] = useState('ALL');
   const [purchasesCustomFrom, setPurchasesCustomFrom] = useState('');
   const [purchasesCustomTo, setPurchasesCustomTo] = useState('');
   const [purchasesFilterMode, setPurchasesFilterMode] = useState('purchases_only'); // 'purchases_only' | 'initial_stock_only' | 'all'
   const [purchasesSearch, setPurchasesSearch] = useState('');
   const [purchasesSupplierFilter, setPurchasesSupplierFilter] = useState('ALL');
+  const [purchasesProductFilter, setPurchasesProductFilter] = useState('ALL');
+  const [purchasesBrandFilter, setPurchasesBrandFilter] = useState('ALL');
+  const [purchasesCategoryFilter, setPurchasesCategoryFilter] = useState('ALL');
+  const [purchasesMainCategoryFilter, setPurchasesMainCategoryFilter] = useState('ALL');
+  const [expandedPurchaseIds, setExpandedPurchaseIds] = useState(new Set());
   const [purchasesPage, setPurchasesPage] = useState(1);
   const [purchasesPageSize, setPurchasesPageSize] = useState(50);
   const [purchasesLoading, setPurchasesLoading] = useState(false);
   const [purchasesResult, setPurchasesResult] = useState({
     data: [],
     allFiltered: [],
+    detailedItems: [],
+    matchingInvoices: [],
     totalCount: 0,
     page: 1,
     pageSize: 50,
@@ -143,10 +160,23 @@ export default function ReportsView({ initialReportTab = null }) {
       standardPurchasesAmount: 0,
       standardPurchaseTax: 0,
       initialStockInwardAmount: 0,
+      totalInwardQuantity: 0,
+      totalLinesCount: 0,
+      totalInvoicesCount: 0,
       totalRecords: 0,
+      avgSpDiff: 0,
     },
     executionTimeMs: 0,
   });
+
+  const toggleExpandPurchase = (id) => {
+    setExpandedPurchaseIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const loadPurchasesReport = useCallback(async () => {
     setPurchasesLoading(true);
@@ -158,6 +188,11 @@ export default function ReportsView({ initialReportTab = null }) {
         purchasesFilterMode,
         search: purchasesSearch,
         supplierFilter: purchasesSupplierFilter,
+        productFilter: purchasesProductFilter,
+        brandFilter: purchasesBrandFilter,
+        categoryFilter: purchasesCategoryFilter,
+        mainCategoryFilter: purchasesMainCategoryFilter,
+        viewMode: purchasesViewMode,
         page: purchasesPage,
         pageSize: purchasesPageSize,
       });
@@ -167,7 +202,22 @@ export default function ReportsView({ initialReportTab = null }) {
     } finally {
       setPurchasesLoading(false);
     }
-  }, [db, purchasesDateFilter, purchasesCustomFrom, purchasesCustomTo, purchasesFilterMode, purchasesSearch, purchasesSupplierFilter, purchasesPage, purchasesPageSize]);
+  }, [
+    db,
+    purchasesDateFilter,
+    purchasesCustomFrom,
+    purchasesCustomTo,
+    purchasesFilterMode,
+    purchasesSearch,
+    purchasesSupplierFilter,
+    purchasesProductFilter,
+    purchasesBrandFilter,
+    purchasesCategoryFilter,
+    purchasesMainCategoryFilter,
+    purchasesViewMode,
+    purchasesPage,
+    purchasesPageSize,
+  ]);
 
   useEffect(() => {
     if (activeReportTab === 'purchases') {
@@ -177,7 +227,19 @@ export default function ReportsView({ initialReportTab = null }) {
 
   useEffect(() => {
     setPurchasesPage(1);
-  }, [purchasesDateFilter, purchasesCustomFrom, purchasesCustomTo, purchasesFilterMode, purchasesSearch, purchasesSupplierFilter]);
+  }, [
+    purchasesDateFilter,
+    purchasesCustomFrom,
+    purchasesCustomTo,
+    purchasesFilterMode,
+    purchasesSearch,
+    purchasesSupplierFilter,
+    purchasesProductFilter,
+    purchasesBrandFilter,
+    purchasesCategoryFilter,
+    purchasesMainCategoryFilter,
+    purchasesViewMode,
+  ]);
 
   // --- 3. INITIAL STOCK REPORT STATE (AJAX & INDEXED) ---
   const [initialStockWarehouseFilter, setInitialStockWarehouseFilter] = useState('ALL');
@@ -332,6 +394,34 @@ export default function ReportsView({ initialReportTab = null }) {
       }));
     }
     if (activeReportTab === 'purchases') {
+      if (purchasesViewMode === 'detailed') {
+        return (purchasesResult.allFiltered || []).map((item, idx) => ({
+          '#': idx + 1,
+          'Date': new Date(item.date).toLocaleDateString(),
+          'Inward Doc #': item.docNumber,
+          'Type': item.isInitialStock ? 'INITIAL_STOCK' : 'PURCHASE',
+          'Supplier Invoice #': item.isInitialStock ? 'OPENING_STOCK' : (item.supplierInvoiceNo || '—'),
+          'Supplier Name': item.supplierName,
+          'Product Name': item.productName,
+          'SKU': item.sku || '—',
+          'Main Category': item.mainCategory,
+          'Category': item.category,
+          'Brand': item.brand,
+          'Batch': item.batchNo || '—',
+          'Qty': item.qty,
+          'UOM': item.uom,
+          'Cost Price (₹)': Number(item.costPrice || 0).toFixed(2),
+          'Previous Cost (₹)': item.previousCostPrice !== null ? Number(item.previousCostPrice).toFixed(2) : '— (Base)',
+          'Cost Diff vs Prev (₹)': item.costDiff !== null ? `${item.costDiff >= 0 ? '+' : ''}${item.costDiff.toFixed(2)} (${item.costDiffPercent >= 0 ? '+' : ''}${item.costDiffPercent}%)` : '—',
+          'MRP (₹)': item.mrp !== null ? Number(item.mrp).toFixed(2) : '—',
+          'Selling Price (₹)': item.sellingPrice !== null ? Number(item.sellingPrice).toFixed(2) : '—',
+          'SP Diff / Margin (₹)': item.spDiff !== null ? `${item.spDiff >= 0 ? '+' : ''}${item.spDiff.toFixed(2)} (${item.marginPercent}%)` : '—',
+          'MRP Diff (₹)': item.mrpDiff !== null ? `${item.mrpDiff >= 0 ? '+' : ''}${item.mrpDiff.toFixed(2)}` : '—',
+          'GST %': `${item.taxRate}%`,
+          'Tax (₹)': Number(item.taxAmount || 0).toFixed(2),
+          'Line Total (₹)': Number(item.lineTotal || 0).toFixed(2),
+        }));
+      }
       return (purchasesResult.allFiltered || []).map((p, idx) => {
         const isInit = Boolean(p.isInitialStock || p.entryType === 'INITIAL_STOCK' || p.docNumber?.startsWith('INIT-'));
         return {
@@ -372,6 +462,9 @@ export default function ReportsView({ initialReportTab = null }) {
         'Sales Outward Qty': s.salesOutwardQty,
         'Available Current Stock': s.currentStock,
         'Valuation Rate (₹)': Number(s.valRate).toFixed(2),
+        'MRP (₹)': s.mrp > 0 ? Number(s.mrp).toFixed(2) : '—',
+        'Selling Rate (₹)': s.sellingRate > 0 ? Number(s.sellingRate).toFixed(2) : '—',
+        'Margin / Diff (₹)': s.sellingRate > 0 ? `${Number(s.priceDifference).toFixed(2)} (${s.marginPercent}%)` : '—',
         'Total Asset Value (₹)': Number(s.totalVal).toFixed(2),
         'Status': s.isLow ? 'LOW STOCK' : 'ADEQUATE',
       }));
@@ -712,27 +805,56 @@ export default function ReportsView({ initialReportTab = null }) {
         </div>
       )}
 
-      {/* 2. PURCHASES REPORT TAB */}
+      {/* 2. PURCHASES REPORT TAB (PURCHASE REGISTER WITH DETAILED ITEM LIST & SUMMARY) */}
       {activeReportTab === 'purchases' && (
         <div className="space-y-4">
-          {/* Inward Purchases Mode & Filter Bar */}
+          {/* Top Control Bar: View Mode Switcher & Inward Type Filter */}
           <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-2.5 rounded-xl shadow-md">
+            {/* View Mode Toggle (Detailed Purchase List vs Summary Register) */}
+            <div className="inline-flex rounded-lg p-1 bg-slate-950 border border-slate-800 text-xs">
+              <button
+                type="button"
+                onClick={() => setPurchasesViewMode('detailed')}
+                className={`px-3 py-1.5 rounded-md font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+                  purchasesViewMode === 'detailed'
+                    ? 'bg-indigo-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <ListOrdered className="w-3.5 h-3.5" />
+                <span>Detailed Purchase List (Item-Wise)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPurchasesViewMode('summary')}
+                className={`px-3 py-1.5 rounded-md font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+                  purchasesViewMode === 'summary'
+                    ? 'bg-indigo-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Summary Register (Invoice-Wise)</span>
+              </button>
+            </div>
+
+            {/* Inward Mode Toggle (Purchases / Initial Stock / All) */}
             <div className="inline-flex rounded-lg p-1 bg-slate-950 border border-slate-800 text-xs">
               <button
                 type="button"
                 onClick={() => setPurchasesFilterMode('purchases_only')}
-                className={`px-3 py-1 rounded-md font-semibold transition cursor-pointer ${
+                className={`px-2.5 py-1 rounded font-semibold transition cursor-pointer ${
                   purchasesFilterMode === 'purchases_only'
                     ? 'bg-indigo-600 text-white shadow'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Standard Purchases Only
+                Purchases Only
               </button>
               <button
                 type="button"
                 onClick={() => setPurchasesFilterMode('initial_stock_only')}
-                className={`px-3 py-1 rounded-md font-semibold transition cursor-pointer ${
+                className={`px-2.5 py-1 rounded font-semibold transition cursor-pointer ${
                   purchasesFilterMode === 'initial_stock_only'
                     ? 'bg-amber-600 text-white shadow'
                     : 'text-amber-400/80 hover:text-amber-300'
@@ -743,46 +865,80 @@ export default function ReportsView({ initialReportTab = null }) {
               <button
                 type="button"
                 onClick={() => setPurchasesFilterMode('all')}
-                className={`px-3 py-1 rounded-md font-semibold transition cursor-pointer ${
+                className={`px-2.5 py-1 rounded font-semibold transition cursor-pointer ${
                   purchasesFilterMode === 'all'
                     ? 'bg-slate-700 text-white shadow'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                All Inward Records
+                All Inwards
               </button>
-            </div>
-
-            <div className="text-xs text-slate-400">
-              {purchasesFilterMode === 'purchases_only' && (
-                <span className="text-emerald-400 font-medium">
-                  ✓ Initial stock cutovers excluded from purchase turnover & ITC
-                </span>
-              )}
-              {purchasesFilterMode === 'initial_stock_only' && (
-                <span className="text-amber-400 font-medium">
-                  Showing opening stock inward cutovers only
-                </span>
-              )}
-              {purchasesFilterMode === 'all' && (
-                <span className="text-slate-300 font-medium">
-                  Showing combined purchases and opening cutovers
-                </span>
-              )}
             </div>
           </div>
 
-          {/* Date Range & Supplier Search Bar */}
+          {/* Date Range Bar with Explicit From & To Date Filtration */}
           <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-md">
-            <DateRangeFilter
-              selectedFilter={purchasesDateFilter}
-              onFilterChange={setPurchasesDateFilter}
-              customFromDate={purchasesCustomFrom}
-              customToDate={purchasesCustomTo}
-              onCustomFromChange={setPurchasesCustomFrom}
-              onCustomToChange={setPurchasesCustomTo}
-              disabled={purchasesLoading}
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <DateRangeFilter
+                selectedFilter={purchasesDateFilter}
+                onFilterChange={(val) => {
+                  setPurchasesDateFilter(val);
+                  if (val !== 'CUSTOM') {
+                    setPurchasesCustomFrom('');
+                    setPurchasesCustomTo('');
+                  }
+                }}
+                customFromDate={purchasesCustomFrom}
+                customToDate={purchasesCustomTo}
+                onCustomFromChange={(val) => {
+                  setPurchasesCustomFrom(val);
+                  setPurchasesDateFilter('CUSTOM');
+                }}
+                onCustomToChange={(val) => {
+                  setPurchasesCustomTo(val);
+                  setPurchasesDateFilter('CUSTOM');
+                }}
+                disabled={purchasesLoading}
+              />
+
+              {/* Explicit From & To Date Inputs Always Accessible */}
+              <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-lg text-xs">
+                <span className="text-[10px] font-bold uppercase text-slate-400">From:</span>
+                <input
+                  type="date"
+                  value={purchasesCustomFrom || ''}
+                  onChange={(e) => {
+                    setPurchasesCustomFrom(e.target.value);
+                    setPurchasesDateFilter('CUSTOM');
+                  }}
+                  className="bg-transparent text-slate-200 border-none outline-none text-xs cursor-pointer font-mono"
+                />
+                <span className="text-[10px] font-bold uppercase text-slate-400 ml-1">To:</span>
+                <input
+                  type="date"
+                  value={purchasesCustomTo || ''}
+                  onChange={(e) => {
+                    setPurchasesCustomTo(e.target.value);
+                    setPurchasesDateFilter('CUSTOM');
+                  }}
+                  className="bg-transparent text-slate-200 border-none outline-none text-xs cursor-pointer font-mono"
+                />
+                {(purchasesCustomFrom || purchasesCustomTo || purchasesDateFilter !== 'ALL') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPurchasesCustomFrom('');
+                      setPurchasesCustomTo('');
+                      setPurchasesDateFilter('ALL');
+                    }}
+                    className="ml-1 p-0.5 text-slate-400 hover:text-rose-400 rounded"
+                    title="Clear Date Filter"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
 
             <div className="flex flex-wrap items-center gap-2">
               <select
@@ -802,10 +958,10 @@ export default function ReportsView({ initialReportTab = null }) {
                 <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
                 <input
                   type="text"
-                  placeholder="Search invoice, doc #, vendor..."
+                  placeholder="Search invoice, product, SKU, brand..."
                   value={purchasesSearch}
                   onChange={(e) => setPurchasesSearch(e.target.value)}
-                  className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-56 sm:w-64"
+                  className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-52 sm:w-60"
                 />
               </div>
 
@@ -821,8 +977,171 @@ export default function ReportsView({ initialReportTab = null }) {
             </div>
           </div>
 
-          {/* KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Multi-Dimensional Classification Filters: Main Category, Category, Brand, Product */}
+          <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 shadow-md text-xs">
+            {/* Main Category Filter */}
+            <div>
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase mb-1">
+                <Layers className="w-3 h-3 text-indigo-400" />
+                <span>Main Category</span>
+              </div>
+              <select
+                value={purchasesMainCategoryFilter}
+                onChange={(e) => {
+                  setPurchasesMainCategoryFilter(e.target.value);
+                  setPurchasesCategoryFilter('ALL');
+                }}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 cursor-pointer"
+              >
+                <option value="ALL">All Main Categories</option>
+                {(db.mainCategories || [{ id: 'MCAT-01', name: 'General' }]).map((mc) => (
+                  <option key={mc.id || mc.name} value={mc.id || mc.name}>
+                    {mc.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Sub-Category Filter */}
+            <div>
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase mb-1">
+                <Tag className="w-3 h-3 text-cyan-400" />
+                <span>Sub-Category</span>
+              </div>
+              <select
+                value={purchasesCategoryFilter}
+                onChange={(e) => setPurchasesCategoryFilter(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 cursor-pointer"
+              >
+                <option value="ALL">All Categories</option>
+                {(db.categories || [])
+                  .filter((c) => {
+                    if (purchasesMainCategoryFilter === 'ALL') return true;
+                    return (
+                      c.mainCategoryId === purchasesMainCategoryFilter ||
+                      c.mainCategory === purchasesMainCategoryFilter
+                    );
+                  })
+                  .map((c) => (
+                    <option key={c.id || c.name} value={c.id || c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {/* Brand Filter */}
+            <div>
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase mb-1">
+                <ShoppingBag className="w-3 h-3 text-amber-400" />
+                <span>Brand</span>
+              </div>
+              <select
+                value={purchasesBrandFilter}
+                onChange={(e) => setPurchasesBrandFilter(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 cursor-pointer"
+              >
+                <option value="ALL">All Brands</option>
+                {(db.brands || []).map((b) => (
+                  <option key={b.id || b.name} value={b.id || b.name}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Product Filter */}
+            <div>
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase mb-1">
+                <Boxes className="w-3 h-3 text-emerald-400" />
+                <span>Product</span>
+              </div>
+              <select
+                value={purchasesProductFilter}
+                onChange={(e) => setPurchasesProductFilter(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 cursor-pointer"
+              >
+                <option value="ALL">All Products ({(db.products || []).length})</option>
+                {(db.products || []).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} {p.sku ? `(${p.sku})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Active Filter Badges Reset Bar (Visible when any filter is active) */}
+          {(purchasesProductFilter !== 'ALL' ||
+            purchasesBrandFilter !== 'ALL' ||
+            purchasesCategoryFilter !== 'ALL' ||
+            purchasesMainCategoryFilter !== 'ALL' ||
+            purchasesSupplierFilter !== 'ALL' ||
+            purchasesCustomFrom ||
+            purchasesCustomTo ||
+            purchasesSearch) && (
+            <div className="flex flex-wrap items-center gap-1.5 bg-slate-950/60 border border-slate-800 p-2 rounded-lg text-xs">
+              <span className="text-[11px] text-slate-400 font-semibold flex items-center gap-1">
+                <Filter className="w-3 h-3 text-indigo-400" />
+                Active Filters:
+              </span>
+              {purchasesMainCategoryFilter !== 'ALL' && (
+                <span className="px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800 text-[10px]">
+                  Main Cat: {db.mainCategories?.find((m) => m.id === purchasesMainCategoryFilter || m.name === purchasesMainCategoryFilter)?.name || purchasesMainCategoryFilter}
+                </span>
+              )}
+              {purchasesCategoryFilter !== 'ALL' && (
+                <span className="px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 text-[10px]">
+                  Category: {db.categories?.find((c) => c.id === purchasesCategoryFilter || c.name === purchasesCategoryFilter)?.name || purchasesCategoryFilter}
+                </span>
+              )}
+              {purchasesBrandFilter !== 'ALL' && (
+                <span className="px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800 text-[10px]">
+                  Brand: {db.brands?.find((b) => b.id === purchasesBrandFilter || b.name === purchasesBrandFilter)?.name || purchasesBrandFilter}
+                </span>
+              )}
+              {purchasesProductFilter !== 'ALL' && (
+                <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px]">
+                  Product: {db.products?.find((p) => p.id === purchasesProductFilter)?.name || purchasesProductFilter}
+                </span>
+              )}
+              {purchasesSupplierFilter !== 'ALL' && (
+                <span className="px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800 text-[10px]">
+                  Supplier: {db.suppliers?.find((s) => s.id === purchasesSupplierFilter)?.name || purchasesSupplierFilter}
+                </span>
+              )}
+              {(purchasesCustomFrom || purchasesCustomTo) && (
+                <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[10px] font-mono">
+                  Dates: {purchasesCustomFrom || 'Start'} to {purchasesCustomTo || 'Present'}
+                </span>
+              )}
+              {purchasesSearch && (
+                <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[10px]">
+                  "{purchasesSearch}"
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setPurchasesProductFilter('ALL');
+                  setPurchasesBrandFilter('ALL');
+                  setPurchasesCategoryFilter('ALL');
+                  setPurchasesMainCategoryFilter('ALL');
+                  setPurchasesSupplierFilter('ALL');
+                  setPurchasesCustomFrom('');
+                  setPurchasesCustomTo('');
+                  setPurchasesDateFilter('ALL');
+                  setPurchasesSearch('');
+                }}
+                className="ml-auto text-[10px] text-rose-400 hover:text-rose-300 font-bold underline cursor-pointer"
+              >
+                Clear All Filters
+              </button>
+            </div>
+          )}
+
+          {/* KPI Metrics Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
               <span className="text-[11px] text-slate-400">
                 {purchasesFilterMode === 'initial_stock_only' ? 'Initial Stock Valuation' : 'Total Inward Purchase Value'}
@@ -835,7 +1154,19 @@ export default function ReportsView({ initialReportTab = null }) {
                 ).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </div>
               <span className="text-[10px] text-indigo-400 font-semibold font-mono">
-                {purchasesResult.totalCount.toLocaleString('en-IN')} Inward Records
+                {purchasesViewMode === 'detailed'
+                  ? `${purchasesResult.totalCount.toLocaleString('en-IN')} Purchased Items`
+                  : `${purchasesResult.totalCount.toLocaleString('en-IN')} Inward Invoices`}
+              </span>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-1">
+              <span className="text-[11px] text-slate-400">Total Quantity Received</span>
+              <div className="text-xl font-bold font-mono text-cyan-400">
+                {Number(purchasesResult.metrics.totalInwardQuantity || 0).toLocaleString('en-IN')} Units
+              </div>
+              <span className="text-[10px] text-cyan-300/80 font-semibold">
+                Across {purchasesResult.metrics.totalLinesCount || purchasesResult.totalCount} Product Lines
               </span>
             </div>
 
@@ -862,78 +1193,342 @@ export default function ReportsView({ initialReportTab = null }) {
             </div>
           </div>
 
-          {/* Table */}
+          {/* Main Register Table (Item-Wise Detailed List vs Invoice Summary) */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
             <div className="p-3 border-b border-slate-800 font-bold text-white text-xs flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Truck className="w-4 h-4 text-indigo-400" />
-                <span>Vendor Inward & Purchase Invoices Register</span>
+                <span>
+                  {purchasesViewMode === 'detailed'
+                    ? 'Purchase Register: Detailed Item-Wise List with Price Differences & Margins'
+                    : 'Purchase Register: Inward Invoices Summary'}
+                </span>
               </div>
-              <span className="text-slate-400 font-mono">{purchasesResult.totalCount.toLocaleString('en-IN')} Records</span>
+              <span className="text-slate-400 font-mono">
+                {purchasesResult.totalCount.toLocaleString('en-IN')} {purchasesViewMode === 'detailed' ? 'Items' : 'Invoices'}
+              </span>
             </div>
+
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs min-w-[850px]">
-                <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] border-b border-slate-800">
-                  <tr>
-                    <th className="py-2.5 px-3">Inward Doc #</th>
-                    <th className="py-2.5 px-2 text-center">Type</th>
-                    <th className="py-2.5 px-3">Supplier Invoice #</th>
-                    <th className="py-2.5 px-3">Supplier Name</th>
-                    <th className="py-2.5 px-3 text-right">Subtotal (₹)</th>
-                    <th className="py-2.5 px-3 text-right">Tax (₹)</th>
-                    <th className="py-2.5 px-3 text-right">Net Value (₹)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800 font-mono text-[11px]">
-                  {purchasesResult.data.length === 0 ? (
+              {purchasesViewMode === 'detailed' ? (
+                /* ========================================================================= */
+                /* VIEW 1: DETAILED PURCHASE LIST (ITEM-WISE WITH ALL DIFFERENCES)            */
+                /* ========================================================================= */
+                <table className="w-full text-left text-xs min-w-[1250px]">
+                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] border-b border-slate-800">
                     <tr>
-                      <td colSpan="7" className="py-12 text-center text-slate-500 font-sans">
-                        {purchasesLoading ? 'Loading purchases via indexed engine...' : 'No inward goods records found for selected filter.'}
-                      </td>
+                      <th className="py-2.5 px-2.5 text-center w-8">#</th>
+                      <th className="py-2.5 px-3">Date & Inward #</th>
+                      <th className="py-2.5 px-3">Supplier & Invoice</th>
+                      <th className="py-2.5 px-3">Product Name & SKU</th>
+                      <th className="py-2.5 px-3">Classification</th>
+                      <th className="py-2.5 px-2 text-center">Qty</th>
+                      <th className="py-2.5 px-3 text-right">Cost Price (CP)</th>
+                      <th className="py-2.5 px-3 text-right">MRP</th>
+                      <th className="py-2.5 px-3 text-right">Selling Price (SP)</th>
+                      <th className="py-2.5 px-3 text-center">Cost Diff (vs Prev)</th>
+                      <th className="py-2.5 px-3 text-center">Margin / SP Diff</th>
+                      <th className="py-2.5 px-2 text-center">GST %</th>
+                      <th className="py-2.5 px-3 text-right">Line Total (₹)</th>
                     </tr>
-                  ) : (
-                    purchasesResult.data.map((p) => {
-                      const isInit = Boolean(
-                        p.isInitialStock ||
-                        p.entryType === 'INITIAL_STOCK' ||
-                        p.docNumber?.startsWith('INIT-')
-                      );
-                      return (
-                        <tr key={p.id} className="hover:bg-slate-800/40 transition">
-                          <td className="py-2 px-3 text-indigo-300 font-bold">{p.docNumber}</td>
-                          <td className="py-2 px-2 text-center">
-                            {isInit ? (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800">
+                  </thead>
+                  <tbody className="divide-y divide-slate-800 font-mono text-[11px]">
+                    {purchasesResult.data.length === 0 ? (
+                      <tr>
+                        <td colSpan="13" className="py-12 text-center text-slate-500 font-sans">
+                          {purchasesLoading
+                            ? 'Loading detailed purchase records via indexed engine...'
+                            : 'No purchased items found matching the selected filter criteria.'}
+                        </td>
+                      </tr>
+                    ) : (
+                      purchasesResult.data.map((item, idx) => (
+                        <tr key={item.id} className="hover:bg-slate-800/40 transition">
+                          <td className="py-2.5 px-2.5 text-slate-500 font-mono text-center">
+                            {purchasesResult.startIndex + idx}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <div className="font-bold text-indigo-300 font-mono">{item.docNumber}</div>
+                            <div className="text-[10px] text-slate-400 font-mono">
+                              {new Date(item.date).toLocaleDateString()}
+                            </div>
+                            {item.isInitialStock ? (
+                              <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-950 text-amber-300 border border-amber-800">
                                 Initial Stock
                               </span>
                             ) : (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-950 text-indigo-300 border border-indigo-800">
+                              <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-950 text-indigo-300 border border-indigo-800">
                                 Purchase
                               </span>
                             )}
                           </td>
-                          <td className="py-2 px-3 text-slate-300">
-                            {isInit ? (
-                              <span className="text-slate-500 italic text-[11px]">Opening Stock</span>
+                          <td className="py-2.5 px-3">
+                            <div className="font-semibold text-white font-sans">{item.supplierName}</div>
+                            <div className="text-[10px] text-slate-400 font-mono">
+                              {item.isInitialStock ? 'Opening Inventory' : `Inv: ${item.supplierInvoiceNo || '—'}`}
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <div className="font-bold text-white text-xs font-sans">{item.productName}</div>
+                            <div className="text-[10px] text-slate-400 font-mono">
+                              SKU: {item.sku} {item.batchNo && item.batchNo !== '—' ? `• Batch: ${item.batchNo}` : ''}
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3 font-sans">
+                            <div className="flex flex-wrap gap-1">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700">
+                                {item.mainCategory}
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700">
+                                {item.category}
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-950/80 text-indigo-300 border border-indigo-800">
+                                {item.brand}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-2 text-center font-bold text-white">
+                            {item.qty} <span className="text-[10px] text-slate-400 font-normal">{item.uom}</span>
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-bold text-white font-mono">
+                            ₹{Number(item.costPrice || 0).toFixed(2)}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono">
+                            {item.mrp !== null && item.mrp > 0 ? (
+                              <div>
+                                <span className="text-amber-300 font-bold">₹{Number(item.mrp).toFixed(2)}</span>
+                                {item.mrpDiff !== null && item.mrpDiff !== 0 && (
+                                  <div className="text-[9px] text-amber-400/80 font-mono">
+                                    Diff: {item.mrpDiff > 0 ? '+' : ''}₹{Number(item.mrpDiff).toFixed(2)}
+                                  </div>
+                                )}
+                              </div>
                             ) : (
-                              <span className="font-bold">{p.supplierInvoiceNo || '—'}</span>
+                              <span className="text-slate-500 italic">null</span>
                             )}
                           </td>
-                          <td className="py-2 px-3 font-sans text-white">{p.supplierName}</td>
-                          <td className="py-2 px-3 text-right text-slate-300">₹{Number(p.subtotal || 0).toFixed(2)}</td>
-                          <td className="py-2 px-3 text-right text-emerald-400">₹{Number(p.totalTax || 0).toFixed(2)}</td>
-                          <td className="py-2 px-3 text-right font-bold text-white">
-                            ₹{Number(p.netAmount || p.grandTotal || 0).toFixed(2)}
+                          <td className="py-2.5 px-3 text-right font-mono">
+                            {item.sellingPrice !== null && item.sellingPrice > 0 ? (
+                              <span className="text-emerald-400 font-bold">₹{Number(item.sellingPrice).toFixed(2)}</span>
+                            ) : (
+                              <span className="text-slate-500 italic">null</span>
+                            )}
+                          </td>
+                          {/* Cost Difference vs Previous Purchase Rate */}
+                          <td className="py-2.5 px-3 text-center font-mono">
+                            {item.previousCostPrice === null ? (
+                              <span className="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400 border border-slate-700">
+                                Base Rate
+                              </span>
+                            ) : item.costDiff === 0 ? (
+                              <span className="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700">
+                                ₹0.00 (Same)
+                              </span>
+                            ) : item.costDiff > 0 ? (
+                              <div className="inline-block px-2 py-0.5 rounded text-[10px] bg-rose-950/80 text-rose-300 border border-rose-800 font-bold">
+                                <div className="flex items-center gap-0.5 justify-center">
+                                  <TrendingUp className="w-3 h-3 text-rose-400" />
+                                  <span>+₹{Number(item.costDiff).toFixed(2)}</span>
+                                </div>
+                                <div className="text-[9px] text-rose-400/80 font-normal">
+                                  +{item.costDiffPercent}% (was ₹{Number(item.previousCostPrice).toFixed(2)})
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="inline-block px-2 py-0.5 rounded text-[10px] bg-emerald-950/80 text-emerald-300 border border-emerald-800 font-bold">
+                                <div>-₹{Math.abs(Number(item.costDiff)).toFixed(2)}</div>
+                                <div className="text-[9px] text-emerald-400/80 font-normal">
+                                  {item.costDiffPercent}% (was ₹{Number(item.previousCostPrice).toFixed(2)})
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                          {/* Margin / Selling Difference (SP - CP) */}
+                          <td className="py-2.5 px-3 text-center font-mono">
+                            {item.spDiff !== null ? (
+                              <div className="inline-block px-2 py-0.5 rounded text-[10px] bg-emerald-950/80 text-emerald-300 border border-emerald-800 font-bold">
+                                <div>+₹{Number(item.spDiff).toFixed(2)}</div>
+                                <div className="text-[9px] text-emerald-400 font-normal">{item.marginPercent}% Margin</div>
+                              </div>
+                            ) : (
+                              <span className="text-slate-500 italic text-[11px]">—</span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-2 text-center text-slate-300 font-mono">
+                            <div>{item.taxRate}%</div>
+                            <div className="text-[10px] text-slate-500">₹{Number(item.taxAmount || 0).toFixed(2)}</div>
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-bold text-white font-mono">
+                            ₹{Number(item.lineTotal || 0).toFixed(2)}
                           </td>
                         </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              ) : (
+                /* ========================================================================= */
+                /* VIEW 2: SUMMARY REGISTER (INVOICE-WISE WITH INLINE ACCORDION EXPANSION)    */
+                /* ========================================================================= */
+                <table className="w-full text-left text-xs min-w-[850px]">
+                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] border-b border-slate-800">
+                    <tr>
+                      <th className="py-2.5 px-2 text-center w-8"></th>
+                      <th className="py-2.5 px-3">Inward Doc #</th>
+                      <th className="py-2.5 px-2 text-center">Type</th>
+                      <th className="py-2.5 px-3">Supplier Invoice #</th>
+                      <th className="py-2.5 px-3">Supplier Name</th>
+                      <th className="py-2.5 px-2 text-center">Items</th>
+                      <th className="py-2.5 px-3 text-right">Subtotal (₹)</th>
+                      <th className="py-2.5 px-3 text-right">Tax (₹)</th>
+                      <th className="py-2.5 px-3 text-right">Net Value (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800 font-mono text-[11px]">
+                    {purchasesResult.data.length === 0 ? (
+                      <tr>
+                        <td colSpan="9" className="py-12 text-center text-slate-500 font-sans">
+                          {purchasesLoading
+                            ? 'Loading purchases via indexed engine...'
+                            : 'No inward goods records found for selected filter.'}
+                        </td>
+                      </tr>
+                    ) : (
+                      purchasesResult.data.map((p) => {
+                        const isInit = Boolean(
+                          p.isInitialStock ||
+                          p.entryType === 'INITIAL_STOCK' ||
+                          p.docNumber?.startsWith('INIT-')
+                        );
+                        const isExpanded = expandedPurchaseIds.has(p.id);
+                        const lineItems = p.lines || p.items || [];
+
+                        return (
+                          <React.Fragment key={p.id}>
+                            <tr className="hover:bg-slate-800/40 transition">
+                              <td className="py-2 px-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleExpandPurchase(p.id)}
+                                  className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition cursor-pointer"
+                                  title={isExpanded ? 'Collapse Items' : 'Expand Items'}
+                                >
+                                  {isExpanded ? (
+                                    <ChevronDown className="w-3.5 h-3.5 text-indigo-400" />
+                                  ) : (
+                                    <ChevronRight className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
+                              </td>
+                              <td className="py-2 px-3 text-indigo-300 font-bold">{p.docNumber}</td>
+                              <td className="py-2 px-2 text-center">
+                                {isInit ? (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800">
+                                    Initial Stock
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-950 text-indigo-300 border border-indigo-800">
+                                    Purchase
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2 px-3 text-slate-300">
+                                {isInit ? (
+                                  <span className="text-slate-500 italic text-[11px]">Opening Stock</span>
+                                ) : (
+                                  <span className="font-bold">{p.supplierInvoiceNo || '—'}</span>
+                                )}
+                              </td>
+                              <td className="py-2 px-3 font-sans text-white">{p.supplierName}</td>
+                              <td className="py-2 px-2 text-center font-bold text-slate-300">
+                                {lineItems.length}
+                              </td>
+                              <td className="py-2 px-3 text-right text-slate-300">₹{Number(p.subtotal || 0).toFixed(2)}</td>
+                              <td className="py-2 px-3 text-right text-emerald-400">₹{Number(p.totalTax || 0).toFixed(2)}</td>
+                              <td className="py-2 px-3 text-right font-bold text-white">
+                                ₹{Number(p.netAmount || p.grandTotal || 0).toFixed(2)}
+                              </td>
+                            </tr>
+
+                            {/* Inline Expandable Item Lines for Summary View */}
+                            {isExpanded && (
+                              <tr className="bg-slate-950/80 border-b border-indigo-900/30">
+                                <td colSpan="9" className="p-3 pl-8">
+                                  <div className="border border-slate-800 rounded-lg overflow-hidden bg-slate-900/60 p-2 space-y-2">
+                                    <div className="font-bold text-[11px] text-indigo-300 flex items-center gap-1.5 font-sans">
+                                      <Boxes className="w-3.5 h-3.5" />
+                                      <span>Line Items in {p.docNumber}:</span>
+                                    </div>
+                                    <table className="w-full text-left text-xs border border-slate-800">
+                                      <thead className="bg-slate-950 text-slate-400 text-[10px] uppercase">
+                                        <tr>
+                                          <th className="py-1.5 px-2">#</th>
+                                          <th className="py-1.5 px-3">Product Name</th>
+                                          <th className="py-1.5 px-2 text-center">Qty</th>
+                                          <th className="py-1.5 px-2 text-right">Cost Price (₹)</th>
+                                          <th className="py-1.5 px-2 text-right">MRP (₹)</th>
+                                          <th className="py-1.5 px-2 text-right">Selling (₹)</th>
+                                          <th className="py-1.5 px-2 text-center">Margin / Diff</th>
+                                          <th className="py-1.5 px-2 text-center">GST %</th>
+                                          <th className="py-1.5 px-3 text-right">Total (₹)</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-800 font-mono text-[11px]">
+                                        {lineItems.map((line, lIdx) => {
+                                          const cp = Number(line.costPrice ?? line.rate ?? 0);
+                                          const sp = Number(line.sellingPrice || 0);
+                                          const mrp = Number(line.mrp || 0);
+                                          const diff = sp > 0 ? Number((sp - cp).toFixed(2)) : null;
+                                          const marginPct = sp > 0 ? Number((((sp - cp) / sp) * 100).toFixed(1)) : null;
+                                          return (
+                                            <tr key={lIdx} className="hover:bg-slate-800/40">
+                                              <td className="py-1.5 px-2 text-slate-500 text-center">{lIdx + 1}</td>
+                                              <td className="py-1.5 px-3 font-sans font-bold text-white">
+                                                {line.name}
+                                                {line.sku && <span className="block text-[10px] text-slate-500 font-mono">SKU: {line.sku}</span>}
+                                              </td>
+                                              <td className="py-1.5 px-2 text-center font-bold text-white">
+                                                {line.qty} {line.uom || 'PCS'}
+                                              </td>
+                                              <td className="py-1.5 px-2 text-right text-slate-200">₹{cp.toFixed(2)}</td>
+                                              <td className="py-1.5 px-2 text-right text-amber-300">
+                                                {mrp > 0 ? `₹${mrp.toFixed(2)}` : 'null'}
+                                              </td>
+                                              <td className="py-1.5 px-2 text-right text-emerald-400">
+                                                {sp > 0 ? `₹${sp.toFixed(2)}` : 'null'}
+                                              </td>
+                                              <td className="py-1.5 px-2 text-center">
+                                                {diff !== null ? (
+                                                  <span className="text-[10px] font-bold text-emerald-400">
+                                                    +₹{diff.toFixed(2)} ({marginPct}%)
+                                                  </span>
+                                                ) : (
+                                                  <span className="text-slate-500 italic">—</span>
+                                                )}
+                                              </td>
+                                              <td className="py-1.5 px-2 text-center text-slate-300">{line.taxRate || 0}%</td>
+                                              <td className="py-1.5 px-3 text-right font-bold text-white">
+                                                ₹{Number(line.lineTotal || 0).toFixed(2)}
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              )}
             </div>
 
-            {/* AJAX Pagination */}
+            {/* AJAX Table Pagination */}
             <AjaxTablePagination
               totalCount={purchasesResult.totalCount}
               page={purchasesResult.page}
@@ -1197,7 +1792,7 @@ export default function ReportsView({ initialReportTab = null }) {
               <span className="text-slate-400 font-mono">{stockResult.totalCount.toLocaleString('en-IN')} Records</span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs min-w-[850px]">
+              <table className="w-full text-left text-xs min-w-[950px]">
                 <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] border-b border-slate-800">
                   <tr>
                     <th className="py-2.5 px-3">Warehouse</th>
@@ -1206,7 +1801,10 @@ export default function ReportsView({ initialReportTab = null }) {
                     <th className="py-2.5 px-2 text-center text-indigo-400">Purchased In</th>
                     <th className="py-2.5 px-2 text-center text-rose-400">Sales Out</th>
                     <th className="py-2.5 px-3 text-center text-emerald-400">Current Stock</th>
-                    <th className="py-2.5 px-3 text-right">Valuation Rate</th>
+                    <th className="py-2.5 px-3 text-right">Cost Rate (₹)</th>
+                    <th className="py-2.5 px-3 text-right">MRP (₹)</th>
+                    <th className="py-2.5 px-3 text-right">Selling Rate (₹)</th>
+                    <th className="py-2.5 px-3 text-center">Margin / Diff</th>
                     <th className="py-2.5 px-3 text-right">Total Asset Value</th>
                     <th className="py-2.5 px-3 text-center">Status</th>
                   </tr>
@@ -1214,7 +1812,7 @@ export default function ReportsView({ initialReportTab = null }) {
                 <tbody className="divide-y divide-slate-800 font-mono text-[11px]">
                   {stockResult.data.length === 0 ? (
                     <tr>
-                      <td colSpan="9" className="py-12 text-center text-slate-500 font-sans">
+                      <td colSpan="12" className="py-12 text-center text-slate-500 font-sans">
                         {stockLoading ? 'Loading stock balances via compound index...' : 'No stock records found matching current criteria.'}
                       </td>
                     </tr>
@@ -1230,8 +1828,23 @@ export default function ReportsView({ initialReportTab = null }) {
                         <td className="py-2 px-2 text-center font-bold text-indigo-300">{s.purchasedInwardQty}</td>
                         <td className="py-2 px-2 text-center font-bold text-rose-400">{s.salesOutwardQty}</td>
                         <td className="py-2 px-3 text-center font-bold text-emerald-400 bg-emerald-950/20">{s.currentStock}</td>
-                        <td className="py-2 px-3 text-right text-slate-300">₹{Number(s.valRate || 0).toFixed(2)}</td>
-                        <td className="py-2 px-3 text-right font-bold text-cyan-400">₹{Number(s.totalVal || 0).toFixed(2)}</td>
+                        <td className="py-2 px-3 text-right text-slate-300 font-mono">₹{Number(s.valRate || 0).toFixed(2)}</td>
+                        <td className="py-2 px-3 text-right text-amber-300 font-mono">
+                          {s.mrp > 0 ? `₹${Number(s.mrp).toFixed(2)}` : <span className="text-slate-500 italic">null</span>}
+                        </td>
+                        <td className="py-2 px-3 text-right text-emerald-400 font-mono">
+                          {s.sellingRate > 0 ? `₹${Number(s.sellingRate).toFixed(2)}` : <span className="text-slate-500 italic">null</span>}
+                        </td>
+                        <td className="py-2 px-3 text-center font-mono">
+                          {s.sellingRate > 0 ? (
+                            <span className="text-[10px] font-bold text-emerald-400">
+                              +₹{Number(s.priceDifference || 0).toFixed(2)} ({s.marginPercent}%)
+                            </span>
+                          ) : (
+                            <span className="text-slate-500 italic text-[11px]">—</span>
+                          )}
+                        </td>
+                        <td className="py-2 px-3 text-right font-bold text-cyan-400 font-mono">₹{Number(s.totalVal || 0).toFixed(2)}</td>
                         <td className="py-2 px-3 text-center font-sans">
                           {s.isLow ? (
                             <span className="px-1.5 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800 text-[10px] font-bold">

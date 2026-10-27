@@ -70,6 +70,7 @@ export function getDatabaseIndexes(db) {
   const productsByBarcode = new Map();
   const productsByCategory = new Map();
   const productsByMainCategory = new Map();
+  const productsByBrand = new Map();
   const productsBySupplier = new Map();
   const productSearchTokens = new Map(); // token -> Set of productIds
 
@@ -94,6 +95,22 @@ export function getDatabaseIndexes(db) {
       productsByMainCategory.get(mainCat).push(p);
     }
 
+    // Brand index
+    const brand = (p.brand || p.brandId || '').trim().toLowerCase();
+    if (brand) {
+      if (!productsByBrand.has(brand)) productsByBrand.set(brand, []);
+      productsByBrand.get(brand).push(p);
+    }
+    if (Array.isArray(p.brands)) {
+      p.brands.forEach((b) => {
+        const bStr = (b || '').trim().toLowerCase();
+        if (bStr) {
+          if (!productsByBrand.has(bStr)) productsByBrand.set(bStr, []);
+          productsByBrand.get(bStr).push(p);
+        }
+      });
+    }
+
     // Supplier index
     if (Array.isArray(p.supplierIds)) {
       p.supplierIds.forEach((sid) => {
@@ -106,7 +123,7 @@ export function getDatabaseIndexes(db) {
     }
   }
 
-  // 2. Warehouses, Categories, Suppliers, Customers Index ($O(1)$ fast lookups)
+  // 2. Warehouses, Categories, Main Categories, Brands, Suppliers, Customers Index ($O(1)$ fast lookups)
   const warehousesById = new Map();
   (db.warehouses || []).forEach((w) => { if (w.id) warehousesById.set(w.id, w); });
 
@@ -120,6 +137,12 @@ export function getDatabaseIndexes(db) {
   (db.mainCategories || []).forEach((m) => {
     if (m.id) mainCategoriesById.set(m.id, m);
     if (m.name) mainCategoriesById.set(m.name.trim().toLowerCase(), m);
+  });
+
+  const brandsById = new Map();
+  (db.brands || []).forEach((b) => {
+    if (b.id) brandsById.set(b.id, b);
+    if (b.name) brandsById.set(b.name.trim().toLowerCase(), b);
   });
 
   const suppliersById = new Map();
@@ -258,6 +281,7 @@ export function getDatabaseIndexes(db) {
       byBarcode: productsByBarcode,
       byCategory: productsByCategory,
       byMainCategory: productsByMainCategory,
+      byBrand: productsByBrand,
       bySupplier: productsBySupplier,
       searchTokens: productSearchTokens,
     },
@@ -272,6 +296,10 @@ export function getDatabaseIndexes(db) {
     mainCategories: {
       byId: mainCategoriesById,
       all: db.mainCategories || [],
+    },
+    brands: {
+      byId: brandsById,
+      all: db.brands || [],
     },
     suppliers: {
       byId: suppliersById,
@@ -344,6 +372,13 @@ export function getDateRangeEpochs(rangeType, customFromDate = null, customToDat
 
   const getStartOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0).getTime();
   const getEndOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).getTime();
+
+  // If explicit custom from/to dates are provided, prioritize them
+  if (customFromDate || customToDate) {
+    if (customFromDate) startEpoch = getStartOfDay(new Date(customFromDate));
+    if (customToDate) endEpoch = getEndOfDay(new Date(customToDate));
+    return { startEpoch, endEpoch };
+  }
 
   switch (rangeType) {
     case 'TODAY': {
@@ -538,6 +573,7 @@ export async function fetchSalesReportAjax(db, {
 
 /**
  * Asynchronous AJAX Query Engine for Purchases & Inwards Report
+ * Supports Detailed Item-Wise List, Summary Invoices, and Multi-Dimensional Classification Filters
  */
 export async function fetchPurchasesReportAjax(db, {
   dateFilter = 'ALL',
@@ -546,6 +582,11 @@ export async function fetchPurchasesReportAjax(db, {
   purchasesFilterMode = 'purchases_only', // 'purchases_only' | 'initial_stock_only' | 'all'
   search = '',
   supplierFilter = 'ALL',
+  productFilter = 'ALL',
+  brandFilter = 'ALL',
+  categoryFilter = 'ALL',
+  mainCategoryFilter = 'ALL',
+  viewMode = 'detailed', // 'detailed' | 'summary'
   page = 1,
   pageSize = 50,
 } = {}) {
@@ -559,6 +600,45 @@ export async function fetchPurchasesReportAjax(db, {
   const startIdx = binarySearchFirstGE(sorted, startEpoch);
   const endIdx = binarySearchLastLE(sorted, endEpoch);
 
+  // 1. Calculate historical rate progression / price variations per product across all chronological purchases
+  // Chronological sort: oldest purchases first
+  const allPurchasesChronological = [...(db.purchases || [])].sort((a, b) => {
+    const tA = new Date(a.date || a.createdAt || 0).getTime();
+    const tB = new Date(b.date || b.createdAt || 0).getTime();
+    return tA - tB;
+  });
+
+  const productLastRateMap = new Map();
+  const lineRateDiffs = new Map(); // `${purchaseId}:${idx}` -> { previousCost, costDiff, costDiffPercent }
+
+  for (const pur of allPurchasesChronological) {
+    const lines = pur.lines || pur.items || [];
+    lines.forEach((l, idx) => {
+      const pid = l.productId;
+      if (!pid) return;
+      const currentCp = Number(l.costPrice ?? l.rate ?? 0);
+      const prevCp = productLastRateMap.get(pid);
+
+      let costDiff = null;
+      let costDiffPercent = null;
+      if (prevCp !== undefined && prevCp !== null) {
+        costDiff = Number((currentCp - prevCp).toFixed(2));
+        costDiffPercent = prevCp > 0 ? Number((((currentCp - prevCp) / prevCp) * 100).toFixed(1)) : 0;
+      }
+
+      lineRateDiffs.set(`${pur.id}:${idx}`, {
+        previousCost: prevCp !== undefined ? prevCp : null,
+        costDiff,
+        costDiffPercent,
+      });
+
+      if (currentCp > 0) {
+        productLastRateMap.set(pid, currentCp);
+      }
+    });
+  }
+
+  // 2. Filter purchases within date window & mode/supplier
   let filteredPurchases = [];
   if (startIdx <= endIdx && startIdx < sorted.length && endIdx >= 0) {
     for (let i = startIdx; i <= endIdx; i++) {
@@ -574,27 +654,176 @@ export async function fetchPurchasesReportAjax(db, {
     }
   }
 
-  if (search && search.trim()) {
-    const q = search.trim().toLowerCase();
-    filteredPurchases = filteredPurchases.filter((p) => {
-      return (
-        p.docNumber?.toLowerCase().includes(q) ||
-        p.supplierName?.toLowerCase().includes(q) ||
-        p.supplierInvoiceNo?.toLowerCase().includes(q)
-      );
+  // Helper function to resolve product classification details
+  const getProductMeta = (pid) => {
+    const prod = indexes.products.byId.get(pid) || (db.products || []).find((p) => p.id === pid);
+    const catObj = indexes.categories.byId.get(prod?.categoryId);
+    const mainCatObj = indexes.mainCategories.byId.get(prod?.mainCategoryId);
+
+    const mainCategoryName = mainCatObj?.name || prod?.mainCategory || 'General';
+    const mainCategoryId = prod?.mainCategoryId || mainCatObj?.id || 'MCAT-01';
+
+    const categoryName = catObj?.name || prod?.category || 'General';
+    const categoryId = prod?.categoryId || catObj?.id || 'CAT-01';
+
+    const brandName = (Array.isArray(prod?.brands) && prod.brands.length > 0 ? prod.brands[0] : prod?.brand) || 'Standard';
+    const brandId = prod?.brandId || brandName;
+
+    return {
+      prod,
+      mainCategoryName,
+      mainCategoryId,
+      categoryName,
+      categoryId,
+      brandName,
+      brandId,
+    };
+  };
+
+  // Helper to check if a product line matches classification filters
+  const matchesLineFilters = (line, meta) => {
+    if (productFilter && productFilter !== 'ALL' && line.productId !== productFilter && meta.prod?.id !== productFilter) {
+      return false;
+    }
+    if (brandFilter && brandFilter !== 'ALL') {
+      const matchesBrand =
+        meta.brandId === brandFilter ||
+        meta.brandName.toLowerCase() === brandFilter.toLowerCase() ||
+        (Array.isArray(meta.prod?.brands) && meta.prod.brands.map((b) => b.toLowerCase()).includes(brandFilter.toLowerCase()));
+      if (!matchesBrand) return false;
+    }
+    if (categoryFilter && categoryFilter !== 'ALL') {
+      const matchesCat =
+        meta.categoryId === categoryFilter ||
+        meta.categoryName.toLowerCase() === categoryFilter.toLowerCase();
+      if (!matchesCat) return false;
+    }
+    if (mainCategoryFilter && mainCategoryFilter !== 'ALL') {
+      const matchesMainCat =
+        meta.mainCategoryId === mainCategoryFilter ||
+        meta.mainCategoryName.toLowerCase() === mainCategoryFilter.toLowerCase();
+      if (!matchesMainCat) return false;
+    }
+    return true;
+  };
+
+  let detailedItems = [];
+  let matchingInvoices = [];
+
+  const q = search && search.trim() ? search.trim().toLowerCase() : null;
+
+  for (const pur of filteredPurchases) {
+    const isInit = Boolean(
+      pur.isInitialStock ||
+      pur.entryType === 'INITIAL_STOCK' ||
+      pur.docNumber?.startsWith('INIT-')
+    );
+    const lines = pur.lines || pur.items || [];
+    let invoiceHasMatchingLine = false;
+
+    lines.forEach((line, idx) => {
+      const meta = getProductMeta(line.productId);
+      if (!matchesLineFilters(line, meta)) return;
+
+      if (q) {
+        const matchesSearch =
+          pur.docNumber?.toLowerCase().includes(q) ||
+          pur.supplierName?.toLowerCase().includes(q) ||
+          pur.supplierInvoiceNo?.toLowerCase().includes(q) ||
+          line.name?.toLowerCase().includes(q) ||
+          line.sku?.toLowerCase().includes(q) ||
+          meta.prod?.name?.toLowerCase().includes(q) ||
+          meta.prod?.sku?.toLowerCase().includes(q) ||
+          meta.brandName?.toLowerCase().includes(q) ||
+          meta.categoryName?.toLowerCase().includes(q) ||
+          meta.mainCategoryName?.toLowerCase().includes(q);
+        if (!matchesSearch) return;
+      }
+
+      invoiceHasMatchingLine = true;
+
+      const diffInfo = lineRateDiffs.get(`${pur.id}:${idx}`) || { previousCost: null, costDiff: null, costDiffPercent: null };
+      const costPrice = Number(line.costPrice ?? line.rate ?? 0);
+      const mrp = line.mrp !== null && line.mrp !== undefined && line.mrp !== '' ? Number(line.mrp) : null;
+      const sellingPrice = line.sellingPrice !== null && line.sellingPrice !== undefined && line.sellingPrice !== '' ? Number(line.sellingPrice) : null;
+
+      let spDiff = null;
+      let marginPercent = null;
+      if (sellingPrice !== null && sellingPrice > 0) {
+        spDiff = Number((sellingPrice - costPrice).toFixed(2));
+        marginPercent = Number((((sellingPrice - costPrice) / sellingPrice) * 100).toFixed(1));
+      }
+
+      let mrpDiff = null;
+      if (mrp !== null && mrp > 0) {
+        mrpDiff = Number((mrp - costPrice).toFixed(2));
+      }
+
+      detailedItems.push({
+        id: `${pur.id}-${idx}`,
+        purchaseId: pur.id,
+        docNumber: pur.docNumber,
+        isInitialStock: isInit,
+        date: pur.date,
+        supplierId: pur.supplierId,
+        supplierName: pur.supplierName,
+        supplierInvoiceNo: pur.supplierInvoiceNo,
+        productId: line.productId,
+        productName: line.name || meta.prod?.name || 'Product',
+        sku: line.sku || meta.prod?.sku || '—',
+        mainCategory: meta.mainCategoryName,
+        mainCategoryId: meta.mainCategoryId,
+        category: meta.categoryName,
+        categoryId: meta.categoryId,
+        brand: meta.brandName,
+        brandId: meta.brandId,
+        batchNo: line.batchNo || '—',
+        qty: Number(line.qty || 0),
+        uom: line.uom || meta.prod?.uom || 'PCS',
+        costPrice,
+        previousCostPrice: diffInfo.previousCost,
+        costDiff: diffInfo.costDiff,
+        costDiffPercent: diffInfo.costDiffPercent,
+        mrp,
+        mrpDiff,
+        sellingPrice,
+        spDiff,
+        marginPercent,
+        taxRate: Number(line.taxRate || 0),
+        taxType: line.taxType || 'inclusive',
+        taxAmount: Number(line.taxAmount || 0),
+        lineTotal: Number(line.lineTotal || 0),
+      });
     });
+
+    if (invoiceHasMatchingLine) {
+      matchingInvoices.push(pur);
+    }
   }
 
-  // Newest first
-  filteredPurchases.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  // Sort items and invoices: Newest first
+  detailedItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  matchingInvoices.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Aggregate Metrics
   let standardPurchasesAmount = 0;
   let standardPurchaseTax = 0;
   let initialStockInwardAmount = 0;
+  let totalInwardQuantity = 0;
+  let totalSpDiff = 0;
+  let spDiffCount = 0;
 
-  for (let i = 0; i < filteredPurchases.length; i++) {
-    const p = filteredPurchases[i];
+  for (let i = 0; i < detailedItems.length; i++) {
+    const item = detailedItems[i];
+    totalInwardQuantity += item.qty;
+    if (item.spDiff !== null) {
+      totalSpDiff += item.spDiff * item.qty;
+      spDiffCount++;
+    }
+  }
+
+  for (let i = 0; i < matchingInvoices.length; i++) {
+    const p = matchingInvoices[i];
     const isInit = p.isInitialStock || p.entryType === 'INITIAL_STOCK' || p.docNumber?.startsWith('INIT-');
     const net = Number(p.netAmount || p.grandTotal || 0);
     const tax = Number(p.totalTax || 0);
@@ -607,19 +836,22 @@ export async function fetchPurchasesReportAjax(db, {
     }
   }
 
-  const totalCount = filteredPurchases.length;
+  const dataset = viewMode === 'detailed' ? detailedItems : matchingInvoices;
+  const totalCount = dataset.length;
   const safePageSize = Math.max(1, parseInt(pageSize, 10) || 50);
   const totalPages = Math.ceil(totalCount / safePageSize) || 1;
   const safePage = Math.min(Math.max(1, parseInt(page, 10) || 1), totalPages);
 
   const startRecord = (safePage - 1) * safePageSize;
-  const pageData = filteredPurchases.slice(startRecord, startRecord + safePageSize);
+  const pageData = dataset.slice(startRecord, startRecord + safePageSize);
 
   const t1 = typeof performance !== 'undefined' ? performance.now() : Date.now();
 
   return {
     data: pageData,
-    allFiltered: filteredPurchases,
+    allFiltered: dataset,
+    detailedItems,
+    matchingInvoices,
     totalCount,
     page: safePage,
     pageSize: safePageSize,
@@ -630,7 +862,11 @@ export async function fetchPurchasesReportAjax(db, {
       standardPurchasesAmount,
       standardPurchaseTax,
       initialStockInwardAmount,
+      totalInwardQuantity,
+      totalLinesCount: detailedItems.length,
+      totalInvoicesCount: matchingInvoices.length,
       totalRecords: totalCount,
+      avgSpDiff: spDiffCount > 0 ? Number((totalSpDiff / (totalInwardQuantity || 1)).toFixed(2)) : 0,
     },
     executionTimeMs: (t1 - t0).toFixed(1),
   };
@@ -768,6 +1004,11 @@ export async function fetchStockValuationReportAjax(db, {
     if (stockStatusFilter === 'LOW_STOCK' && !isLow) continue;
     if (stockStatusFilter === 'OUT_OF_STOCK' && !isOut) continue;
 
+    const mrp = Number(prod?.mrp || 0);
+    const sellingRate = Number(prod?.sellingRate || 0);
+    const priceDifference = sellingRate > 0 ? Number((sellingRate - valRate).toFixed(2)) : 0;
+    const marginPercent = sellingRate > 0 ? Number((((sellingRate - valRate) / sellingRate) * 100).toFixed(1)) : 0;
+
     const row = {
       id: b.id,
       warehouseId: b.warehouseId,
@@ -781,6 +1022,10 @@ export async function fetchStockValuationReportAjax(db, {
       salesOutwardQty: movSummary.salesOutwardQty,
       currentStock,
       valRate,
+      mrp,
+      sellingRate,
+      priceDifference,
+      marginPercent,
       totalVal,
       isLow,
     };

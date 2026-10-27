@@ -2193,12 +2193,25 @@ export default function PurchasingView() {
                       <td className="py-2 px-2 text-center font-bold text-emerald-400">{line.qty} {line.uom || 'PCS'}</td>
                       <td className="py-2 px-2 text-right text-slate-300">₹{Number(line.costPrice || line.rate || 0).toFixed(2)}</td>
                       <td className="py-2 px-2 text-right text-slate-400">₹{Number(line.singleUnitPrice || line.costPrice || 0).toFixed(2)}</td>
-                      <td className="py-2 px-2 text-right text-slate-400">₹{Number(line.mrp || 0).toFixed(2)}</td>
-                      <td className="py-2 px-2 text-right text-indigo-300 font-bold">₹{Number(line.sellingPrice || 0).toFixed(2)}</td>
+                      <td className="py-2 px-2 text-right text-slate-400">
+                        {line.mrp ? `₹${Number(line.mrp).toFixed(2)}` : <span className="text-slate-600">—</span>}
+                      </td>
+                      <td className="py-2 px-2 text-right text-indigo-300 font-bold">
+                        {line.sellingPrice ? `₹${Number(line.sellingPrice).toFixed(2)}` : <span className="text-slate-600">—</span>}
+                      </td>
                       <td className="py-2 px-2 text-center">
-                        <span className="text-[10px] font-bold text-emerald-400">
-                          {line.marginPercent || 0}%
-                        </span>
+                        {line.sellingPrice && (line.costPrice || line.rate) ? (
+                          <div className="flex flex-col items-center">
+                            <span className="text-[10px] font-bold text-emerald-400">
+                              {Number(line.sellingPrice) - Number(line.costPrice || line.rate || 0) >= 0 ? '+' : ''}₹{(Number(line.sellingPrice) - Number(line.costPrice || line.rate || 0)).toFixed(2)}
+                            </span>
+                            <span className="text-[9px] text-slate-400">
+                              ({line.marginPercent || ((Number(line.sellingPrice) - Number(line.costPrice || line.rate || 0)) / Number(line.sellingPrice) * 100).toFixed(1)}%)
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )}
                       </td>
                       <td className="py-2 px-2 text-center text-slate-400">
                         {line.taxRate}%{' '}
@@ -2404,9 +2417,17 @@ export default function PurchasingView() {
                           <td className="py-2 px-2 border-r border-[#cbd5e1] text-center font-bold text-[#0f172a]">{line.qty} {line.uom || 'PCS'}</td>
                           <td className="py-2 px-2 border-r border-[#cbd5e1] text-right text-[#0f172a]">₹{Number(line.costPrice || line.rate || 0).toFixed(2)}</td>
                           <td className="py-2 px-2 border-r border-[#cbd5e1] text-right text-[#0f172a]">₹{Number(line.singleUnitPrice || line.costPrice || 0).toFixed(2)}</td>
-                          <td className="py-2 px-2 border-r border-[#cbd5e1] text-right text-[#0f172a]">₹{Number(line.mrp || 0).toFixed(2)}</td>
-                          <td className="py-2 px-2 border-r border-[#cbd5e1] text-right text-[#0f172a]">₹{Number(line.sellingPrice || 0).toFixed(2)}</td>
-                          <td className="py-2 px-2 border-r border-[#cbd5e1] text-center font-sans text-[#334155]">{line.marginPercent || 0}%</td>
+                          <td className="py-2 px-2 border-r border-[#cbd5e1] text-right text-[#0f172a]">{line.mrp ? `₹${Number(line.mrp).toFixed(2)}` : '—'}</td>
+                          <td className="py-2 px-2 border-r border-[#cbd5e1] text-right text-[#0f172a]">{line.sellingPrice ? `₹${Number(line.sellingPrice).toFixed(2)}` : '—'}</td>
+                          <td className="py-2 px-2 border-r border-[#cbd5e1] text-center font-sans text-[#334155]">
+                            {line.sellingPrice && (line.costPrice || line.rate) ? (
+                              <span>
+                                {Number(line.sellingPrice) - Number(line.costPrice || line.rate || 0) >= 0 ? '+' : ''}₹{(Number(line.sellingPrice) - Number(line.costPrice || line.rate || 0)).toFixed(2)} ({line.marginPercent || ((Number(line.sellingPrice) - Number(line.costPrice || line.rate || 0)) / Number(line.sellingPrice) * 100).toFixed(1)}%)
+                              </span>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
                           <td className="py-2 px-2 border-r border-[#cbd5e1] text-center text-[#334155]">
                             {line.taxRate}%
                             <span className="block text-[9px] text-[#64748b] font-sans">
