@@ -81,7 +81,6 @@ export default function DashboardView() {
   const canDayClose = hasPermission('day_close', 'view');
   const canCreditCustomer = hasPermission('credit_customer', 'view');
   const canStock = hasPermission('stock', 'view');
-  const canInitialStock = hasPermission('initial', 'view');
   const canStockAdjustment = hasPermission('stock_adjustment', 'view');
   const canRateChange = hasPermission('rate_change', 'view');
   const canStockTransfer = hasPermission('stock_transfer', 'view');
@@ -308,7 +307,7 @@ export default function DashboardView() {
     // 3. Store Stock Valuation
     {
       id: 'stock_valuation',
-      visible: canStock || canInitialStock || canReports,
+      visible: canStock || canReports,
       title: 'Store Stock Valuation',
       value: `₹${totalInventoryValuation.toFixed(2)}`,
       sub: `${storeBalances.length} SKUs in ${storeWarehouses.length} Warehouses`,
@@ -387,7 +386,6 @@ export default function DashboardView() {
     { id: 'purchase_return', menuId: 'purchase_return', label: 'Purchase Return', desc: 'Vendor Debit Notes', icon: Undo2, color: 'text-rose-400', tab: 'purchase_return' },
     { id: 'supplier', menuId: 'supplier', label: 'Suppliers', desc: 'Vendor Registry & GST', icon: Truck, color: 'text-indigo-400', tab: 'supplier', isMaster: true, entityKey: 'supplier' },
     { id: 'stock', menuId: 'stock', label: 'Stock Ledger', desc: 'Balances & Bin Cards', icon: Archive, color: 'text-emerald-400', tab: 'stock' },
-    { id: 'initial', menuId: 'initial', label: 'Opening Stock', desc: 'Inventory Migration', icon: Boxes, color: 'text-teal-400', tab: 'initial' },
     { id: 'stock_adjustment', menuId: 'stock_adjustment', label: 'Stock Adjustment', desc: 'Cycle Counts & Waste', icon: ClipboardCheck, color: 'text-amber-400', tab: 'stock_adjustment' },
     { id: 'rate_change', menuId: 'rate_change', label: 'Rate Change', desc: 'Selling Price Updates', icon: BadgePercent, color: 'text-indigo-400', tab: 'rate_change' },
     { id: 'stock_transfer', menuId: 'stock_transfer', label: 'Stock Transfer', desc: 'Inter-Branch Movements', icon: ArrowLeftRight, color: 'text-violet-400', tab: 'stock_transfer' },

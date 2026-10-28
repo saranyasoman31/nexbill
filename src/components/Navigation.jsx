@@ -76,8 +76,8 @@ export default function Navigation() {
   // Exact menu structure in user-specified order:
   // 1. Credit customer, 2. Main category, 3. Category, 4. Brand, 5. Supplier, 6. Unit, 7. Product,
   // 8. Staff, 9. Payment mode, 10. Tax, 11. Branch, 12. Purchase order, 13. Purchase,
-  // 14. Purchase return, 15. Initial, 16. Stock, 17. Stock adjustment, 18. Rate change, 19. Billing,
-  // 20. Billing return, 21. Day close, 22. Stock transfer, 23. Reports, 24. Settings (Profile, User Permission)
+  // 14. Purchase return, 15. Stock, 16. Stock adjustment, 17. Rate change, 18. Billing,
+  // 19. Billing return, 20. Day close, 21. Stock transfer, 22. Reports, 23. Settings (Profile, User Permission)
   const menuGroups = [
     {
       group: 'Masters & Setup',
@@ -107,7 +107,6 @@ export default function Navigation() {
     {
       group: 'Inventory & Stock',
       items: [
-        { id: 'initial', label: 'Initial', icon: Boxes, count: db.initialStocks?.length },
         { id: 'stock', label: 'Stock', icon: Archive },
         {
           id: 'stock_adjustment',

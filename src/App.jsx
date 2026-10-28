@@ -92,7 +92,8 @@ function ERPAppContent() {
   // Map activeTab aliases to canonical system menu ID
   const getMenuIdForTab = (tab) => {
     switch (tab) {
-      case 'purchases': return 'purchase';
+      case 'purchases':
+      case 'initial': return 'purchase';
       case 'inventory': return 'stock';
       case 'adjustments': return 'stock_adjustment';
       case 'pricing': return 'rate_change';
@@ -194,9 +195,8 @@ function ERPAppContent() {
               {activeTab === 'tax' && <MasterEntitiesView defaultEntity="tax" />}
               {activeTab === 'branch' && <MasterEntitiesView defaultEntity="branch" />}
               {activeTab === 'purchase_order' && <PurchaseOrderView />}
-              {(activeTab === 'purchase' || activeTab === 'purchases') && <PurchasingView />}
+              {(activeTab === 'purchase' || activeTab === 'purchases' || activeTab === 'initial') && <PurchasingView />}
               {activeTab === 'purchase_return' && <PurchaseReturnView />}
-              {activeTab === 'initial' && <InitialStockView />}
               {(activeTab === 'stock' || activeTab === 'inventory') && <InventoryView />}
               {(activeTab === 'stock_adjustment' || activeTab === 'adjustments') && <StockAdjustmentView />}
               {(activeTab === 'rate_change' || activeTab === 'pricing') && <PricingView />}

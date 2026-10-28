@@ -226,7 +226,8 @@ export function AppProvider({ children }) {
     if (activeTab !== 'dashboard' && activeTab !== 'tests') {
       const getMenuIdForTab = (tab) => {
         switch (tab) {
-          case 'purchases': return 'purchase';
+          case 'purchases':
+          case 'initial': return 'purchase';
           case 'inventory': return 'stock';
           case 'adjustments': return 'stock_adjustment';
           case 'pricing': return 'rate_change';
