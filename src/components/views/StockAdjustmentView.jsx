@@ -1,4 +1,4 @@
-// StockAdjustmentView: Physical Inventory Counting, Stock Add/Subtract, Barcode Search & Approval Workflows
+// StockAdjustmentView: Branch Selection & Staff Lock, Stock Add/Subtract with Stock ID, Barcode Search & Mandatory Reason
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { StockAdjustmentService } from '../../services/stockAdjustmentService.js';
@@ -8,7 +8,6 @@ import {
   ClipboardCheck,
   Plus,
   Minus,
-  Equal,
   CheckCircle2,
   AlertTriangle,
   Clock,
@@ -28,27 +27,54 @@ import {
   TrendingDown,
   Layers,
   ArrowRight,
+  Store,
+  Lock,
 } from 'lucide-react';
 import ExportButtons from '../common/ExportButtons.jsx';
 
 export default function StockAdjustmentView() {
-  const { db, activeWarehouse, currentUser, notify, triggerRefresh } = useApp();
+  const { db, activeStore, currentUser, notify, triggerRefresh } = useApp();
 
   const [activeTab, setActiveTab] = useState('new'); // 'new' | 'list'
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState(
-    activeWarehouse?.id || db.warehouses?.[0]?.id || 'WH-MUM-MAIN'
+
+  // Branch Selection & Staff Lock logic:
+  // If staff has an assigned storeId and is not Administrator/Super Admin, branch is locked.
+  const isStaffBranchLocked = Boolean(
+    currentUser?.storeId &&
+    currentUser?.role !== 'ADMINISTRATOR' &&
+    currentUser?.roleId !== 'ROLE_ADMIN'
   );
+
+  const [selectedBranchId, setSelectedBranchId] = useState(
+    currentUser?.storeId || activeStore?.id || db.stores?.[0]?.id || 'STR-01'
+  );
+
+  // If staff branch is locked, ensure selectedBranchId stays locked to currentUser.storeId
+  useEffect(() => {
+    if (isStaffBranchLocked && currentUser?.storeId && selectedBranchId !== currentUser.storeId) {
+      setSelectedBranchId(currentUser.storeId);
+    }
+  }, [isStaffBranchLocked, currentUser?.storeId, selectedBranchId]);
+
+  // Current selected branch/store object
+  const selectedBranch = useMemo(() => {
+    return (db.stores || []).find((s) => s.id === selectedBranchId) || (db.stores || [])[0] || { id: 'STR-01', name: 'Main Store' };
+  }, [db.stores, selectedBranchId]);
+
+  // Resolve warehouse for the selected branch to load its stock
+  const branchWarehouse = useMemo(() => {
+    const whs = (db.warehouses || []).filter((w) => w.storeId === selectedBranchId);
+    return whs.find((w) => w.isSellable) || whs[0] || (db.warehouses || [])[0] || { id: 'WH-MUM-MAIN', name: 'Main Warehouse' };
+  }, [db.warehouses, selectedBranchId]);
 
   // Search & Barcode state
   const [productSearch, setProductSearch] = useState('');
   const [selectedProductId, setSelectedProductId] = useState(null);
 
-  // Adjustment Action state: 'ADD' | 'SUBTRACT' | 'SET'
+  // Adjustment Action state: ONLY 'ADD' | 'SUBTRACT'
   const [adjustmentMode, setAdjustmentMode] = useState('ADD');
   const [adjustQty, setAdjustQty] = useState(1);
-  const [countedQty, setCountedQty] = useState(0);
-  const [reason, setReason] = useState('PHYSICAL_COUNT');
-  const [notes, setNotes] = useState('');
+  const [reason, setReason] = useState(''); // Mandatory reason
 
   // Log table search
   const [logSearch, setLogSearch] = useState('');
@@ -57,16 +83,9 @@ export default function StockAdjustmentView() {
   const searchInputRef = useRef(null);
   const qtyInputRef = useRef(null);
 
-  // Synchronize active warehouse if context changes
-  useEffect(() => {
-    if (activeWarehouse?.id && !selectedWarehouseId) {
-      setSelectedWarehouseId(activeWarehouse.id);
-    }
-  }, [activeWarehouse, selectedWarehouseId]);
-
-  // Compute products list with current warehouse stock, stock ID, MRP, and Selling Price
+  // Compute products list with current branch warehouse stock, stock ID, MRP, and Selling Price
   const productsWithStock = useMemo(() => {
-    const whId = selectedWarehouseId || activeWarehouse?.id || 'WH-MUM-MAIN';
+    const whId = branchWarehouse?.id || 'WH-MUM-MAIN';
     return (db.products || []).map((p) => {
       const stockRow = (db.stockBalances || []).find(
         (b) => b.warehouseId === whId && b.productId === p.id
@@ -87,13 +106,12 @@ export default function StockAdjustmentView() {
         costPrice,
       };
     });
-  }, [db.products, db.stockBalances, selectedWarehouseId, activeWarehouse]);
+  }, [db.products, db.stockBalances, branchWarehouse]);
 
   // Set default selected product once products are available
   useEffect(() => {
     if (!selectedProductId && productsWithStock.length > 0) {
       setSelectedProductId(productsWithStock[0].id);
-      setCountedQty(productsWithStock[0].currentStock);
     }
   }, [productsWithStock, selectedProductId]);
 
@@ -121,7 +139,6 @@ export default function StockAdjustmentView() {
   const handleSelectProduct = (prod) => {
     if (!prod) return;
     setSelectedProductId(prod.id);
-    setCountedQty(prod.currentStock);
     setAdjustQty(1);
     // Focus quantity input for fast adjustment
     setTimeout(() => {
@@ -156,7 +173,7 @@ export default function StockAdjustmentView() {
     }
   };
 
-  // Calculations for Add / Subtract / Count
+  // Calculations for Add or Subtract
   const currentStock = selectedProduct ? selectedProduct.currentStock : 0;
   let variance = 0;
   let resultingStock = currentStock;
@@ -165,15 +182,11 @@ export default function StockAdjustmentView() {
     const addQty = Math.max(0, Number(adjustQty) || 0);
     variance = addQty;
     resultingStock = currentStock + addQty;
-  } else if (adjustmentMode === 'SUBTRACT') {
+  } else {
+    // SUBTRACT
     const subQty = Math.max(0, Number(adjustQty) || 0);
     variance = -subQty;
     resultingStock = currentStock - subQty;
-  } else {
-    // Direct count (SET)
-    const cQty = Math.max(0, Number(countedQty) || 0);
-    variance = cQty - currentStock;
-    resultingStock = cQty;
   }
 
   const costRate = Number(selectedProduct?.costPrice || selectedProduct?.costRate || 0);
@@ -202,15 +215,21 @@ export default function StockAdjustmentView() {
     }
 
     const qty = Number(adjustQty);
-    if (adjustmentMode !== 'SET' && (isNaN(qty) || qty <= 0)) {
+    if (isNaN(qty) || qty <= 0) {
       notify('error', 'Please enter a valid quantity greater than zero.', 'Validation Error');
+      return;
+    }
+
+    // MANDATORY REASON VALIDATION
+    if (!reason || !reason.trim()) {
+      notify('error', 'Reason is mandatory. Please enter a valid reason for this stock adjustment.', 'Reason Required');
       return;
     }
 
     if (adjustmentMode === 'SUBTRACT' && db.settings?.blockNegativeStock && qty > currentStock) {
       notify(
         'error',
-        `Cannot subtract ${qty} units. Current stock is ${currentStock} units. Negative stock is strictly blocked.`,
+        `Cannot subtract ${qty} units. Current stock in ${selectedBranch.name} is ${currentStock} units. Negative stock is strictly blocked.`,
         'Negative Stock Blocked'
       );
       return;
@@ -218,14 +237,13 @@ export default function StockAdjustmentView() {
 
     try {
       const res = StockAdjustmentService.submitAdjustment({
-        warehouseId: selectedWarehouseId,
+        warehouseId: branchWarehouse.id,
         productId: selectedProduct.id,
         stockId: selectedProduct.stockId,
         adjustmentMode,
-        deltaQty: adjustmentMode === 'SET' ? null : qty,
-        countedQty: adjustmentMode === 'SET' ? countedQty : resultingStock,
-        reason,
-        notes,
+        deltaQty: qty,
+        reason: reason.trim(),
+        notes: reason.trim(),
         userRole: currentUser?.roleId || currentUser?.role,
         userId: currentUser?.id,
       });
@@ -239,7 +257,7 @@ export default function StockAdjustmentView() {
       } else {
         notify(
           'success',
-          `Stock ${adjustmentMode === 'ADD' ? 'increased (+)' : adjustmentMode === 'SUBTRACT' ? 'reduced (-)' : 'counted (=)'}! "${selectedProduct.name}" stock updated from ${currentStock} to ${resultingStock} units.`,
+          `Stock ${adjustmentMode === 'ADD' ? 'increased (+)' : 'reduced (-)'}! "${selectedProduct.name}" in ${selectedBranch.name} updated from ${currentStock} to ${resultingStock} units.`,
           'Stock Adjusted'
         );
       }
@@ -251,11 +269,12 @@ export default function StockAdjustmentView() {
         userId: currentUser?.id,
         userName: currentUser?.name,
         userRole: currentUser?.role,
-        details: `Stock adjustment ${res.docNumber} [${adjustmentMode}] for ${selectedProduct.name} (Stock ID: ${selectedProduct.stockId}, Barcode: ${selectedProduct.barcode || '—'}, Current: ${currentStock}, Delta: ${variance > 0 ? '+' + variance : variance}, Resulting: ${resultingStock}, MRP: ₹${selectedProduct.mrp}, SP: ₹${selectedProduct.sellingPrice})`,
+        details: `Stock adjustment ${res.docNumber} [${adjustmentMode}] for ${selectedProduct.name} (Branch: ${selectedBranch.name}, Stock ID: ${selectedProduct.stockId}, Barcode: ${selectedProduct.barcode || '—'}, Current: ${currentStock}, Delta: ${variance > 0 ? '+' + variance : variance}, Resulting: ${resultingStock}, MRP: ₹${selectedProduct.mrp}, SP: ₹${selectedProduct.sellingPrice}, Reason: ${reason.trim()})`,
       });
 
       triggerRefresh();
       setAdjustQty(1);
+      setReason('');
       setActiveTab('list');
     } catch (err) {
       notify('error', err.message, 'Adjustment Failed');
@@ -302,6 +321,7 @@ export default function StockAdjustmentView() {
           a.barcode?.toLowerCase().includes(q) ||
           a.stockId?.toLowerCase().includes(q) ||
           a.reason?.toLowerCase().includes(q) ||
+          a.branchName?.toLowerCase().includes(q) ||
           a.warehouseName?.toLowerCase().includes(q)
         );
       });
@@ -341,21 +361,34 @@ export default function StockAdjustmentView() {
           </button>
         </div>
 
-        {/* Warehouse Selector */}
+        {/* Branch (Store) Selector with Staff Lock */}
         <div className="flex items-center gap-2 text-xs">
-          <Warehouse className="w-4 h-4 text-slate-400" />
-          <span className="text-slate-400 hidden sm:inline">Active Warehouse:</span>
-          <select
-            value={selectedWarehouseId}
-            onChange={(e) => setSelectedWarehouseId(e.target.value)}
-            className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-semibold focus:border-indigo-500 focus:outline-none cursor-pointer"
-          >
-            {(db.warehouses || []).map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name} ({w.id})
-              </option>
-            ))}
-          </select>
+          <Store className="w-4 h-4 text-indigo-400" />
+          <span className="text-slate-400 font-semibold">Branch:</span>
+
+          {isStaffBranchLocked ? (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs">
+              <span className="font-bold text-white">{selectedBranch.name}</span>
+              <span
+                className="text-[10px] text-amber-400 bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-800 flex items-center gap-1 ml-1"
+                title="Branch is locked to your staff profile"
+              >
+                <Lock className="w-3 h-3 text-amber-400" /> Locked
+              </span>
+            </div>
+          ) : (
+            <select
+              value={selectedBranchId}
+              onChange={(e) => setSelectedBranchId(e.target.value)}
+              className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-semibold focus:border-indigo-500 focus:outline-none cursor-pointer"
+            >
+              {(db.stores || []).map((store) => (
+                <option key={store.id} value={store.id}>
+                  {store.name} ({store.code || store.id})
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {activeTab === 'list' && (
@@ -364,7 +397,7 @@ export default function StockAdjustmentView() {
               '#': idx + 1,
               'Adjustment #': adj.docNumber,
               'Date & Time': new Date(adj.createdAt).toLocaleString(),
-              'Warehouse': adj.warehouseName || adj.warehouseId,
+              'Branch': adj.branchName || adj.warehouseName || 'Main Store',
               'Stock ID': adj.stockId || '—',
               'Barcode': adj.barcode || '—',
               'Product Name': adj.productName,
@@ -375,19 +408,18 @@ export default function StockAdjustmentView() {
               'Resulting Qty': adj.countedQty,
               'MRP (₹)': adj.mrp ? `₹${Number(adj.mrp).toFixed(2)}` : 'null',
               'Selling Price (₹)': adj.sellingPrice ? `₹${Number(adj.sellingPrice).toFixed(2)}` : 'null',
-              'Valuation Impact': `₹${adj.valuationImpact?.toFixed(2)}`,
               'Reason': adj.reason,
               'Status': adj.status,
             }))}
             filename="STOCK_ADJUSTMENTS_REGISTER"
-            title="PHYSICAL STOCK ADJUSTMENTS & VARIANCE REGISTER"
+            title="PHYSICAL STOCK ADJUSTMENTS REGISTER"
             pdfOrientation="landscape"
           />
         )}
       </div>
 
       {/* ========================================================================= */}
-      {/* TAB 1: PERFORM STOCK ADJUSTMENT (ADD / SUBTRACT / BARCODE SEARCH)          */}
+      {/* TAB 1: PERFORM STOCK ADJUSTMENT (ADD / SUBTRACT ONLY)                      */}
       {/* ========================================================================= */}
       {activeTab === 'new' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -400,11 +432,11 @@ export default function StockAdjustmentView() {
                   <span>Select Product to Adjust</span>
                 </h3>
                 <p className="text-[11px] text-slate-400">
-                  Search by Product Name, SKU, Barcode, or Stock ID
+                  Showing stock for <span className="text-indigo-300 font-semibold">{selectedBranch.name}</span>. Search by Name, SKU, Barcode, or Stock ID.
                 </p>
               </div>
               <span className="text-[11px] font-mono text-indigo-400 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-800/40">
-                {filteredProducts.length} Products Found
+                {filteredProducts.length} Items
               </span>
             </div>
 
@@ -539,7 +571,7 @@ export default function StockAdjustmentView() {
             </div>
           </div>
 
-          {/* Right Column: Add / Subtract / Count Form (5 Cols) */}
+          {/* Right Column: Add / Subtract Form (5 Cols) */}
           <div className="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-md space-y-4">
             <div className="border-b border-slate-800 pb-2.5">
               <h3 className="font-bold text-white text-sm flex items-center gap-2">
@@ -608,49 +640,36 @@ export default function StockAdjustmentView() {
 
             {/* Adjustment Form */}
             <form onSubmit={handleSubmitAdjustment} className="space-y-3.5 text-xs">
-              {/* Mode Toggle: ADD (+) | SUBTRACT (-) | DIRECT COUNT (=) */}
+              {/* Mode Toggle: ONLY ADD (+) and SUBTRACT (-) */}
               <div>
                 <label className="font-semibold text-slate-300 block mb-1.5">
-                  Select Adjustment Mode:
+                  Select Action:
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2.5">
                   <button
                     type="button"
                     onClick={() => setAdjustmentMode('ADD')}
-                    className={`py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer border ${
+                    className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer border ${
                       adjustmentMode === 'ADD'
                         ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-600/30'
                         : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>ADD (+)</span>
+                    <Plus className="w-4 h-4" />
+                    <span>ADD Stock (+)</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setAdjustmentMode('SUBTRACT')}
-                    className={`py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer border ${
+                    className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer border ${
                       adjustmentMode === 'SUBTRACT'
                         ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-600/30'
                         : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
                   >
-                    <Minus className="w-3.5 h-3.5" />
-                    <span>SUBTRACT (-)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setAdjustmentMode('SET')}
-                    className={`py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer border ${
-                      adjustmentMode === 'SET'
-                        ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/30'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
-                    }`}
-                  >
-                    <Equal className="w-3.5 h-3.5" />
-                    <span>COUNT (=)</span>
+                    <Minus className="w-4 h-4" />
+                    <span>SUBTRACT Stock (-)</span>
                   </button>
                 </div>
               </div>
@@ -661,41 +680,27 @@ export default function StockAdjustmentView() {
                   <label className="text-slate-300 font-semibold text-xs">
                     {adjustmentMode === 'ADD'
                       ? 'Quantity to Add to Stock (+):'
-                      : adjustmentMode === 'SUBTRACT'
-                      ? 'Quantity to Subtract from Stock (-):'
-                      : 'Physical Counted Total (=):'}
+                      : 'Quantity to Subtract from Stock (-):'}
                   </label>
                   <span className="text-[11px] text-slate-500 font-mono">
                     Current: {currentStock} units
                   </span>
                 </div>
 
-                {adjustmentMode === 'SET' ? (
-                  <input
-                    ref={qtyInputRef}
-                    type="number"
-                    min="0"
-                    step="any"
-                    value={countedQty}
-                    onChange={(e) => setCountedQty(Number(e.target.value))}
-                    className="w-full bg-slate-900 border border-indigo-500 rounded-lg px-3 py-2 font-mono font-bold text-white text-base text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                ) : (
-                  <input
-                    ref={qtyInputRef}
-                    type="number"
-                    min="0.01"
-                    step="any"
-                    value={adjustQty}
-                    onChange={(e) => setAdjustQty(e.target.value)}
-                    placeholder="Enter quantity..."
-                    className={`w-full bg-slate-900 border rounded-lg px-3 py-2 font-mono font-bold text-white text-base text-center focus:outline-none focus:ring-1 ${
-                      adjustmentMode === 'ADD'
-                        ? 'border-emerald-500 focus:ring-emerald-500'
-                        : 'border-rose-500 focus:ring-rose-500'
-                    }`}
-                  />
-                )}
+                <input
+                  ref={qtyInputRef}
+                  type="number"
+                  min="0.01"
+                  step="any"
+                  value={adjustQty}
+                  onChange={(e) => setAdjustQty(e.target.value)}
+                  placeholder="Enter quantity..."
+                  className={`w-full bg-slate-900 border rounded-lg px-3 py-2 font-mono font-bold text-white text-base text-center focus:outline-none focus:ring-1 ${
+                    adjustmentMode === 'ADD'
+                      ? 'border-emerald-500 focus:ring-emerald-500'
+                      : 'border-rose-500 focus:ring-rose-500'
+                  }`}
+                />
 
                 {/* Live Stock Effect Banner */}
                 <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs font-mono">
@@ -738,17 +743,6 @@ export default function StockAdjustmentView() {
                 )}
               </div>
 
-              {/* Valuation Impact Banner */}
-              <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 flex items-center justify-between text-xs">
-                <span className="text-slate-400">Valuation Impact:</span>
-                <span className="font-mono font-bold text-slate-200">
-                  ₹{valuationImpact.toFixed(2)}
-                  <span className="text-[10px] text-slate-500 font-sans ml-1">
-                    (@ ₹{costRate.toFixed(2)}/unit)
-                  </span>
-                </span>
-              </div>
-
               {/* Approval Warning if threshold exceeded */}
               {isMaterialThresholdExceeded && (
                 <div className="bg-amber-950/40 border border-amber-500/40 rounded-xl p-2.5 text-amber-200 text-xs flex items-start gap-2">
@@ -762,36 +756,18 @@ export default function StockAdjustmentView() {
                 </div>
               )}
 
-              {/* Controlled Reason Code */}
+              {/* Mandatory Reason Input Field */}
               <div>
                 <label className="font-semibold text-slate-300 block mb-1">
-                  Controlled Reason Code:
-                </label>
-                <select
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
-                >
-                  <option value="PHYSICAL_COUNT">Routine Physical Count Variance</option>
-                  <option value="FOUND_STOCK">Surplus / Found Stock (ADD)</option>
-                  <option value="DAMAGE">Warehouse Damage / Breakage / Leakage (SUBTRACT)</option>
-                  <option value="EXPIRY">Batch Expiry / Best-Before Passed (SUBTRACT)</option>
-                  <option value="LOSS">Pilferage / Transit / Shrinkage Loss (SUBTRACT)</option>
-                  <option value="DATA_CORRECTION">Data Entry / Inward Omission Correction</option>
-                </select>
-              </div>
-
-              {/* Audit Notes */}
-              <div>
-                <label className="font-semibold text-slate-300 block mb-1">
-                  Audit Notes / Sheet # (Optional):
+                  Reason <span className="text-rose-400">*</span> (Mandatory):
                 </label>
                 <input
                   type="text"
-                  placeholder="Count sheet reference / Auditor remarks..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500"
+                  required
+                  placeholder="e.g. Damaged packaging, counted excess, expired stock, pilferage..."
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-slate-200 text-xs focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
 
@@ -801,7 +777,7 @@ export default function StockAdjustmentView() {
                   type="button"
                   onClick={() => {
                     setAdjustQty(1);
-                    setNotes('');
+                    setReason('');
                   }}
                   className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold cursor-pointer"
                 >
@@ -812,18 +788,14 @@ export default function StockAdjustmentView() {
                   className={`px-5 py-2 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-lg transition cursor-pointer ${
                     adjustmentMode === 'ADD'
                       ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/30'
-                      : adjustmentMode === 'SUBTRACT'
-                      ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/30'
-                      : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/30'
+                      : 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/30'
                   }`}
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>
                     {adjustmentMode === 'ADD'
                       ? `Confirm ADD (+${adjustQty || 0}) to Stock`
-                      : adjustmentMode === 'SUBTRACT'
-                      ? `Confirm SUBTRACT (-${adjustQty || 0}) from Stock`
-                      : `Apply Counted Stock (${countedQty})`}
+                      : `Confirm SUBTRACT (-${adjustQty || 0}) from Stock`}
                   </span>
                 </button>
               </div>
@@ -833,7 +805,7 @@ export default function StockAdjustmentView() {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: ADJUSTMENTS AUDIT REGISTER / LOG TABLE                              */}
+      {/* TAB 2: ADJUSTMENTS REGISTER / LOG TABLE                                   */}
       {/* ========================================================================= */}
       {activeTab === 'list' && (
         <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md space-y-3 p-4">
@@ -844,7 +816,7 @@ export default function StockAdjustmentView() {
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                 <input
                   type="text"
-                  placeholder="Search adjustments by doc #, product, barcode, stock ID..."
+                  placeholder="Search adjustments by doc #, product, barcode, stock ID, reason..."
                   value={logSearch}
                   onChange={(e) => setLogSearch(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-9 pr-8 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
@@ -878,11 +850,12 @@ export default function StockAdjustmentView() {
 
           {/* Adjustments Table */}
           <div className="overflow-x-auto border border-slate-800 rounded-lg">
-            <table className="w-full text-left text-xs min-w-[950px]">
+            <table className="w-full text-left text-xs min-w-[900px]">
               <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                 <tr>
                   <th className="py-2.5 px-3">Adjustment #</th>
                   <th className="py-2.5 px-3">Date & Time</th>
+                  <th className="py-2.5 px-3">Branch</th>
                   <th className="py-2.5 px-3">Stock ID</th>
                   <th className="py-2.5 px-3">Product Name & Barcode</th>
                   <th className="py-2.5 px-2 text-center">Book Qty</th>
@@ -890,7 +863,6 @@ export default function StockAdjustmentView() {
                   <th className="py-2.5 px-2 text-center">Resulting Qty</th>
                   <th className="py-2.5 px-2 text-right">MRP (₹)</th>
                   <th className="py-2.5 px-2 text-right">Selling (₹)</th>
-                  <th className="py-2.5 px-3 text-right">Valuation Impact</th>
                   <th className="py-2.5 px-3">Reason</th>
                   <th className="py-2.5 px-2 text-center">Status</th>
                   <th className="py-2.5 px-3 text-center">Actions</th>
@@ -914,6 +886,9 @@ export default function StockAdjustmentView() {
                         <td className="py-2.5 px-3 text-slate-400 text-[11px] whitespace-nowrap">
                           {new Date(adj.createdAt).toLocaleString()}
                         </td>
+                        <td className="py-2.5 px-3 text-slate-300 font-sans font-semibold">
+                          {adj.branchName || adj.warehouseName || 'Main Store'}
+                        </td>
                         <td className="py-2.5 px-3 text-indigo-300 font-bold whitespace-nowrap">
                           {adj.stockId || '—'}
                         </td>
@@ -932,16 +907,12 @@ export default function StockAdjustmentView() {
                             className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                               isPositive
                                 ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                                : adj.adjustmentQty < 0
-                                ? 'bg-rose-950 text-rose-400 border border-rose-800'
-                                : 'bg-slate-800 text-slate-300 border border-slate-700'
+                                : 'bg-rose-950 text-rose-400 border border-rose-800'
                             }`}
                           >
                             {isPositive
-                              ? `+${adj.adjustmentQty} (${adj.adjustmentMode || 'ADD'})`
-                              : adj.adjustmentQty < 0
-                              ? `${adj.adjustmentQty} (${adj.adjustmentMode || 'SUBTRACT'})`
-                              : `0 (${adj.adjustmentMode || 'COUNT'})`}
+                              ? `+${adj.adjustmentQty} (ADD)`
+                              : `${adj.adjustmentQty} (SUBTRACT)`}
                           </span>
                         </td>
                         <td className="py-2.5 px-2 text-center font-bold text-white">
@@ -953,10 +924,7 @@ export default function StockAdjustmentView() {
                         <td className="py-2.5 px-2 text-right text-emerald-400 font-bold">
                           {adj.sellingPrice ? `₹${Number(adj.sellingPrice).toFixed(2)}` : <span className="text-slate-600">null</span>}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono text-slate-300">
-                          ₹{Number(adj.valuationImpact || 0).toFixed(2)}
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-400 text-[11px] font-sans">
+                        <td className="py-2.5 px-3 text-slate-300 text-[11px] font-sans">
                           {adj.reason}
                         </td>
                         <td className="py-2.5 px-2 text-center">

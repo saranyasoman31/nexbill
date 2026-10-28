@@ -4,7 +4,7 @@ import { StockService } from './stockService.js';
 
 export const StockAdjustmentService = {
   /**
-   * Submit physical inventory count / stock adjustment (Add, Subtract, or Direct Count)
+   * Submit physical inventory count / stock adjustment (Add or Subtract)
    */
   submitAdjustment({
     warehouseId,
@@ -13,7 +13,7 @@ export const StockAdjustmentService = {
     adjustmentMode = null, // 'ADD' | 'SUBTRACT' | 'SET'
     deltaQty = null,
     countedQty = null,
-    reason = 'PHYSICAL_COUNT',
+    reason,
     notes = '',
     userRole,
     userId = 'USR-03',
@@ -23,6 +23,15 @@ export const StockAdjustmentService = {
     const product = db.products.find(p => p.id === productId);
 
     if (!warehouse || !product) throw new Error('ADJUSTMENT_ERROR: Warehouse or product not found.');
+
+    const cleanReason = String(reason || notes || '').trim();
+    if (!cleanReason) {
+      throw new Error('ADJUSTMENT_ERROR: Reason for stock adjustment is mandatory.');
+    }
+
+    const store = db.stores?.find(s => s.id === warehouse.storeId) || db.stores?.[0];
+    const storeId = store?.id || warehouse.storeId || 'STR-01';
+    const branchName = store?.name || warehouse.name || 'Main Store';
 
     const bookQty = StockService.getStockBalance(warehouseId, productId);
     const stockRecord = StockService.getStockRecord(warehouseId, productId);
@@ -72,6 +81,8 @@ export const StockAdjustmentService = {
     const adjustmentRecord = {
       id: `ADJ-${Date.now()}`,
       docNumber,
+      storeId,
+      branchName,
       warehouseId,
       warehouseName: warehouse.name,
       productId,
@@ -80,7 +91,7 @@ export const StockAdjustmentService = {
       barcode: product.barcode || '',
       stockId: resolvedStockId,
       bookQty,
-      adjustmentMode: resolvedMode, // 'ADD' | 'SUBTRACT' | 'SET'
+      adjustmentMode: resolvedMode, // 'ADD' | 'SUBTRACT'
       deltaQty: Math.abs(adjustmentQty),
       countedQty: finalCountedQty,
       adjustmentQty,
@@ -88,7 +99,7 @@ export const StockAdjustmentService = {
       sellingPrice: Number(product.sellingRate || 0),
       costRate: Number(product.costRate || 0),
       valuationImpact: Number(valuationImpact.toFixed(2)),
-      reason: reason || 'PHYSICAL_COUNT', // PHYSICAL_COUNT | DAMAGE | EXPIRY | LOSS | FOUND_STOCK | DATA_CORRECTION
+      reason: cleanReason,
       notes: notes || '',
       status: (needsApproval && !isManagerOrAdmin) ? 'PENDING_APPROVAL' : 'POSTED',
       createdBy: userId,
@@ -112,7 +123,7 @@ export const StockAdjustmentService = {
     logAuditEvent(
       adjustmentRecord.status === 'POSTED' ? 'STOCK_ADJUSTED' : 'ADJUSTMENT_PENDING_APPROVAL',
       userId,
-      `Stock adjustment ${docNumber} [${resolvedMode}] for ${product.name} (Stock ID: ${resolvedStockId}): Current ${bookQty} -> ${adjustmentQty >= 0 ? '+' : ''}${adjustmentQty} -> Resulting ${finalCountedQty}. Status: ${adjustmentRecord.status}`
+      `Stock adjustment ${docNumber} [${resolvedMode}] for ${product.name} (Branch: ${branchName}, Stock ID: ${resolvedStockId}): Current ${bookQty} -> ${adjustmentQty >= 0 ? '+' : ''}${adjustmentQty} -> Resulting ${finalCountedQty}. Reason: ${cleanReason}. Status: ${adjustmentRecord.status}`
     );
 
     return adjustmentRecord;
@@ -156,7 +167,7 @@ export const StockAdjustmentService = {
       stockId: adj.stockId,
       quantityDelta: adj.adjustmentQty,
       costRate: adj.costRate,
-      reason: `Stock adjustment [${adj.adjustmentMode || (adj.adjustmentQty > 0 ? 'ADD' : 'SUBTRACT')}]: (${adj.reason}): ${adj.notes || 'Physical audit'}`,
+      reason: `Stock adjustment [${adj.adjustmentMode || (adj.adjustmentQty > 0 ? 'ADD' : 'SUBTRACT')}]: ${adj.reason}`,
       userId: adj.approvedBy || adj.createdBy,
     }, db);
   }
