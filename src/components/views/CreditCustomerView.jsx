@@ -145,6 +145,9 @@ export default function CreditCustomerView() {
   };
 
   // Real-time Credit Customer Form Validation Helpers
+  // Official Indian GSTIN Regex: 2-digit state code + 5 letters (PAN) + 4 digits + 1 letter + 1 entity char + 'Z' + 1 check digit
+  const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+
   const newPhoneCleaned = (newCustomer.phone || '').replace(/\D/g, '');
   const newPhoneDuplicate = newPhoneCleaned.length === 10
     ? db.customers.find(c => c.phone && c.phone.replace(/\D/g, '') === newPhoneCleaned)
@@ -156,6 +159,22 @@ export default function CreditCustomerView() {
     !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(newCustomer.email.trim())
   );
 
+  const newGstinCleaned = (newCustomer.gstin || '').trim().toUpperCase();
+  const isNewB2B = (newCustomer.businessType || 'B2B') === 'B2B';
+  const isNewGstinEmpty = newGstinCleaned.length === 0;
+  const isNewGstinRequiredMissing = isNewB2B && isNewGstinEmpty;
+  const isNewGstinComplete = newGstinCleaned.length === 15;
+  const isNewGstinFormatValid = GSTIN_REGEX.test(newGstinCleaned);
+  const newGstinStatePrefix = newGstinCleaned.slice(0, 2);
+  const isNewGstinStateValid = statesList.some(s => s.code === newGstinStatePrefix);
+  const newGstinDuplicate = (newGstinCleaned.length > 0)
+    ? db.customers.find(c => c.gstin && c.gstin.trim().toUpperCase() === newGstinCleaned)
+    : null;
+  const isNewGstinInvalid = Boolean(
+    newGstinCleaned.length > 0 &&
+    (!isNewGstinComplete || !isNewGstinFormatValid || !isNewGstinStateValid)
+  );
+
   const editPhoneCleaned = (editingCustomer?.phone || '').replace(/\D/g, '');
   const editPhoneDuplicate = (editingCustomer && editPhoneCleaned.length === 10)
     ? db.customers.find(c => c.id !== editingCustomer.id && c.phone && c.phone.replace(/\D/g, '') === editPhoneCleaned)
@@ -165,6 +184,22 @@ export default function CreditCustomerView() {
     editingCustomer?.email &&
     editingCustomer.email.trim() &&
     !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(editingCustomer.email.trim())
+  );
+
+  const editGstinCleaned = (editingCustomer?.gstin || '').trim().toUpperCase();
+  const isEditB2B = (editingCustomer?.businessType || 'B2B') === 'B2B';
+  const isEditGstinEmpty = editGstinCleaned.length === 0;
+  const isEditGstinRequiredMissing = isEditB2B && isEditGstinEmpty;
+  const isEditGstinComplete = editGstinCleaned.length === 15;
+  const isEditGstinFormatValid = GSTIN_REGEX.test(editGstinCleaned);
+  const editGstinStatePrefix = editGstinCleaned.slice(0, 2);
+  const isEditGstinStateValid = statesList.some(s => s.code === editGstinStatePrefix);
+  const editGstinDuplicate = (editingCustomer && editGstinCleaned.length > 0)
+    ? db.customers.find(c => c.id !== editingCustomer.id && c.gstin && c.gstin.trim().toUpperCase() === editGstinCleaned)
+    : null;
+  const isEditGstinInvalid = Boolean(
+    editGstinCleaned.length > 0 &&
+    (!isEditGstinComplete || !isEditGstinFormatValid || !isEditGstinStateValid)
   );
 
   const handleUpdateCustomer = (e) => {
@@ -205,6 +240,36 @@ export default function CreditCustomerView() {
       }
     }
 
+    // GSTIN Validation
+    const cleanGstin = (editingCustomer.gstin || '').trim().toUpperCase();
+    if (isEditB2B && !cleanGstin) {
+      notify('error', 'GSTIN is mandatory for B2B registered customers. Please enter a valid 15-character GSTIN.', 'GSTIN Mandatory');
+      return;
+    }
+
+    if (cleanGstin) {
+      if (cleanGstin.length !== 15) {
+        notify('error', `GSTIN must be exactly 15 characters (currently ${cleanGstin.length} characters).`, 'Invalid GSTIN Length');
+        return;
+      }
+      if (!GSTIN_REGEX.test(cleanGstin)) {
+        notify('error', 'Invalid GSTIN format. Expected 15 characters: 22AAAAA0000A1Z5 (e.g. 27AAACA1234F1Z9).', 'Invalid GSTIN Format');
+        return;
+      }
+      const stPrefix = cleanGstin.slice(0, 2);
+      if (!statesList.some(s => s.code === stPrefix)) {
+        notify('error', `Invalid state code "${stPrefix}" in GSTIN. Must match a valid Indian state/UT code.`, 'Invalid State Code');
+        return;
+      }
+      const duplicateGstin = db.customers.find(
+        c => c.id !== editingCustomer.id && c.gstin && c.gstin.trim().toUpperCase() === cleanGstin
+      );
+      if (duplicateGstin) {
+        notify('error', `GSTIN ${cleanGstin} is already registered to "${duplicateGstin.name}" (${duplicateGstin.id}). Duplicate GSTIN is not allowed.`, 'Duplicate GSTIN');
+        return;
+      }
+    }
+
     const list = db.customers;
     const idx = list.findIndex((c) => c.id === editingCustomer.id);
     if (idx !== -1) {
@@ -214,7 +279,7 @@ export default function CreditCustomerView() {
         name: editingCustomer.name.trim(),
         phone: cleanedPhone,
         email: emailVal,
-        gstin: (editingCustomer.gstin || '').trim(),
+        gstin: cleanGstin,
         businessType: editingCustomer.businessType || 'B2B',
         supplyType: editingCustomer.supplyType || 'LOCAL',
         stateCode: editingCustomer.stateCode || defaultStoreStateCode,
@@ -228,7 +293,7 @@ export default function CreditCustomerView() {
       logAuditEvent(
         'CUSTOMER_UPDATED',
         currentUser.id,
-        `Updated customer: ${list[idx].name} (Mobile: ${list[idx].phone}, ${list[idx].businessType} • ${list[idx].supplyType} • ${list[idx].state || list[idx].stateCode}, Status: ${list[idx].active ? 'Active' : 'Inactive'}, Limit: ₹${list[idx].creditLimit})`
+        `Updated customer: ${list[idx].name} (Mobile: ${list[idx].phone}, GSTIN: ${cleanGstin || 'N/A'}, ${list[idx].businessType} • ${list[idx].supplyType} • ${list[idx].state || list[idx].stateCode}, Status: ${list[idx].active ? 'Active' : 'Inactive'}, Limit: ₹${list[idx].creditLimit})`
       );
       logBacklog({
         action: 'UPDATE',
@@ -237,7 +302,7 @@ export default function CreditCustomerView() {
         userId: currentUser?.id,
         userName: currentUser?.name,
         userRole: currentUser?.role,
-        details: `Updated credit customer "${list[idx].name}" (${list[idx].phone}, Limit: ₹${list[idx].creditLimit})`,
+        details: `Updated credit customer "${list[idx].name}" (${list[idx].phone}, GSTIN: ${cleanGstin || '—'}, Limit: ₹${list[idx].creditLimit})`,
       });
       notify('success', `Customer ${list[idx].name} updated successfully.`, 'Customer Updated');
       triggerRefresh();
@@ -283,6 +348,36 @@ export default function CreditCustomerView() {
       }
     }
 
+    // GSTIN Validation
+    const cleanGstin = (newCustomer.gstin || '').trim().toUpperCase();
+    if (isNewB2B && !cleanGstin) {
+      notify('error', 'GSTIN is mandatory for B2B registered customers. Please enter a valid 15-character GSTIN.', 'GSTIN Mandatory');
+      return;
+    }
+
+    if (cleanGstin) {
+      if (cleanGstin.length !== 15) {
+        notify('error', `GSTIN must be exactly 15 characters (currently ${cleanGstin.length} characters).`, 'Invalid GSTIN Length');
+        return;
+      }
+      if (!GSTIN_REGEX.test(cleanGstin)) {
+        notify('error', 'Invalid GSTIN format. Expected 15 characters: 22AAAAA0000A1Z5 (e.g. 27AAACA1234F1Z9).', 'Invalid GSTIN Format');
+        return;
+      }
+      const stPrefix = cleanGstin.slice(0, 2);
+      if (!statesList.some(s => s.code === stPrefix)) {
+        notify('error', `Invalid state code "${stPrefix}" in GSTIN. Must match a valid Indian state/UT code.`, 'Invalid State Code');
+        return;
+      }
+      const duplicateGstin = db.customers.find(
+        c => c.gstin && c.gstin.trim().toUpperCase() === cleanGstin
+      );
+      if (duplicateGstin) {
+        notify('error', `GSTIN ${cleanGstin} is already registered to "${duplicateGstin.name}" (${duplicateGstin.id}). Duplicate GSTIN is not allowed.`, 'Duplicate GSTIN');
+        return;
+      }
+    }
+
     const stateObj = statesList.find(s => s.code === newCustomer.stateCode);
     const custId = `CUST-${String(db.customers.length + 1).padStart(3, '0')}`;
     const record = {
@@ -290,7 +385,7 @@ export default function CreditCustomerView() {
       name: newCustomer.name.trim(),
       phone: cleanedPhone,
       email: emailVal,
-      gstin: newCustomer.gstin.trim(),
+      gstin: cleanGstin,
       businessType: newCustomer.businessType || 'B2B',
       supplyType: newCustomer.supplyType || 'LOCAL',
       stateCode: newCustomer.stateCode || defaultStoreStateCode,
@@ -309,7 +404,7 @@ export default function CreditCustomerView() {
     logAuditEvent(
       'CREDIT_CUSTOMER_CREATED',
       currentUser.id,
-      `Created credit customer: ${record.name} (Mobile: ${record.phone}, ${record.businessType} • ${record.supplyType} • ${record.state || record.stateCode}, Limit: ₹${record.creditLimit})`
+      `Created credit customer: ${record.name} (Mobile: ${record.phone}, GSTIN: ${cleanGstin || 'N/A'}, ${record.businessType} • ${record.supplyType} • ${record.state || record.stateCode}, Limit: ₹${record.creditLimit})`
     );
     logBacklog({
       action: 'SAVE',
@@ -318,7 +413,7 @@ export default function CreditCustomerView() {
       userId: currentUser?.id,
       userName: currentUser?.name,
       userRole: currentUser?.role,
-      details: `Saved new credit customer "${record.name}" (${record.phone}, Limit: ₹${record.creditLimit})`,
+      details: `Saved new credit customer "${record.name}" (${record.phone}, GSTIN: ${cleanGstin || '—'}, Limit: ₹${record.creditLimit})`,
     });
     notify(
       'success',
@@ -871,7 +966,9 @@ export default function CreditCustomerView() {
               <div className="grid grid-cols-2 gap-3">
                 {/* Business Type Selector */}
                 <div className="col-span-2 space-y-1">
-                  <label className="font-semibold text-slate-300 block">Business Type *</label>
+                  <label className="font-semibold text-slate-300 block">
+                    Business Type <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
@@ -901,7 +998,9 @@ export default function CreditCustomerView() {
                 </div>
 
                 <div className="col-span-2 space-y-1">
-                  <label className="font-semibold text-slate-300 block">Customer Full Name *</label>
+                  <label className="font-semibold text-slate-300 block">
+                    Customer Full Name <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <input
                     type="text"
                     required
@@ -914,7 +1013,9 @@ export default function CreditCustomerView() {
 
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <label className="font-semibold text-slate-300 block">Mobile Number *</label>
+                    <label className="font-semibold text-slate-300 block">
+                      Mobile Number <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    </label>
                     <span className="text-[10px] text-slate-400 font-mono">10 Digits</span>
                   </div>
                   <input
@@ -987,14 +1088,29 @@ export default function CreditCustomerView() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300 block">
-                    {newCustomer.businessType === 'B2B' ? 'GSTIN (Tax ID) *' : 'GSTIN (Optional)'}
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="font-semibold text-slate-300 block">
+                      {isNewB2B ? (
+                        <>
+                          <span>GSTIN (Tax ID)</span>
+                          <span className="text-rose-500 font-bold ml-0.5">*</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>GSTIN</span>
+                          <span className="text-slate-400 font-normal ml-1">(Optional)</span>
+                        </>
+                      )}
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-mono">15 Characters</span>
+                  </div>
                   <input
                     type="text"
+                    maxLength={15}
+                    required={isNewB2B}
                     value={newCustomer.gstin}
                     onChange={(e) => {
-                      const val = e.target.value.toUpperCase();
+                      const val = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 15);
                       let autoState = newCustomer.stateCode;
                       let autoSupply = newCustomer.supplyType;
                       if (val.length >= 2) {
@@ -1013,12 +1129,51 @@ export default function CreditCustomerView() {
                       });
                     }}
                     placeholder="27AAACA1234F1Z9"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 uppercase font-mono focus:border-indigo-500"
+                    className={`w-full bg-slate-950 border rounded-lg px-3 py-2 text-slate-100 uppercase font-mono focus:outline-none ${
+                      newGstinDuplicate || isNewGstinInvalid
+                        ? 'border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30'
+                        : isNewGstinFormatValid && isNewGstinStateValid && !newGstinDuplicate
+                        ? 'border-emerald-500 focus:border-emerald-500 ring-1 ring-emerald-500/30'
+                        : isNewB2B && isNewGstinEmpty
+                        ? 'border-amber-500/70 focus:border-indigo-500'
+                        : 'border-slate-700 focus:border-indigo-500'
+                    }`}
                   />
+                  {newGstinDuplicate && (
+                    <p className="text-[10px] text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                      <AlertTriangle className="w-3 h-3 shrink-0 text-rose-400" />
+                      <span>Duplicate GSTIN: registered to {newGstinDuplicate.name} ({newGstinDuplicate.id})</span>
+                    </p>
+                  )}
+                  {isNewGstinInvalid && !newGstinDuplicate && (
+                    <p className="text-[10px] text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                      <AlertTriangle className="w-3 h-3 shrink-0 text-rose-400" />
+                      <span>
+                        {newGstinCleaned.length !== 15
+                          ? `GSTIN must be 15 characters (${newGstinCleaned.length}/15)`
+                          : !isNewGstinStateValid
+                          ? `Invalid state code prefix "${newGstinCleaned.slice(0, 2)}"`
+                          : 'Invalid GSTIN format (e.g. 27AAACA1234F1Z9)'}
+                      </span>
+                    </p>
+                  )}
+                  {isNewGstinFormatValid && isNewGstinStateValid && !newGstinDuplicate && (
+                    <p className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1 font-medium">
+                      <CheckCircle2 className="w-3 h-3 shrink-0 text-emerald-400" />
+                      <span>Valid GSTIN ({statesList.find(s => s.code === newGstinCleaned.slice(0, 2))?.name || 'Verified State'})</span>
+                    </p>
+                  )}
+                  {isNewB2B && isNewGstinEmpty && (
+                    <p className="text-[10px] text-amber-400/90 mt-1 font-medium">
+                      GSTIN is mandatory for B2B registered customers.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300 block">Customer State (Place of Supply) *</label>
+                  <label className="font-semibold text-slate-300 block">
+                    Customer State (Place of Supply) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <select
                     value={newCustomer.stateCode}
                     onChange={(e) => {
@@ -1045,7 +1200,9 @@ export default function CreditCustomerView() {
                 {/* Local / Interstate */}
                 <div className="col-span-2 space-y-1">
                   <div className="flex items-center justify-between">
-                    <label className="font-semibold text-slate-300 block">Local / Interstate *</label>
+                    <label className="font-semibold text-slate-300 block">
+                      Local / Interstate <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    </label>
                     <span className="text-[10px] text-slate-400">
                       Store State: <span className="text-indigo-400 font-mono font-bold">{defaultStoreStateCode}</span>
                     </span>
@@ -1079,7 +1236,9 @@ export default function CreditCustomerView() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300 block">Approved Credit Limit (₹) *</label>
+                  <label className="font-semibold text-slate-300 block">
+                    Approved Credit Limit (₹) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <input
                     type="number"
                     min="1000"
@@ -1115,7 +1274,9 @@ export default function CreditCustomerView() {
 
               {/* Active / Inactive Status Selector */}
               <div className="pt-2 border-t border-slate-800 space-y-1">
-                <label className="font-semibold text-slate-300 block">Status *</label>
+                <label className="font-semibold text-slate-300 block">
+                  Status <span className="text-rose-500 font-bold ml-0.5">*</span>
+                </label>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -1188,7 +1349,9 @@ export default function CreditCustomerView() {
               <div className="grid grid-cols-2 gap-3">
                 {/* Business Type Selector */}
                 <div className="col-span-2 space-y-1">
-                  <label className="font-semibold text-slate-300 block">Business Type *</label>
+                  <label className="font-semibold text-slate-300 block">
+                    Business Type <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
@@ -1218,7 +1381,9 @@ export default function CreditCustomerView() {
                 </div>
 
                 <div className="col-span-2 space-y-1">
-                  <label className="font-semibold text-slate-300 block">Customer Full Name *</label>
+                  <label className="font-semibold text-slate-300 block">
+                    Customer Full Name <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <input
                     type="text"
                     required
@@ -1230,7 +1395,9 @@ export default function CreditCustomerView() {
 
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <label className="font-semibold text-slate-300 block">Mobile Number *</label>
+                    <label className="font-semibold text-slate-300 block">
+                      Mobile Number <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    </label>
                     <span className="text-[10px] text-slate-400 font-mono">10 Digits</span>
                   </div>
                   <input
@@ -1303,14 +1470,29 @@ export default function CreditCustomerView() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300 block">
-                    {editingCustomer.businessType === 'B2B' ? 'GSTIN (Tax ID) *' : 'GSTIN (Optional)'}
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="font-semibold text-slate-300 block">
+                      {isEditB2B ? (
+                        <>
+                          <span>GSTIN (Tax ID)</span>
+                          <span className="text-rose-500 font-bold ml-0.5">*</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>GSTIN</span>
+                          <span className="text-slate-400 font-normal ml-1">(Optional)</span>
+                        </>
+                      )}
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-mono">15 Characters</span>
+                  </div>
                   <input
                     type="text"
+                    maxLength={15}
+                    required={isEditB2B}
                     value={editingCustomer.gstin || ''}
                     onChange={(e) => {
-                      const val = e.target.value.toUpperCase();
+                      const val = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 15);
                       let autoState = editingCustomer.stateCode;
                       let autoSupply = editingCustomer.supplyType;
                       if (val.length >= 2) {
@@ -1328,12 +1510,52 @@ export default function CreditCustomerView() {
                         state: statesList.find(s => s.code === autoState)?.name || editingCustomer.state,
                       });
                     }}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 uppercase font-mono focus:border-indigo-500"
+                    placeholder="27AAACA1234F1Z9"
+                    className={`w-full bg-slate-950 border rounded-lg px-3 py-2 text-slate-100 uppercase font-mono focus:outline-none ${
+                      editGstinDuplicate || isEditGstinInvalid
+                        ? 'border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30'
+                        : isEditGstinFormatValid && isEditGstinStateValid && !editGstinDuplicate
+                        ? 'border-emerald-500 focus:border-emerald-500 ring-1 ring-emerald-500/30'
+                        : isEditB2B && isEditGstinEmpty
+                        ? 'border-amber-500/70 focus:border-indigo-500'
+                        : 'border-slate-700 focus:border-indigo-500'
+                    }`}
                   />
+                  {editGstinDuplicate && (
+                    <p className="text-[10px] text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                      <AlertTriangle className="w-3 h-3 shrink-0 text-rose-400" />
+                      <span>Duplicate GSTIN: registered to {editGstinDuplicate.name} ({editGstinDuplicate.id})</span>
+                    </p>
+                  )}
+                  {isEditGstinInvalid && !editGstinDuplicate && (
+                    <p className="text-[10px] text-rose-400 mt-1 flex items-center gap-1 font-medium">
+                      <AlertTriangle className="w-3 h-3 shrink-0 text-rose-400" />
+                      <span>
+                        {editGstinCleaned.length !== 15
+                          ? `GSTIN must be 15 characters (${editGstinCleaned.length}/15)`
+                          : !isEditGstinStateValid
+                          ? `Invalid state code prefix "${editGstinCleaned.slice(0, 2)}"`
+                          : 'Invalid GSTIN format (e.g. 27AAACA1234F1Z9)'}
+                      </span>
+                    </p>
+                  )}
+                  {isEditGstinFormatValid && isEditGstinStateValid && !editGstinDuplicate && (
+                    <p className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1 font-medium">
+                      <CheckCircle2 className="w-3 h-3 shrink-0 text-emerald-400" />
+                      <span>Valid GSTIN ({statesList.find(s => s.code === editGstinCleaned.slice(0, 2))?.name || 'Verified State'})</span>
+                    </p>
+                  )}
+                  {isEditB2B && isEditGstinEmpty && (
+                    <p className="text-[10px] text-amber-400/90 mt-1 font-medium">
+                      GSTIN is mandatory for B2B registered customers.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300 block">Customer State (Place of Supply) *</label>
+                  <label className="font-semibold text-slate-300 block">
+                    Customer State (Place of Supply) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <select
                     value={editingCustomer.stateCode || defaultStoreStateCode}
                     onChange={(e) => {
@@ -1360,7 +1582,9 @@ export default function CreditCustomerView() {
                 {/* Local / Interstate */}
                 <div className="col-span-2 space-y-1">
                   <div className="flex items-center justify-between">
-                    <label className="font-semibold text-slate-300 block">Local / Interstate *</label>
+                    <label className="font-semibold text-slate-300 block">
+                      Local / Interstate <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    </label>
                     <span className="text-[10px] text-slate-400">
                       Store State: <span className="text-indigo-400 font-mono font-bold">{defaultStoreStateCode}</span>
                     </span>
@@ -1394,7 +1618,9 @@ export default function CreditCustomerView() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300 block">Approved Credit Limit (₹) *</label>
+                  <label className="font-semibold text-slate-300 block">
+                    Approved Credit Limit (₹) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <input
                     type="number"
                     min="0"
@@ -1429,7 +1655,9 @@ export default function CreditCustomerView() {
 
               {/* Active / Inactive Status Selector */}
               <div className="pt-2 border-t border-slate-800 space-y-1">
-                <label className="font-semibold text-slate-300 block">Status *</label>
+                <label className="font-semibold text-slate-300 block">
+                  Status <span className="text-rose-500 font-bold ml-0.5">*</span>
+                </label>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -1520,7 +1748,9 @@ export default function CreditCustomerView() {
               </div>
 
               <div className="space-y-1">
-                <label className="font-semibold text-slate-300 block">Payment Amount Received (₹) *</label>
+                <label className="font-semibold text-slate-300 block">
+                  Payment Amount Received (₹) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                </label>
                 <input
                   type="number"
                   step="0.01"
