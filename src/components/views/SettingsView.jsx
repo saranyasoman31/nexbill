@@ -698,7 +698,7 @@ export default function SettingsView({ initialSubTab = 'profile' }) {
             </div>
             <div>
               <h4 className="font-bold text-white text-base">{currentUser?.name}</h4>
-              <p className="text-xs text-indigo-400 font-mono font-semibold">{currentUser?.role.replace(/_/g, ' ')}</p>
+              <p className="text-xs text-indigo-400 font-mono font-semibold">{(currentUser?.role || 'User').replace(/_/g, ' ')}</p>
               <p className="text-[11px] text-slate-400 mt-1">{currentUser?.email}</p>
             </div>
 

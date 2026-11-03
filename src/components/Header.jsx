@@ -71,12 +71,12 @@ export default function Header() {
     }
   }, []);
 
-  const formattedTabName = activeTab.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+  const formattedTabName = (activeTab || 'Dashboard').replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 
   const userRoleObj = db.roles?.find(
     (r) => r.id === (currentUser?.roleId || currentUser?.role) || r.code === currentUser?.role
   );
-  const roleDisplayName = userRoleObj?.name || currentUser?.role?.replace(/_/g, ' ') || 'User';
+  const roleDisplayName = userRoleObj?.name || (currentUser?.role ? currentUser.role.replace(/_/g, ' ') : 'User');
 
   return (
     <header className="bg-slate-900 border-b border-slate-800 text-slate-200 sticky top-0 z-40 shadow-xl">
@@ -120,7 +120,7 @@ export default function Header() {
             )}
             <div className="flex items-center gap-1.5">
               <span className="font-bold text-white text-[11px] sm:text-xs whitespace-nowrap max-w-[70px] xs:max-w-[100px] sm:max-w-none truncate">
-                {currentUser?.name}
+                {currentUser?.name || 'User'}
               </span>
               <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase leading-none whitespace-nowrap">
                 {roleDisplayName}
@@ -137,7 +137,7 @@ export default function Header() {
               >
                 {db.users.map((u) => (
                   <option key={u.id} value={u.id} className="bg-slate-900 text-slate-100">
-                    {u.name} — [{u.role.replace(/_/g, ' ')}]
+                    {u.name} — [{(u.role || u.roleId || 'Staff').replace(/_/g, ' ')}]
                   </option>
                 ))}
               </select>

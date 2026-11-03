@@ -67,13 +67,14 @@ export default function DashboardView() {
   } = useApp();
 
   // Root Administrator and Executive Privileges
-  const isAdmin =
-    currentUser.roleId === 'ROLE_ADMIN' ||
-    currentUser.role === 'ADMINISTRATOR' ||
-    currentUser.role === 'COMPANY_ADMIN' ||
-    currentUser.role === 'SUPER_ADMIN' ||
-    currentUser.permissions?.includes('ALL_PERMISSIONS') ||
-    currentUser.permissions?.includes('SUPER_ADMIN');
+  const isAdmin = Boolean(
+    currentUser?.roleId === 'ROLE_ADMIN' ||
+    currentUser?.role === 'ADMINISTRATOR' ||
+    currentUser?.role === 'COMPANY_ADMIN' ||
+    currentUser?.role === 'SUPER_ADMIN' ||
+    currentUser?.permissions?.includes('ALL_PERMISSIONS') ||
+    currentUser?.permissions?.includes('SUPER_ADMIN')
+  );
 
   // Module Capability Flags
   const canBilling = hasPermission('billing', 'view');
@@ -93,12 +94,13 @@ export default function DashboardView() {
   const canSettings = hasPermission('settings', 'view');
 
   // Approval Rights (Store Manager & Admin)
-  const canApprove =
+  const canApprove = Boolean(
     isAdmin ||
-    currentUser.roleId === 'ROLE_STORE_MANAGER' ||
-    currentUser.permissions?.includes('APPROVE_ADJUSTMENT') ||
-    currentUser.permissions?.includes('APPROVE_RATE_CHANGE') ||
-    hasPermission('stock_adjustment', 'update');
+    currentUser?.roleId === 'ROLE_STORE_MANAGER' ||
+    currentUser?.permissions?.includes('APPROVE_ADJUSTMENT') ||
+    currentUser?.permissions?.includes('APPROVE_RATE_CHANGE') ||
+    hasPermission('stock_adjustment', 'update')
+  );
 
   // Permitted menus count out of 25
   const permittedMenusCount = isAdmin
@@ -107,13 +109,13 @@ export default function DashboardView() {
 
   // Resolve Human-Readable Role Title
   const userRoleObj = db.roles?.find(
-    (r) => r.id === (currentUser.roleId || currentUser.role) || r.code === currentUser.role
+    (r) => r.id === (currentUser?.roleId || currentUser?.role) || r.code === currentUser?.role
   );
-  const roleDisplayName = userRoleObj?.name || currentUser.role.replace(/_/g, ' ');
+  const roleDisplayName = userRoleObj?.name || (currentUser?.role ? currentUser.role.replace(/_/g, ' ') : 'Administrator');
 
   // Metrics Calculations
   const companyInvoices = (db.invoices || []).filter(
-    (i) => i.companyId === activeCompany.id && i.status === 'POSTED'
+    (i) => i.companyId === activeCompany?.id && i.status === 'POSTED'
   );
   const totalSalesRevenue = companyInvoices.reduce((sum, i) => sum + (Number(i.netPayable) || 0), 0);
   const totalGST = companyInvoices.reduce((sum, i) => sum + (Number(i.totalTax) || 0), 0);
@@ -121,7 +123,7 @@ export default function DashboardView() {
   const avgBasketSize = totalInvoicesCount > 0 ? (totalSalesRevenue / totalInvoicesCount).toFixed(2) : '0.00';
 
   // Inventory Valuation
-  const storeWarehouses = (db.warehouses || []).filter((w) => w.storeId === activeStore.id);
+  const storeWarehouses = (db.warehouses || []).filter((w) => w.storeId === activeStore?.id);
   const storeWarehouseIds = new Set(storeWarehouses.map((w) => w.id));
   const storeBalances = (db.stockBalances || []).filter((b) => storeWarehouseIds.has(b.warehouseId));
   const totalInventoryValuation = storeBalances.reduce((sum, b) => {
@@ -136,7 +138,7 @@ export default function DashboardView() {
 
   // Purchasing & Procurement Metrics
   const companyPurchases = (db.purchases || []).filter(
-    (p) => p.companyId === activeCompany.id && p.status === 'POSTED'
+    (p) => p.companyId === activeCompany?.id && p.status === 'POSTED'
   );
   const totalPurchasesVolume = companyPurchases.reduce(
     (sum, p) => sum + Number(p.grandTotal || p.totalAmount || 0),
@@ -175,7 +177,7 @@ export default function DashboardView() {
 
   const handleQuickApproveAdjustment = (adjId) => {
     try {
-      StockAdjustmentService.approveAdjustment(adjId, currentUser.id);
+      StockAdjustmentService.approveAdjustment(adjId, currentUser?.id);
       notify('success', 'Stock adjustment approved and posted.', 'Approved');
       triggerRefresh();
     } catch (e) {
@@ -185,7 +187,7 @@ export default function DashboardView() {
 
   const handleQuickApproveRate = (rateId) => {
     try {
-      RateChangeService.approveRateChange(rateId, currentUser.id);
+      RateChangeService.approveRateChange(rateId, currentUser?.id);
       notify('success', 'Selling rate change approved and updated.', 'Approved');
       triggerRefresh();
     } catch (e) {
@@ -286,7 +288,7 @@ export default function DashboardView() {
     {
       id: 'sales_revenue',
       visible: canBilling || canReports,
-      title: `Total Revenue (${activeCompany.stateCode})`,
+      title: `Total Revenue (${activeCompany?.stateCode || '27'})`,
       value: `₹${totalSalesRevenue.toFixed(2)}`,
       sub: `${totalInvoicesCount} Invoices • Avg: ₹${avgBasketSize}`,
       icon: TrendingUp,
@@ -440,7 +442,7 @@ export default function DashboardView() {
         <div className="flex items-center gap-3.5">
           <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center overflow-hidden shrink-0">
             {currentUser?.photo ? (
-              <img src={currentUser.photo} alt={currentUser.name} className="w-full h-full object-cover" />
+              <img src={currentUser.photo} alt={currentUser?.name || 'User'} className="w-full h-full object-cover" />
             ) : (
               <User className="w-6 h-6 text-indigo-400" />
             )}
@@ -448,7 +450,7 @@ export default function DashboardView() {
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg font-bold text-white tracking-tight">
-                Welcome to NexBill, {currentUser.name}
+                Welcome to NexBill, {currentUser?.name || 'User'}
               </h2>
               <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 uppercase">
                 {roleDisplayName}
@@ -459,7 +461,7 @@ export default function DashboardView() {
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Terminal: {activeStore.name} ({activeStore.city}) • Company: {activeCompany.tradeName} ({activeCompany.state})
+              Terminal: {activeStore?.name || 'Main Branch'} ({activeStore?.city || 'Mumbai'}) • Company: {activeCompany?.tradeName || activeCompany?.name || 'NexBill Enterprise'} ({activeCompany?.state || 'Maharashtra'})
             </p>
           </div>
         </div>
@@ -471,15 +473,15 @@ export default function DashboardView() {
               <div className="text-[10px] text-slate-400 uppercase font-semibold">Store Register Status</div>
               <div
                 className={`text-xs font-bold flex items-center justify-end gap-1.5 ${
-                  activeStore.isDayOpen ? 'text-emerald-400' : 'text-rose-400'
+                  activeStore?.isDayOpen ? 'text-emerald-400' : 'text-rose-400'
                 }`}
               >
                 <span
                   className={`w-2 h-2 rounded-full ${
-                    activeStore.isDayOpen ? 'bg-emerald-400 animate-ping' : 'bg-rose-400'
+                    activeStore?.isDayOpen ? 'bg-emerald-400 animate-ping' : 'bg-rose-400'
                   }`}
                 />
-                {activeStore.isDayOpen ? 'REGISTER OPEN (READY)' : 'DAY CLOSED (LOCKED)'}
+                {activeStore?.isDayOpen ? 'REGISTER OPEN (READY)' : 'DAY CLOSED (LOCKED)'}
               </div>
             </div>
           ) : canStock || canStockTransfer ? (
@@ -487,7 +489,7 @@ export default function DashboardView() {
               <div className="text-[10px] text-slate-400 uppercase font-semibold">Active Warehouse</div>
               <div className="text-xs font-bold text-indigo-300 flex items-center justify-end gap-1.5">
                 <Boxes className="w-3 h-3 text-indigo-400" />
-                <span>{activeWarehouse.name} ({storeBalances.length} SKUs)</span>
+                <span>{activeWarehouse?.name || 'Main Warehouse'} ({storeBalances.length} SKUs)</span>
               </div>
             </div>
           ) : canPurchase || canPurchaseOrder ? (
@@ -944,7 +946,7 @@ export default function DashboardView() {
                 <span>Active Terminal Privileges</span>
               </div>
               <p className="text-xs text-slate-400">
-                You are currently authenticated as <strong>{currentUser.name}</strong> under role{' '}
+                You are currently authenticated as <strong>{currentUser?.name || 'User'}</strong> under role{' '}
                 <span className="text-indigo-300 font-semibold">{roleDisplayName}</span>. Your workspace displays
                 the modules explicitly authorized for your security profile.
               </p>
@@ -1099,7 +1101,7 @@ export default function DashboardView() {
                 permanently attributed to your user ID.
               </p>
               <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 font-mono text-[10px] text-slate-400">
-                User: {currentUser.id} • Store: {activeStore.id}
+                User: {currentUser?.id || 'USR-ADMIN'} • Store: {activeStore?.id || 'STR-01'}
               </div>
             </div>
           )}

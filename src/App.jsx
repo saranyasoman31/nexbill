@@ -25,6 +25,7 @@ import PurchaseReturnView from './components/views/PurchaseReturnView';
 import InitialStockView from './components/views/InitialStockView';
 import ReportsView from './components/views/ReportsView';
 import InvoiceReceiptModal from './components/modals/InvoiceReceiptModal';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X, ShieldAlert } from 'lucide-react';
 
 function ERPAppContent() {
@@ -159,62 +160,64 @@ function ERPAppContent() {
 
         {/* Main Content Workspace */}
         <main className="flex-1 overflow-y-auto min-w-0 bg-slate-950 scrollbar-thin">
-          {!hasViewAccess ? (
-            <div className="max-w-xl mx-auto px-4 py-20 text-center">
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl space-y-4">
-                <div className="w-14 h-14 rounded-full bg-rose-950/80 border border-rose-500/50 flex items-center justify-center mx-auto text-rose-400">
-                  <ShieldAlert className="w-7 h-7" />
+          <ErrorBoundary>
+            {!hasViewAccess ? (
+              <div className="max-w-xl mx-auto px-4 py-20 text-center">
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl space-y-4">
+                  <div className="w-14 h-14 rounded-full bg-rose-950/80 border border-rose-500/50 flex items-center justify-center mx-auto text-rose-400">
+                    <ShieldAlert className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Access Restricted</h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Your assigned role does not grant view permissions for the <span className="text-slate-200 font-semibold">{(targetMenuId || 'current').replace(/_/g, ' ')}</span> module.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab('dashboard')}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg text-xs shadow-md transition"
+                  >
+                    Return to Dashboard
+                  </button>
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-white">Access Restricted</h3>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Your assigned role does not grant view permissions for the <span className="text-slate-200 font-semibold">{targetMenuId.replace(/_/g, ' ')}</span> module.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setActiveTab('dashboard')}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg text-xs shadow-md transition"
-                >
-                  Return to Dashboard
-                </button>
               </div>
-            </div>
-          ) : (
-            <>
-              {/* Exact Menus requested by user */}
-              {activeTab === 'credit_customer' && <CreditCustomerView />}
-              {activeTab === 'main_category' && <MasterEntitiesView defaultEntity="main_category" />}
-              {activeTab === 'category' && <MasterEntitiesView defaultEntity="category" />}
-              {activeTab === 'brand' && <MasterEntitiesView defaultEntity="brand" />}
-              {activeTab === 'supplier' && <MasterEntitiesView defaultEntity="supplier" />}
-              {activeTab === 'unit' && <MasterEntitiesView defaultEntity="unit" />}
-              {activeTab === 'company' && <MasterEntitiesView defaultEntity="company" />}
-              {activeTab === 'product' && <MasterEntitiesView defaultEntity="product" />}
-              {activeTab === 'staff' && <MasterEntitiesView defaultEntity="staff" />}
-              {activeTab === 'payment_mode' && <MasterEntitiesView defaultEntity="payment_mode" />}
-              {activeTab === 'tax' && <MasterEntitiesView defaultEntity="tax" />}
-              {activeTab === 'branch' && <MasterEntitiesView defaultEntity="branch" />}
-              {activeTab === 'purchase_order' && <PurchaseOrderView />}
-              {(activeTab === 'purchase' || activeTab === 'purchases' || activeTab === 'initial') && <PurchasingView />}
-              {activeTab === 'purchase_return' && <PurchaseReturnView />}
-              {(activeTab === 'stock' || activeTab === 'inventory') && <InventoryView />}
-              {(activeTab === 'stock_adjustment' || activeTab === 'adjustments') && <StockAdjustmentView />}
-              {(activeTab === 'rate_change' || activeTab === 'pricing') && <PricingView />}
-              {(activeTab === 'billing' || activeTab === 'pos') && <POSBillingView />}
-              {(activeTab === 'billing_return' || activeTab === 'invoices') && <InvoicesAndReturnsView />}
-              {(activeTab === 'day_close' || activeTab === 'dayclose') && <DayCloseView />}
-              {(activeTab === 'stock_transfer' || activeTab === 'transfers') && <TransfersView />}
-              {(activeTab === 'reports' || activeTab === 'tally' || activeTab === 'audit' || activeTab === 'backlog') && (
-                <ReportsView initialReportTab={reportsSubTab || (activeTab === 'backlog' ? 'backlog' : null)} />
-              )}
-              {activeTab === 'settings' && <SettingsView initialSubTab={settingsSubTab} />}
+            ) : (
+              <>
+                {/* Exact Menus requested by user */}
+                {activeTab === 'credit_customer' && <CreditCustomerView />}
+                {activeTab === 'main_category' && <MasterEntitiesView defaultEntity="main_category" />}
+                {activeTab === 'category' && <MasterEntitiesView defaultEntity="category" />}
+                {activeTab === 'brand' && <MasterEntitiesView defaultEntity="brand" />}
+                {activeTab === 'supplier' && <MasterEntitiesView defaultEntity="supplier" />}
+                {activeTab === 'unit' && <MasterEntitiesView defaultEntity="unit" />}
+                {activeTab === 'company' && <MasterEntitiesView defaultEntity="company" />}
+                {activeTab === 'product' && <MasterEntitiesView defaultEntity="product" />}
+                {activeTab === 'staff' && <MasterEntitiesView defaultEntity="staff" />}
+                {activeTab === 'payment_mode' && <MasterEntitiesView defaultEntity="payment_mode" />}
+                {activeTab === 'tax' && <MasterEntitiesView defaultEntity="tax" />}
+                {activeTab === 'branch' && <MasterEntitiesView defaultEntity="branch" />}
+                {activeTab === 'purchase_order' && <PurchaseOrderView />}
+                {(activeTab === 'purchase' || activeTab === 'purchases' || activeTab === 'initial') && <PurchasingView />}
+                {activeTab === 'purchase_return' && <PurchaseReturnView />}
+                {(activeTab === 'stock' || activeTab === 'inventory') && <InventoryView />}
+                {(activeTab === 'stock_adjustment' || activeTab === 'adjustments') && <StockAdjustmentView />}
+                {(activeTab === 'rate_change' || activeTab === 'pricing') && <PricingView />}
+                {(activeTab === 'billing' || activeTab === 'pos') && <POSBillingView />}
+                {(activeTab === 'billing_return' || activeTab === 'invoices') && <InvoicesAndReturnsView />}
+                {(activeTab === 'day_close' || activeTab === 'dayclose') && <DayCloseView />}
+                {(activeTab === 'stock_transfer' || activeTab === 'transfers') && <TransfersView />}
+                {(activeTab === 'reports' || activeTab === 'tally' || activeTab === 'audit' || activeTab === 'backlog') && (
+                  <ReportsView initialReportTab={reportsSubTab || (activeTab === 'backlog' ? 'backlog' : null)} />
+                )}
+                {activeTab === 'settings' && <SettingsView initialSubTab={settingsSubTab} />}
 
-              {/* Quick Tools & Acceptance Tests */}
-              {activeTab === 'dashboard' && <DashboardView />}
-              {activeTab === 'tests' && <AcceptanceTestsView />}
-              {activeTab === 'masters' && <MasterEntitiesView defaultEntity={activeMasterSubEntity} />}
-            </>
-          )}
+                {/* Quick Tools & Acceptance Tests */}
+                {activeTab === 'dashboard' && <DashboardView />}
+                {activeTab === 'tests' && <AcceptanceTestsView />}
+                {activeTab === 'masters' && <MasterEntitiesView defaultEntity={activeMasterSubEntity} />}
+              </>
+            )}
+          </ErrorBoundary>
         </main>
       </div>
 
@@ -226,8 +229,10 @@ function ERPAppContent() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <ERPAppContent />
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <ERPAppContent />
+      </AppProvider>
+    </ErrorBoundary>
   );
 }

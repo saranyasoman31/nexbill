@@ -1,7 +1,13 @@
 // AppContext: Multi-company, store, warehouse, user roles, authentication, notifications, and reactive state
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getDatabase, saveDatabase, initializeDatabase, logAuditEvent } from '../services/storageService.js';
-import { INITIAL_STATES } from '../data/initialData.js';
+import {
+  INITIAL_STATES,
+  INITIAL_COMPANIES,
+  INITIAL_STORES,
+  INITIAL_WAREHOUSES,
+  INITIAL_USERS,
+} from '../data/initialData.js';
 
 const AppContext = createContext(null);
 
@@ -20,12 +26,20 @@ export function AppProvider({ children }) {
 
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('NEXBILL_AUTH_LOGGED_IN') === 'true';
+    try {
+      return localStorage.getItem('NEXBILL_AUTH_LOGGED_IN') === 'true';
+    } catch (_) {
+      return false;
+    }
   });
 
   // Active Context Selections
   const [currentUserId, setCurrentUserId] = useState(() => {
-    return localStorage.getItem('NEXBILL_AUTH_USER_ID') || 'USR-ADMIN';
+    try {
+      return localStorage.getItem('NEXBILL_AUTH_USER_ID') || 'USR-ADMIN';
+    } catch (_) {
+      return 'USR-ADMIN';
+    }
   });
   const [activeCompanyId, setActiveCompanyId] = useState('COMP-01');
   const [activeStoreId, setActiveStoreId] = useState('STR-01');
@@ -87,19 +101,25 @@ export function AppProvider({ children }) {
   };
 
   const loginUser = (user) => {
-    setCurrentUserId(user.id);
+    if (!user) return;
+    const targetUserId = user.id || 'USR-ADMIN';
+    setCurrentUserId(targetUserId);
     if (user.storeId) setActiveStoreId(user.storeId);
     if (user.companyId) setActiveCompanyId(user.companyId);
     setIsAuthenticated(true);
-    localStorage.setItem('NEXBILL_AUTH_LOGGED_IN', 'true');
-    localStorage.setItem('NEXBILL_AUTH_USER_ID', user.id);
+    try {
+      localStorage.setItem('NEXBILL_AUTH_LOGGED_IN', 'true');
+      localStorage.setItem('NEXBILL_AUTH_USER_ID', targetUserId);
+    } catch (_) {}
     setActiveTab('dashboard'); // Default landing page is dashboard
   };
 
   const logoutUser = () => {
     setIsAuthenticated(false);
-    localStorage.removeItem('NEXBILL_AUTH_LOGGED_IN');
-    localStorage.removeItem('NEXBILL_AUTH_USER_ID');
+    try {
+      localStorage.removeItem('NEXBILL_AUTH_LOGGED_IN');
+      localStorage.removeItem('NEXBILL_AUTH_USER_ID');
+    } catch (_) {}
     setActiveTab('dashboard');
   };
 
@@ -120,20 +140,20 @@ export function AppProvider({ children }) {
 
   // Keep active warehouse aligned with selected store
   useEffect(() => {
-    const storeWarehouses = db.warehouses.filter(w => w.storeId === activeStoreId && w.isSellable);
+    const storeWarehouses = (db.warehouses || []).filter(w => w.storeId === activeStoreId && w.isSellable);
     if (storeWarehouses.length > 0 && !storeWarehouses.some(w => w.id === activeWarehouseId)) {
       setActiveWarehouseId(storeWarehouses[0].id);
     }
   }, [activeStoreId, db.warehouses]);
 
-  // Derived objects
-  const activeCompany = (db.companies && db.companies.find(c => c.id === activeCompanyId)) || db.companies?.[0] || { id: 'COMP-01', name: 'NexBill Retail', gstin: '27AAACA1234F1Z9', state: 'Maharashtra', stateCode: '27' };
-  const activeStore = db.stores.find(s => s.id === activeStoreId) || db.stores[0];
-  const activeWarehouse = db.warehouses.find(w => w.id === activeWarehouseId) || db.warehouses[0];
-  const currentUser = db.users.find(u => u.id === currentUserId) || db.users[0];
+  // Derived objects with robust fallback guarantees
+  const activeCompany = (db.companies && db.companies.find(c => c.id === activeCompanyId)) || db.companies?.[0] || INITIAL_COMPANIES[0];
+  const activeStore = (db.stores && db.stores.find(s => s.id === activeStoreId)) || db.stores?.[0] || INITIAL_STORES[0];
+  const activeWarehouse = (db.warehouses && db.warehouses.find(w => w.id === activeWarehouseId)) || db.warehouses?.[0] || INITIAL_WAREHOUSES[0];
+  const currentUser = (db.users && db.users.find(u => u.id === currentUserId)) || db.users?.[0] || INITIAL_USERS[0];
 
-  const availableStores = db.stores || [];
-  const availableWarehouses = db.warehouses.filter(w => w.storeId === activeStoreId);
+  const availableStores = db.stores || INITIAL_STORES;
+  const availableWarehouses = (db.warehouses || []).filter(w => w.storeId === activeStoreId);
 
   // Role & Menu permissions checker
   const hasPermission = (menuId, action = 'view') => {

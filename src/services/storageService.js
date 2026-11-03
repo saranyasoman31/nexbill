@@ -33,12 +33,21 @@ export function initializeDatabase(forceReset = false) {
       try {
         const parsed = JSON.parse(existing);
         let mutated = false;
+
+        // Self-heal core collections if missing or corrupted
+        if (!parsed.stores || parsed.stores.length === 0) { parsed.stores = INITIAL_STORES; mutated = true; }
+        if (!parsed.warehouses || parsed.warehouses.length === 0) { parsed.warehouses = INITIAL_WAREHOUSES; mutated = true; }
+        if (!parsed.companies || parsed.companies.length === 0) { parsed.companies = INITIAL_COMPANIES; mutated = true; }
+        if (!parsed.roles || parsed.roles.length === 0) { parsed.roles = INITIAL_ROLES; mutated = true; }
+        if (!parsed.states || parsed.states.length === 0) { parsed.states = INITIAL_STATES; mutated = true; }
+
         // Ensure USR-ADMIN exists in existing database
         if (!parsed.users || !parsed.users.some(u => u.id === 'USR-ADMIN')) {
           parsed.users = parsed.users || [];
           parsed.users.unshift(INITIAL_USERS[0]);
           mutated = true;
         }
+
         if (!parsed.mainCategories) { parsed.mainCategories = INITIAL_MAIN_CATEGORIES; mutated = true; }
         if (!parsed.categories) { parsed.categories = INITIAL_CATEGORIES; mutated = true; }
         if (!parsed.brands) { parsed.brands = INITIAL_BRANDS; mutated = true; }
@@ -48,6 +57,20 @@ export function initializeDatabase(forceReset = false) {
         if (!parsed.purchaseOrders) { parsed.purchaseOrders = INITIAL_PURCHASE_ORDERS; mutated = true; }
         if (!parsed.initialStocks) { parsed.initialStocks = INITIAL_INITIAL_STOCKS; mutated = true; }
         if (!parsed.purchaseReturns) { parsed.purchaseReturns = []; mutated = true; }
+        if (!parsed.stockMovements) { parsed.stockMovements = []; mutated = true; }
+        if (!parsed.invoices) { parsed.invoices = []; mutated = true; }
+        if (!parsed.salesReturns) { parsed.salesReturns = []; mutated = true; }
+        if (!parsed.purchases) { parsed.purchases = []; mutated = true; }
+        if (!parsed.stockTransfers) { parsed.stockTransfers = []; mutated = true; }
+        if (!parsed.stockAdjustments) { parsed.stockAdjustments = []; mutated = true; }
+        if (!parsed.rateChanges) { parsed.rateChanges = []; mutated = true; }
+        if (!parsed.stockBalances) { parsed.stockBalances = INITIAL_STOCK_BALANCES; mutated = true; }
+        if (!parsed.customers) { parsed.customers = INITIAL_CUSTOMERS; mutated = true; }
+        if (!parsed.suppliers) { parsed.suppliers = INITIAL_SUPPLIERS; mutated = true; }
+        if (!parsed.coupons) { parsed.coupons = INITIAL_COUPONS; mutated = true; }
+        if (!parsed.products) { parsed.products = INITIAL_PRODUCTS; mutated = true; }
+        if (!parsed.auditLogs) { parsed.auditLogs = []; mutated = true; }
+        if (!parsed.backlog) { parsed.backlog = []; mutated = true; }
         if (!parsed.roles || parsed.roles.length === 0) {
           parsed.roles = INITIAL_ROLES;
           mutated = true;
@@ -114,7 +137,7 @@ export function initializeDatabase(forceReset = false) {
           });
         }
 
-        // Ensure all users have a valid roleId
+        // Ensure all users have a valid roleId, role, and permissions
         if (parsed.users) {
           parsed.users.forEach((u) => {
             if (!u.roleId) {
@@ -122,6 +145,21 @@ export function initializeDatabase(forceReset = false) {
                 (r) => r.code === u.role || r.id === u.role
               );
               u.roleId = matchedRole ? matchedRole.id : 'ROLE_ADMIN';
+              mutated = true;
+            }
+            if (!u.role) {
+              const matchedRole = (parsed.roles || INITIAL_ROLES).find(
+                (r) => r.id === u.roleId || r.code === u.roleId
+              );
+              u.role = matchedRole ? matchedRole.code || matchedRole.name : 'ADMINISTRATOR';
+              mutated = true;
+            }
+            if (!Array.isArray(u.permissions)) {
+              u.permissions = u.roleId === 'ROLE_ADMIN' ? ['ALL_PERMISSIONS', 'SUPER_ADMIN'] : ['ALL_STORE_OPS'];
+              mutated = true;
+            }
+            if (u.active === undefined) {
+              u.active = true;
               mutated = true;
             }
           });
