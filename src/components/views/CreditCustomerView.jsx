@@ -35,8 +35,10 @@ export default function CreditCustomerView() {
   const canPrint = hasPermission('credit_customer', 'print');
 
   const statesList = (db?.states && db.states.length > 0) ? db.states : INITIAL_STATES;
-  const defaultStoreStateCode = activeStore?.stateCode || '27';
-  const defaultStateName = statesList.find(s => s.code === defaultStoreStateCode)?.name || 'Maharashtra';
+  const defaultStoreStateObj = statesList.find(s => s.code === activeStore?.stateCode) || 
+                               statesList.find(s => s.name?.toLowerCase() === activeStore?.state?.toLowerCase());
+  const defaultStoreStateCode = activeStore?.stateCode || defaultStoreStateObj?.code || '27';
+  const defaultStateName = activeStore?.state || defaultStoreStateObj?.name || 'Maharashtra';
 
   // Ensure db.states is populated in database
   useEffect(() => {
@@ -94,7 +96,10 @@ export default function CreditCustomerView() {
     const bType = c.businessType || (c.gstin ? 'B2B' : 'B2C');
     const matchesBType = filterBusinessType === 'ALL' || bType === filterBusinessType;
 
-    const sType = c.supplyType || (c.stateCode && c.stateCode !== defaultStoreStateCode ? 'INTERSTATE' : 'LOCAL');
+    const resolvedState = statesList.find(s => s.code === c.stateCode) || 
+                          statesList.find(s => s.name?.toLowerCase() === c.state?.toLowerCase());
+    const resolvedStateCode = c.stateCode || resolvedState?.code || defaultStoreStateCode;
+    const sType = c.supplyType || (resolvedStateCode !== defaultStoreStateCode ? 'INTERSTATE' : 'LOCAL');
     const matchesSType = filterSupplyType === 'ALL' || sType === filterSupplyType;
 
     return matchesSearch && matchesBType && matchesSType;
@@ -131,14 +136,17 @@ export default function CreditCustomerView() {
 
   const handleOpenEdit = (cust) => {
     const bType = cust.businessType || (cust.gstin ? 'B2B' : 'B2C');
-    const sType = cust.supplyType || (cust.stateCode && cust.stateCode !== defaultStoreStateCode ? 'INTERSTATE' : 'LOCAL');
-    const stObj = statesList.find(s => s.code === (cust.stateCode || defaultStoreStateCode));
+    const resolvedState = statesList.find(s => s.code === cust.stateCode) || 
+                          statesList.find(s => s.name?.toLowerCase() === cust.state?.toLowerCase());
+    const sc = cust.stateCode || resolvedState?.code || defaultStoreStateCode;
+    const sn = cust.state || resolvedState?.name || defaultStateName;
+    const sType = cust.supplyType || (sc !== defaultStoreStateCode ? 'INTERSTATE' : 'LOCAL');
     setEditingCustomer({
       ...cust,
       businessType: bType,
       supplyType: sType,
-      stateCode: cust.stateCode || defaultStoreStateCode,
-      state: cust.state || stObj?.name || defaultStateName,
+      stateCode: sc,
+      state: sn,
       active: cust.active !== false,
     });
     setIsEditModalOpen(true);
@@ -592,21 +600,28 @@ export default function CreditCustomerView() {
           </select>
 
           <ExportButtons
-            data={creditCustomers.map((cust, idx) => ({
-              '#': idx + 1,
-              'Customer ID': cust.id,
-              'Name': cust.name,
-              'Business Type': cust.businessType || (cust.gstin ? 'B2B' : 'B2C'),
-              'Local / Interstate': cust.supplyType || 'LOCAL',
-              'State': cust.state || 'Maharashtra',
-              'Phone': cust.phone,
-              'Email': cust.email || '',
-              'GSTIN': cust.gstin || '',
-              'Credit Limit': `₹${Number(cust.creditLimit || 0).toLocaleString('en-IN')}`,
-              'Outstanding': `₹${Number(cust.creditOutstanding || 0).toLocaleString('en-IN')}`,
-              'Available Credit': `₹${Math.max(0, (Number(cust.creditLimit) || 0) - (Number(cust.creditOutstanding) || 0)).toLocaleString('en-IN')}`,
-              'Status': cust.active !== false ? 'Active' : 'Inactive'
-            }))}
+            data={creditCustomers.map((cust, idx) => {
+              const resolvedState = statesList.find(s => s.code === cust.stateCode) || 
+                                    statesList.find(s => s.name?.toLowerCase() === cust.state?.toLowerCase());
+              const displayStateCode = cust.stateCode || resolvedState?.code || defaultStoreStateCode;
+              const displayStateName = cust.state || resolvedState?.name || defaultStateName;
+              return {
+                '#': idx + 1,
+                'Customer ID': cust.id,
+                'Name': cust.name,
+                'Business Type': cust.businessType || (cust.gstin ? 'B2B' : 'B2C'),
+                'Local / Interstate': cust.supplyType || (displayStateCode !== defaultStoreStateCode ? 'INTERSTATE' : 'LOCAL'),
+                'State Code': displayStateCode,
+                'State (Place of Supply)': displayStateName,
+                'Phone': cust.phone,
+                'Email': cust.email || '',
+                'GSTIN': cust.gstin || '',
+                'Credit Limit': `₹${Number(cust.creditLimit || 0).toLocaleString('en-IN')}`,
+                'Outstanding': `₹${Number(cust.creditOutstanding || 0).toLocaleString('en-IN')}`,
+                'Available Credit': `₹${Math.max(0, (Number(cust.creditLimit) || 0) - (Number(cust.creditOutstanding) || 0)).toLocaleString('en-IN')}`,
+                'Status': cust.active !== false ? 'Active' : 'Inactive'
+              };
+            })}
             filename="CREDIT_CUSTOMERS_DIRECTORY"
             title="CREDIT CUSTOMERS & RECEIVABLES LEDGER"
             pdfOrientation="landscape"
@@ -673,7 +688,7 @@ export default function CreditCustomerView() {
             <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
                 <th className="py-2.5 px-3">Customer Name</th>
-                <th className="py-2.5 px-3">Business & Supply</th>
+                <th className="py-2.5 px-3">Business & State (Place of Supply)</th>
                 <th className="py-2.5 px-3">Contact / GSTIN</th>
                 <th className="py-2.5 px-3 text-right">Credit Limit</th>
                 <th className="py-2.5 px-3 text-right">Current Outstanding</th>
@@ -698,8 +713,11 @@ export default function CreditCustomerView() {
                   const utilPct = limit > 0 ? Math.min(100, Math.round((outstanding / limit) * 100)) : 0;
                   const isOver = outstanding > limit;
                   const custBusinessType = cust.businessType || (cust.gstin ? 'B2B' : 'B2C');
-                  const custSupplyType = cust.supplyType || (cust.stateCode && cust.stateCode !== defaultStoreStateCode ? 'INTERSTATE' : 'LOCAL');
-                  const stateName = cust.state || (statesList.find(s => s.code === (cust.stateCode || defaultStoreStateCode))?.name) || 'Maharashtra';
+                  const resolvedState = statesList.find(s => s.code === cust.stateCode) || 
+                                        statesList.find(s => s.name?.toLowerCase() === cust.state?.toLowerCase());
+                  const displayStateCode = cust.stateCode || resolvedState?.code || defaultStoreStateCode;
+                  const displayStateName = cust.state || resolvedState?.name || defaultStateName;
+                  const custSupplyType = cust.supplyType || (displayStateCode !== defaultStoreStateCode ? 'INTERSTATE' : 'LOCAL');
 
                   return (
                     <tr key={cust.id} className="hover:bg-slate-800/40 transition">
@@ -716,7 +734,7 @@ export default function CreditCustomerView() {
                       </td>
 
                       <td className="py-2.5 px-3 font-sans">
-                        <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                             custBusinessType === 'B2B'
                               ? 'bg-indigo-950/90 text-indigo-300 border-indigo-700/60'
@@ -732,10 +750,13 @@ export default function CreditCustomerView() {
                             {custSupplyType}
                           </span>
                         </div>
-                        <div className="text-[10px] text-slate-400 font-sans flex items-center gap-1">
-                          <span className="font-mono text-indigo-400 font-semibold">{cust.stateCode || defaultStoreStateCode}</span>
-                          <span>•</span>
-                          <span className="truncate max-w-[130px]" title={stateName}>{stateName}</span>
+                        <div className="text-[11px] font-sans flex items-center gap-1.5">
+                          <span className="font-mono text-emerald-400 font-bold bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-[10px]" title={`State Code: ${displayStateCode}`}>
+                            {displayStateCode}
+                          </span>
+                          <span className="truncate max-w-[130px] font-medium text-slate-200" title={displayStateName}>
+                            {displayStateName}
+                          </span>
                         </div>
                       </td>
 
@@ -1171,20 +1192,33 @@ export default function CreditCustomerView() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300 block">
-                    Customer State (Place of Supply) <span className="text-rose-500 font-bold ml-0.5">*</span>
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="font-semibold text-slate-300 block">
+                      Customer State (Place of Supply) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    </label>
+                    <span className="text-xs text-slate-400 flex items-center gap-1.5">
+                      <span>Customer State Code:</span>
+                      <span className="font-mono font-bold text-emerald-400 bg-slate-950 px-2 py-0.5 rounded border border-emerald-500/40 text-xs shadow-sm">
+                        {newCustomer.stateCode || defaultStoreStateCode}
+                      </span>
+                    </span>
+                  </div>
                   <select
-                    value={newCustomer.stateCode}
+                    value={newCustomer.stateCode || defaultStoreStateCode}
                     onChange={(e) => {
                       const code = e.target.value;
                       const st = statesList.find(s => s.code === code);
                       const isLocal = code === defaultStoreStateCode;
+                      let updatedGstin = newCustomer.gstin || '';
+                      if (updatedGstin.trim().length >= 2) {
+                        updatedGstin = code + updatedGstin.trim().slice(2);
+                      }
                       setNewCustomer({
                         ...newCustomer,
                         stateCode: code,
                         state: st?.name || '',
                         supplyType: isLocal ? 'LOCAL' : 'INTERSTATE',
+                        gstin: updatedGstin,
                       });
                     }}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:border-indigo-500 font-medium"
@@ -1201,11 +1235,23 @@ export default function CreditCustomerView() {
                 <div className="col-span-2 space-y-1">
                   <div className="flex items-center justify-between">
                     <label className="font-semibold text-slate-300 block">
-                      Local / Interstate <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Tax Treatment & Supply <span className="text-rose-500 font-bold ml-0.5">*</span>
                     </label>
-                    <span className="text-[10px] text-slate-400">
-                      Store State: <span className="text-indigo-400 font-mono font-bold">{defaultStoreStateCode}</span>
-                    </span>
+                    <div className="text-[11px] text-slate-400 flex items-center gap-1.5 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
+                      <span className="text-slate-400">Customer State:</span>
+                      <span className="font-mono font-bold text-emerald-400">{newCustomer.stateCode || defaultStoreStateCode}</span>
+                      <span className="text-slate-600">vs</span>
+                      <span className="text-slate-400">Store State:</span>
+                      <span className="font-mono font-bold text-indigo-400">{defaultStoreStateCode}</span>
+                      <span className="text-slate-600">→</span>
+                      <span className={`font-bold text-[10px] px-2 py-0.5 rounded ${
+                        newCustomer.supplyType === 'LOCAL'
+                          ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/50'
+                          : 'bg-amber-950 text-amber-300 border border-amber-700/50'
+                      }`}>
+                        {newCustomer.supplyType === 'LOCAL' ? 'INTRA-STATE (CGST+SGST)' : 'INTER-STATE (IGST)'}
+                      </span>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -1218,7 +1264,7 @@ export default function CreditCustomerView() {
                       }`}
                     >
                       <span className={`w-2 h-2 rounded-full ${newCustomer.supplyType === 'LOCAL' ? 'bg-emerald-400' : 'bg-slate-600'}`} />
-                      <span>Local</span>
+                      <span>Local (Intra-state)</span>
                     </button>
                     <button
                       type="button"
@@ -1230,7 +1276,7 @@ export default function CreditCustomerView() {
                       }`}
                     >
                       <span className={`w-2 h-2 rounded-full ${newCustomer.supplyType === 'INTERSTATE' ? 'bg-amber-400' : 'bg-slate-600'}`} />
-                      <span>Interstate</span>
+                      <span>Interstate (IGST)</span>
                     </button>
                   </div>
                 </div>
@@ -1553,20 +1599,33 @@ export default function CreditCustomerView() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300 block">
-                    Customer State (Place of Supply) <span className="text-rose-500 font-bold ml-0.5">*</span>
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="font-semibold text-slate-300 block">
+                      Customer State (Place of Supply) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    </label>
+                    <span className="text-xs text-slate-400 flex items-center gap-1.5">
+                      <span>Customer State Code:</span>
+                      <span className="font-mono font-bold text-emerald-400 bg-slate-950 px-2 py-0.5 rounded border border-emerald-500/40 text-xs shadow-sm">
+                        {editingCustomer.stateCode || defaultStoreStateCode}
+                      </span>
+                    </span>
+                  </div>
                   <select
                     value={editingCustomer.stateCode || defaultStoreStateCode}
                     onChange={(e) => {
                       const code = e.target.value;
                       const st = statesList.find(s => s.code === code);
                       const isLocal = code === defaultStoreStateCode;
+                      let updatedGstin = editingCustomer.gstin || '';
+                      if (updatedGstin.trim().length >= 2) {
+                        updatedGstin = code + updatedGstin.trim().slice(2);
+                      }
                       setEditingCustomer({
                         ...editingCustomer,
                         stateCode: code,
                         state: st?.name || '',
                         supplyType: isLocal ? 'LOCAL' : 'INTERSTATE',
+                        gstin: updatedGstin,
                       });
                     }}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:border-indigo-500 font-medium"
@@ -1583,11 +1642,23 @@ export default function CreditCustomerView() {
                 <div className="col-span-2 space-y-1">
                   <div className="flex items-center justify-between">
                     <label className="font-semibold text-slate-300 block">
-                      Local / Interstate <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Tax Treatment & Supply <span className="text-rose-500 font-bold ml-0.5">*</span>
                     </label>
-                    <span className="text-[10px] text-slate-400">
-                      Store State: <span className="text-indigo-400 font-mono font-bold">{defaultStoreStateCode}</span>
-                    </span>
+                    <div className="text-[11px] text-slate-400 flex items-center gap-1.5 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
+                      <span className="text-slate-400">Customer State:</span>
+                      <span className="font-mono font-bold text-emerald-400">{editingCustomer.stateCode || defaultStoreStateCode}</span>
+                      <span className="text-slate-600">vs</span>
+                      <span className="text-slate-400">Store State:</span>
+                      <span className="font-mono font-bold text-indigo-400">{defaultStoreStateCode}</span>
+                      <span className="text-slate-600">→</span>
+                      <span className={`font-bold text-[10px] px-2 py-0.5 rounded ${
+                        (editingCustomer.supplyType || 'LOCAL') === 'LOCAL'
+                          ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/50'
+                          : 'bg-amber-950 text-amber-300 border border-amber-700/50'
+                      }`}>
+                        {(editingCustomer.supplyType || 'LOCAL') === 'LOCAL' ? 'INTRA-STATE (CGST+SGST)' : 'INTER-STATE (IGST)'}
+                      </span>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -1600,7 +1671,7 @@ export default function CreditCustomerView() {
                       }`}
                     >
                       <span className={`w-2 h-2 rounded-full ${(editingCustomer.supplyType || 'LOCAL') === 'LOCAL' ? 'bg-emerald-400' : 'bg-slate-600'}`} />
-                      <span>Local</span>
+                      <span>Local (Intra-state)</span>
                     </button>
                     <button
                       type="button"
@@ -1612,7 +1683,7 @@ export default function CreditCustomerView() {
                       }`}
                     >
                       <span className={`w-2 h-2 rounded-full ${editingCustomer.supplyType === 'INTERSTATE' ? 'bg-amber-400' : 'bg-slate-600'}`} />
-                      <span>Interstate</span>
+                      <span>Interstate (IGST)</span>
                     </button>
                   </div>
                 </div>

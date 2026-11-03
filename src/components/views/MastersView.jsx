@@ -24,8 +24,10 @@ export default function MastersView() {
   const { db, currentUser, notify, triggerRefresh, activeStore } = useApp();
 
   const statesList = (db?.states && db.states.length > 0) ? db.states : INITIAL_STATES;
-  const defaultStoreStateCode = activeStore?.stateCode || '27';
-  const defaultStateName = statesList.find(s => s.code === defaultStoreStateCode)?.name || 'Maharashtra';
+  const defaultStoreStateObj = statesList.find(s => s.code === activeStore?.stateCode) || 
+                               statesList.find(s => s.name?.toLowerCase() === activeStore?.state?.toLowerCase());
+  const defaultStoreStateCode = activeStore?.stateCode || defaultStoreStateObj?.code || '27';
+  const defaultStateName = activeStore?.state || defaultStoreStateObj?.name || 'Maharashtra';
 
   // Ensure db.states is populated in database
   useEffect(() => {
@@ -484,7 +486,7 @@ export default function MastersView() {
             <thead className="bg-slate-950/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
               <tr>
                 <th className="py-2.5 px-3">Customer Name</th>
-                <th className="py-2.5 px-3">Business & Local / Interstate</th>
+                <th className="py-2.5 px-3">Business & State (Place of Supply)</th>
                 <th className="py-2.5 px-3">Phone & Email</th>
                 <th className="py-2.5 px-3">GSTIN (B2B)</th>
                 <th className="py-2.5 px-3 text-right">Credit Limit</th>
@@ -496,8 +498,11 @@ export default function MastersView() {
             <tbody className="divide-y divide-slate-800/60">
               {db.customers.map(c => {
                 const bType = c.businessType || (c.gstin ? 'B2B' : 'B2C');
-                const sType = c.supplyType || (c.stateCode && c.stateCode !== defaultStoreStateCode ? 'INTERSTATE' : 'LOCAL');
-                const stateName = c.state || (statesList.find(s => s.code === (c.stateCode || defaultStoreStateCode))?.name) || 'Maharashtra';
+                const resolvedState = statesList.find(s => s.code === c.stateCode) || 
+                                      statesList.find(s => s.name?.toLowerCase() === c.state?.toLowerCase());
+                const displayStateCode = c.stateCode || resolvedState?.code || defaultStoreStateCode;
+                const displayStateName = c.state || resolvedState?.name || defaultStateName;
+                const sType = c.supplyType || (displayStateCode !== defaultStoreStateCode ? 'INTERSTATE' : 'LOCAL');
 
                 return (
                   <tr key={c.id} className="hover:bg-slate-800/40 transition">
@@ -506,7 +511,7 @@ export default function MastersView() {
                       <div className="text-[10px] text-slate-500 font-mono">{c.id}</div>
                     </td>
                     <td className="py-2.5 px-3">
-                      <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                      <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                           bType === 'B2B'
                             ? 'bg-indigo-950/90 text-indigo-300 border-indigo-700/60'
@@ -522,10 +527,13 @@ export default function MastersView() {
                           {sType}
                         </span>
                       </div>
-                      <div className="text-[10px] text-slate-400 font-sans flex items-center gap-1">
-                        <span className="font-mono text-indigo-400 font-semibold">{c.stateCode || defaultStoreStateCode}</span>
-                        <span>•</span>
-                        <span className="truncate max-w-[130px]" title={stateName}>{stateName}</span>
+                      <div className="text-[11px] font-sans flex items-center gap-1.5">
+                        <span className="font-mono text-emerald-400 font-bold bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 text-[10px]" title={`State Code: ${displayStateCode}`}>
+                          {displayStateCode}
+                        </span>
+                        <span className="truncate max-w-[130px] font-medium text-slate-200" title={displayStateName}>
+                          {displayStateName}
+                        </span>
                       </div>
                     </td>
                     <td className="py-2.5 px-3 text-slate-300">
@@ -1150,20 +1158,33 @@ export default function MastersView() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="font-semibold text-slate-300 block mb-1">
-                      State (Place of Supply) <span className="text-rose-500 font-bold ml-0.5">*</span>
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-semibold text-slate-300 block">
+                        State (Place of Supply) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      </label>
+                      <span className="text-xs text-slate-400 flex items-center gap-1.5">
+                        <span>State Code:</span>
+                        <span className="font-mono font-bold text-emerald-400 bg-slate-950 px-1.5 py-0.2 rounded border border-emerald-500/40 text-xs shadow-sm">
+                          {newCustomer.stateCode || defaultStoreStateCode}
+                        </span>
+                      </span>
+                    </div>
                     <select
-                      value={newCustomer.stateCode}
+                      value={newCustomer.stateCode || defaultStoreStateCode}
                       onChange={(e) => {
                         const code = e.target.value;
                         const st = statesList.find(s => s.code === code);
                         const isLocal = code === defaultStoreStateCode;
+                        let updatedGstin = newCustomer.gstin || '';
+                        if (updatedGstin.trim().length >= 2) {
+                          updatedGstin = code + updatedGstin.trim().slice(2);
+                        }
                         setNewCustomer({
                           ...newCustomer,
                           stateCode: code,
                           state: st?.name || '',
                           supplyType: isLocal ? 'LOCAL' : 'INTERSTATE',
+                          gstin: updatedGstin,
                         });
                       }}
                       className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-200 font-medium"
@@ -1180,11 +1201,23 @@ export default function MastersView() {
                   <div className="space-y-1">
                     <div className="flex items-center justify-between mb-1">
                       <label className="font-semibold text-slate-300 block">
-                        Local / Interstate <span className="text-rose-500 font-bold ml-0.5">*</span>
+                        Tax Treatment & Supply <span className="text-rose-500 font-bold ml-0.5">*</span>
                       </label>
-                      <span className="text-[10px] text-slate-400">
-                        Store: <span className="text-indigo-400 font-mono font-bold">{defaultStoreStateCode}</span>
-                      </span>
+                      <div className="text-[11px] text-slate-400 flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                        <span>Cust:</span>
+                        <span className="font-mono font-bold text-emerald-400">{newCustomer.stateCode || defaultStoreStateCode}</span>
+                        <span className="text-slate-600">vs</span>
+                        <span>Store:</span>
+                        <span className="font-mono font-bold text-indigo-400">{defaultStoreStateCode}</span>
+                        <span className="text-slate-600">→</span>
+                        <span className={`font-bold text-[9px] px-1.5 py-0.2 rounded ${
+                          newCustomer.supplyType === 'LOCAL'
+                            ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/50'
+                            : 'bg-amber-950 text-amber-300 border border-amber-700/50'
+                        }`}>
+                          {newCustomer.supplyType === 'LOCAL' ? 'INTRA' : 'INTER'}
+                        </span>
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <button
