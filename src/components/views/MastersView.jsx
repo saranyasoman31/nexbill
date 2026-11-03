@@ -824,7 +824,9 @@ export default function MastersView() {
             {activeSubTab === 'products' && (
               <form onSubmit={handleSaveProduct} className="space-y-3 text-xs">
                 <div>
-                  <label className="font-semibold text-slate-300 block mb-1">Product Name *</label>
+                  <label className="font-semibold text-slate-300 block mb-1">
+                    Product Name <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <input
                     type="text"
                     required
@@ -836,7 +838,9 @@ export default function MastersView() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="font-semibold text-slate-300 block mb-1">SKU *</label>
+                    <label className="font-semibold text-slate-300 block mb-1">
+                      SKU <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    </label>
                     <input
                       type="text"
                       required
@@ -847,7 +851,9 @@ export default function MastersView() {
                     />
                   </div>
                   <div>
-                    <label className="font-semibold text-slate-300 block mb-1">Barcode *</label>
+                    <label className="font-semibold text-slate-300 block mb-1">
+                      Barcode <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    </label>
                     <input
                       type="text"
                       required
@@ -895,7 +901,9 @@ export default function MastersView() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="font-semibold text-slate-300 block mb-1">Tax Type *</label>
+                    <label className="font-semibold text-slate-300 block mb-1">
+                      Tax Type <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    </label>
                     <select
                       value={newProduct.taxType || 'inclusive'}
                       onChange={(e) => {
@@ -913,7 +921,9 @@ export default function MastersView() {
                     </select>
                   </div>
                   <div>
-                    <label className="font-semibold text-slate-300 block mb-1">GST Rate (%) *</label>
+                    <label className="font-semibold text-slate-300 block mb-1">
+                      GST Rate (%) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    </label>
                     <select
                       value={newProduct.taxRate}
                       onChange={(e) => setNewProduct({ ...newProduct, taxRate: Number(e.target.value) })}
@@ -928,7 +938,9 @@ export default function MastersView() {
                   </div>
                 </div>
                 <div className="pt-2 border-t border-slate-800 space-y-1">
-                  <label className="font-semibold text-slate-300 block">Status *</label>
+                  <label className="font-semibold text-slate-300 block">
+                    Status <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -967,7 +979,9 @@ export default function MastersView() {
               <form onSubmit={handleSaveCustomer} className="space-y-3 text-xs">
                 {/* Business Type Selector */}
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300 block">Business Type *</label>
+                  <label className="font-semibold text-slate-300 block">
+                    Business Type <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
@@ -997,7 +1011,9 @@ export default function MastersView() {
                 </div>
 
                 <div>
-                  <label className="font-semibold text-slate-300 block mb-1">Customer / Entity Name *</label>
+                  <label className="font-semibold text-slate-300 block mb-1">
+                    Customer / Entity Name <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <input
                     type="text"
                     required
@@ -1011,7 +1027,9 @@ export default function MastersView() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="font-semibold text-slate-300 block">Mobile Number *</label>
+                      <label className="font-semibold text-slate-300 block">
+                        Mobile Number <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      </label>
                       <span className="text-[10px] text-slate-400 font-mono">10 Digits</span>
                     </div>
                     <input
@@ -1087,7 +1105,11 @@ export default function MastersView() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="font-semibold text-slate-300 block mb-1">
-                      {newCustomer.businessType === 'B2B' ? 'GSTIN (Tax ID) *' : 'GSTIN (Optional)'}
+                      {newCustomer.businessType === 'B2B' ? (
+                        <>GSTIN (Tax ID) <span className="text-rose-500 font-bold ml-0.5">*</span></>
+                      ) : (
+                        'GSTIN (Optional)'
+                      )}
                     </label>
                     <input
                       type="text"
@@ -1128,7 +1150,9 @@ export default function MastersView() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="font-semibold text-slate-300 block mb-1">State (Place of Supply) *</label>
+                    <label className="font-semibold text-slate-300 block mb-1">
+                      State (Place of Supply) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    </label>
                     <select
                       value={newCustomer.stateCode}
                       onChange={(e) => {
@@ -1155,7 +1179,9 @@ export default function MastersView() {
                   {/* Local / Interstate */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between mb-1">
-                      <label className="font-semibold text-slate-300 block">Local / Interstate *</label>
+                      <label className="font-semibold text-slate-300 block">
+                        Local / Interstate <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      </label>
                       <span className="text-[10px] text-slate-400">
                         Store: <span className="text-indigo-400 font-mono font-bold">{defaultStoreStateCode}</span>
                       </span>
@@ -1189,7 +1215,9 @@ export default function MastersView() {
                   </div>
                 </div>
                 <div className="pt-2 border-t border-slate-800 space-y-1">
-                  <label className="font-semibold text-slate-300 block">Status *</label>
+                  <label className="font-semibold text-slate-300 block">
+                    Status <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -1227,7 +1255,9 @@ export default function MastersView() {
             {activeSubTab === 'suppliers' && (
               <form onSubmit={handleSaveSupplier} className="space-y-3 text-xs">
                 <div>
-                  <label className="font-semibold text-slate-300 block mb-1">Supplier Company Name *</label>
+                  <label className="font-semibold text-slate-300 block mb-1">
+                    Supplier Company Name <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <input
                     type="text"
                     required
@@ -1247,7 +1277,9 @@ export default function MastersView() {
                     />
                   </div>
                   <div>
-                    <label className="font-semibold text-slate-300 block mb-1">Supplier GSTIN *</label>
+                    <label className="font-semibold text-slate-300 block mb-1">
+                      Supplier GSTIN <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    </label>
                     <input
                       type="text"
                       required
@@ -1258,7 +1290,9 @@ export default function MastersView() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300 block mb-1">Local / Interstate *</label>
+                  <label className="font-semibold text-slate-300 block mb-1">
+                    Local / Interstate <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
@@ -1287,7 +1321,9 @@ export default function MastersView() {
                   </div>
                 </div>
                 <div className="pt-2 border-t border-slate-800 space-y-1">
-                  <label className="font-semibold text-slate-300 block">Status *</label>
+                  <label className="font-semibold text-slate-300 block">
+                    Status <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"

@@ -1769,7 +1769,7 @@ export default function SettingsView({ initialSubTab = 'profile' }) {
                 <form onSubmit={handleCreateNewRole} className="space-y-3.5 text-xs">
                   <div className="space-y-1">
                     <label className="font-semibold text-slate-200 block text-xs">
-                      Role Name <span className="text-rose-400">*</span>
+                      Role Name <span className="text-rose-500 font-bold ml-0.5">*</span>
                     </label>
                     <input
                       type="text"
@@ -1792,7 +1792,7 @@ export default function SettingsView({ initialSubTab = 'profile' }) {
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <label className="font-semibold text-slate-200 block text-xs">
-                        Role Code <span className="text-rose-400">*</span>
+                        Role Code <span className="text-rose-500 font-bold ml-0.5">*</span>
                       </label>
                       <span className="text-[10px] text-slate-500 font-mono">Auto-generated</span>
                     </div>

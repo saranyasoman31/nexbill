@@ -279,7 +279,9 @@ export default function InitialStockView() {
 
             <form onSubmit={handleSaveInitialStock} className="space-y-3 text-xs">
               <div className="space-y-1">
-                <label className="font-semibold text-slate-300 block">Receiving Warehouse *</label>
+                <label className="font-semibold text-slate-300 block">
+                  Receiving Warehouse <span className="text-rose-500 font-bold ml-0.5">*</span>
+                </label>
                 <select
                   value={entryData.warehouseId}
                   onChange={(e) => setEntryData({ ...entryData, warehouseId: e.target.value })}
@@ -294,7 +296,9 @@ export default function InitialStockView() {
               </div>
 
               <div className="space-y-1">
-                <label className="font-semibold text-slate-300 block">Product *</label>
+                <label className="font-semibold text-slate-300 block">
+                  Product <span className="text-rose-500 font-bold ml-0.5">*</span>
+                </label>
                 <select
                   value={entryData.productId}
                   onChange={(e) => handleProductChange(e.target.value)}
@@ -310,7 +314,9 @@ export default function InitialStockView() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300 block">Opening Quantity *</label>
+                  <label className="font-semibold text-slate-300 block">
+                    Opening Quantity <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <input
                     type="number"
                     min="1"
@@ -322,7 +328,9 @@ export default function InitialStockView() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300 block">Valuation Cost Rate (₹) *</label>
+                  <label className="font-semibold text-slate-300 block">
+                    Valuation Cost Rate (₹) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <input
                     type="number"
                     step="0.01"

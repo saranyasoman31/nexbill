@@ -1251,7 +1251,9 @@ export default function PurchaseOrderView() {
                 {/* PO Number with Uniqueness Validation */}
                 <div className="space-y-1">
                   <label className="font-semibold text-slate-300 flex items-center justify-between">
-                    <span>PO Number *</span>
+                    <span>
+                      PO Number <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    </span>
                     {poNumberError && (
                       <span className="text-[10px] text-rose-400 font-normal">Duplicate / Invalid</span>
                     )}
@@ -1272,7 +1274,9 @@ export default function PurchaseOrderView() {
 
                 {/* Supplier Selection */}
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300 block">Select Supplier *</label>
+                  <label className="font-semibold text-slate-300 block">
+                    Select Supplier <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <select
                     value={formData.supplierId}
                     onChange={(e) => {
@@ -1296,7 +1300,9 @@ export default function PurchaseOrderView() {
 
                 {/* Expected Delivery Date */}
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300 block">Expected Delivery Date *</label>
+                  <label className="font-semibold text-slate-300 block">
+                    Expected Delivery Date <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <input
                     type="date"
                     required
@@ -1687,7 +1693,9 @@ export default function PurchaseOrderView() {
                     {formData.sendMail && (
                       <div className="space-y-2 pt-2 border-t border-slate-800">
                         <div className="space-y-1">
-                          <label className="text-[11px] text-slate-400 block">Recipient Email *</label>
+                          <label className="text-[11px] text-slate-400 block">
+                            Recipient Email <span className="text-rose-500 font-bold ml-0.5">*</span>
+                          </label>
                           <input
                             type="email"
                             required={formData.sendMail}
@@ -2123,7 +2131,9 @@ export default function PurchaseOrderView() {
 
             <form onSubmit={handleSendStandaloneEmail} className="space-y-3 text-xs">
               <div className="space-y-1">
-                <label className="font-semibold text-slate-300 block">Supplier Email Address *</label>
+                <label className="font-semibold text-slate-300 block">
+                  Supplier Email Address <span className="text-rose-500 font-bold ml-0.5">*</span>
+                </label>
                 <input
                   type="email"
                   required

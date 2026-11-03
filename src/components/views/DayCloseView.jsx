@@ -414,7 +414,9 @@ export default function DayCloseView() {
             </div>
 
             <div className="space-y-2 text-xs">
-              <label className="font-semibold text-slate-300 block">Statutory Justification Reason *</label>
+              <label className="font-semibold text-slate-300 block">
+                Statutory Justification Reason <span className="text-rose-500 font-bold ml-0.5">*</span>
+              </label>
               <textarea
                 rows="3"
                 required

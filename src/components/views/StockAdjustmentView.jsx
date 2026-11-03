@@ -759,7 +759,7 @@ export default function StockAdjustmentView() {
               {/* Mandatory Reason Input Field */}
               <div>
                 <label className="font-semibold text-slate-300 block mb-1">
-                  Reason <span className="text-rose-400">*</span> (Mandatory):
+                  Reason <span className="text-rose-500 font-bold ml-0.5">*</span> (Mandatory):
                 </label>
                 <input
                   type="text"
