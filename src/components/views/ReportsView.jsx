@@ -13,7 +13,6 @@ import {
   Search,
   Calendar,
   CheckCircle2,
-  Printer,
   FileCode,
   PackageCheck,
   RotateCw,
@@ -541,14 +540,6 @@ export default function ReportsView({ initialReportTab = null }) {
               pdfOrientation="landscape"
             />
           )}
-
-          <button
-            onClick={() => window.print()}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-semibold border border-slate-700 transition cursor-pointer"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Print Report</span>
-          </button>
         </div>
       </div>
 

@@ -24,7 +24,6 @@ import {
   Save,
   ShieldCheck,
   ShieldAlert,
-  Printer,
   User,
   Briefcase,
   KeyRound,
@@ -2257,17 +2256,6 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
               title={currentConfig.title}
               pdfOrientation={activeEntity === 'staff' || activeEntity === 'product' || activeEntity === 'supplier' || activeEntity === 'tax' ? 'landscape' : 'portrait'}
             />
-
-            {canPrint && (
-              <button
-                onClick={() => window.print()}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold shadow-sm transition shrink-0"
-                title={`Print / Export ${currentConfig.label} Master List`}
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Print</span>
-              </button>
-            )}
 
             {canAdd && (
               <button

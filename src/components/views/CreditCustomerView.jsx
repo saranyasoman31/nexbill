@@ -20,7 +20,6 @@ import {
   X,
   Edit2,
   Trash2,
-  Printer,
   ShieldAlert,
 } from 'lucide-react';
 import ExportButtons from '../common/ExportButtons.jsx';
@@ -631,17 +630,6 @@ export default function CreditCustomerView() {
             pdfOrientation="landscape"
           />
 
-          {canPrint && (
-            <button
-              onClick={() => window.print()}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold shadow-sm transition"
-              title="Print Credit Customers Report"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Print</span>
-            </button>
-          )}
-
           {canAdd && (
             <button
               onClick={() => setIsAddModalOpen(true)}
@@ -955,19 +943,10 @@ export default function CreditCustomerView() {
               )}
             </div>
 
-            <div className="flex items-center justify-between pt-2">
-              {canPrint && (
-                <button
-                  onClick={() => window.print()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Print Statement</span>
-                </button>
-              )}
+            <div className="flex items-center justify-end pt-2">
               <button
                 onClick={() => setSelectedCustomer(null)}
-                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold ml-auto"
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold"
               >
                 Close Statement
               </button>
