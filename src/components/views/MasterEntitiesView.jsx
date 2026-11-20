@@ -3011,8 +3011,9 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
               <button
                 type="button"
                 onClick={handleCloseModal}
-                className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition shrink-0"
+                className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer shrink-0"
                 title="Close modal"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>

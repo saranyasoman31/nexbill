@@ -1760,7 +1760,9 @@ export default function SettingsView({ initialSubTab = 'profile' }) {
                   <button
                     type="button"
                     onClick={() => setIsCreateRoleModalOpen(false)}
-                    className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition"
+                    className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
+                    title="Close"
+                    aria-label="Close"
                   >
                     <X className="w-4 h-4" />
                   </button>

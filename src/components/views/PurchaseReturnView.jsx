@@ -1275,7 +1275,13 @@ export default function PurchaseReturnView() {
                   <Printer className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Print Voucher</span>
                 </button>
-                <button onClick={() => setViewingReturn(null)} className="text-slate-400 hover:text-white">
+                <button
+                  type="button"
+                  onClick={() => setViewingReturn(null)}
+                  className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+                  title="Close"
+                  aria-label="Close"
+                >
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -1365,7 +1371,13 @@ export default function PurchaseReturnView() {
                   <Printer className="w-4 h-4" />
                   <span>Print Document</span>
                 </button>
-                <button onClick={() => setPrintingReturn(null)} className="text-slate-400 hover:text-white p-1 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setPrintingReturn(null)}
+                  className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+                  title="Close"
+                  aria-label="Close"
+                >
                   <X className="w-5 h-5" />
                 </button>
               </div>

@@ -261,9 +261,11 @@ export default function Navigation() {
 
             {/* Mobile Drawer Close Button */}
             <button
+              type="button"
               onClick={() => setIsMobileSidebarOpen(false)}
-              className="lg:hidden p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer"
+              className="lg:hidden p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
               title="Close Menu"
+              aria-label="Close Menu"
             >
               <X className="w-4 h-4" />
             </button>

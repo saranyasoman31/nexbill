@@ -62,7 +62,7 @@ function ERPAppContent() {
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
         {/* Toast Notification Banner on Login */}
         {toast && (
-          <div className="fixed top-3 right-4 z-50 animate-bounce duration-300">
+          <div className="fixed top-3 right-4 z-50 transition-all duration-200">
             <div
               className={`flex items-start gap-3 p-3.5 rounded-xl border shadow-2xl backdrop-blur-md max-w-md ${
                 toast.type === 'success'
@@ -79,7 +79,13 @@ function ERPAppContent() {
                 {toast.title && <div className="font-bold text-white text-sm mb-0.5">{toast.title}</div>}
                 <div>{toast.message}</div>
               </div>
-              <button onClick={() => setToast(null)} className="text-slate-400 hover:text-white p-0.5">
+              <button
+                type="button"
+                onClick={() => setToast(null)}
+                className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition cursor-pointer shrink-0"
+                title="Close notification"
+                aria-label="Close"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -118,7 +124,7 @@ function ERPAppContent() {
     <div className="h-screen min-h-[100dvh] bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-600 selection:text-white overflow-hidden">
       {/* Toast Notification Banner */}
       {toast && (
-        <div className="fixed top-3 right-4 z-50 animate-bounce duration-300">
+        <div className="fixed top-3 right-4 z-50 transition-all duration-200">
           <div
             className={`flex items-start gap-3 p-3.5 rounded-xl border shadow-2xl backdrop-blur-md max-w-md ${
               toast.type === 'success'
@@ -141,8 +147,11 @@ function ERPAppContent() {
             </div>
 
             <button
+              type="button"
               onClick={() => setToast(null)}
-              className="text-slate-400 hover:text-white transition p-0.5"
+              className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition cursor-pointer shrink-0"
+              title="Close notification"
+              aria-label="Close"
             >
               <X className="w-4 h-4" />
             </button>

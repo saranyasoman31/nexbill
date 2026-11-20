@@ -913,8 +913,11 @@ export default function CreditCustomerView() {
                   size="small"
                 />
                 <button
+                  type="button"
                   onClick={() => setSelectedCustomer(null)}
-                  className="text-slate-400 hover:text-white p-1 rounded-lg"
+                  className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+                  title="Close Statement"
+                  aria-label="Close"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -982,7 +985,13 @@ export default function CreditCustomerView() {
                 <CreditCard className="w-4 h-4 text-indigo-400" />
                 Add On-Account Credit Customer
               </h4>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+                title="Close"
+                aria-label="Close"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1373,7 +1382,13 @@ export default function CreditCustomerView() {
                 <Edit2 className="w-4 h-4 text-indigo-400" />
                 Edit Credit Customer: {editingCustomer.name}
               </h4>
-              <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+                title="Close"
+                aria-label="Close"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1767,7 +1782,13 @@ export default function CreditCustomerView() {
                   Customer: <span className="text-slate-200 font-semibold">{paymentCustomer.name}</span>
                 </p>
               </div>
-              <button onClick={() => setIsPaymentModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button
+                type="button"
+                onClick={() => setIsPaymentModalOpen(false)}
+                className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+                title="Close"
+                aria-label="Close"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>

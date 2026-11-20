@@ -53,8 +53,11 @@ export default function InvoiceReceiptModal() {
               <Printer className="w-3.5 h-3.5" /> Print
             </button>
             <button
+              type="button"
               onClick={() => setReceiptModalInvoice(null)}
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg"
+              className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+              title="Close"
+              aria-label="Close"
             >
               <X className="w-4 h-4" />
             </button>

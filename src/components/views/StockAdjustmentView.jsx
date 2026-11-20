@@ -457,7 +457,9 @@ export default function StockAdjustmentView() {
                     <button
                       type="button"
                       onClick={() => setProductSearch('')}
-                      className="p-1 text-slate-400 hover:text-white rounded"
+                      className="p-1 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+                      title="Clear"
+                      aria-label="Clear"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -823,8 +825,11 @@ export default function StockAdjustmentView() {
                 />
                 {logSearch && (
                   <button
+                    type="button"
                     onClick={() => setLogSearch('')}
-                    className="absolute right-2 top-2 text-slate-400 hover:text-white"
+                    className="absolute right-2 top-2 text-slate-400 hover:text-slate-900 dark:hover:text-white p-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+                    title="Clear"
+                    aria-label="Clear"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>

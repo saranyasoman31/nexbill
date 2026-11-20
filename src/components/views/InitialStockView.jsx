@@ -272,7 +272,13 @@ export default function InitialStockView() {
                 <Boxes className="w-4 h-4 text-indigo-400" />
                 Post Initial / Opening Stock Cutover
               </h4>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+                title="Close"
+                aria-label="Close"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>

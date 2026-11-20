@@ -177,6 +177,74 @@ html.light .bg-rose-600.text-white {
   color: #ffffff !important;
 }
 
+/* ========================================================================= */
+/* MODAL & TOAST CLOSE BUTTON HOVER CONTRAST (Light & Dark Theme)             */
+/* Prevents close buttons ('X' icons) from blending into light backgrounds   */
+/* when hovered.                                                             */
+/* ========================================================================= */
+button:has(> svg.lucide-x),
+button:has(> svg.lucide-circle-x),
+button[aria-label="Close"],
+button[title="Close"],
+button[title="Close notification"] {
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+/* Light mode: On hover, close button turns crisp dark slate / black with contrast background */
+html.light button:has(> svg.lucide-x),
+html[data-theme="light"] button:has(> svg.lucide-x),
+html.light button:has(> svg.lucide-circle-x),
+html[data-theme="light"] button:has(> svg.lucide-circle-x) {
+  color: #475569;
+}
+
+html.light button:has(> svg.lucide-x):hover,
+html.light button:has(> svg.lucide-circle-x):hover,
+html[data-theme="light"] button:has(> svg.lucide-x):hover,
+html[data-theme="light"] button:has(> svg.lucide-circle-x):hover,
+html.light button[aria-label="Close"]:hover,
+html[data-theme="light"] button[aria-label="Close"]:hover,
+html.light button[title="Close"]:hover,
+html[data-theme="light"] button[title="Close"]:hover,
+html.light button[title="Close notification"]:hover,
+html[data-theme="light"] button[title="Close notification"]:hover {
+  color: #020617 !important;
+  background-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+/* Safeguard: In Light mode, any button that does not have an explicit solid colored background (indigo, emerald, rose, etc.)
+   must NOT turn pure white when hovered if it has hover:text-white */
+html.light button:not(
+  [class*="bg-indigo-"],
+  [class*="bg-emerald-"],
+  [class*="bg-rose-"],
+  [class*="bg-blue-"],
+  [class*="bg-purple-"],
+  [class*="bg-amber-"]
+).hover\:text-white:hover,
+html[data-theme="light"] button:not(
+  [class*="bg-indigo-"],
+  [class*="bg-emerald-"],
+  [class*="bg-rose-"],
+  [class*="bg-blue-"],
+  [class*="bg-purple-"],
+  [class*="bg-amber-"]
+).hover\:text-white:hover {
+  color: #020617 !important;
+  background-color: rgba(15, 23, 42, 0.08);
+}
+
+/* Dark mode hover styling for close buttons */
+html:not(.light):not([data-theme="light"]) button:has(> svg.lucide-x):hover,
+html:not(.light):not([data-theme="light"]) button:has(> svg.lucide-circle-x):hover,
+html:not(.light):not([data-theme="light"]) button[aria-label="Close"]:hover,
+html:not(.light):not([data-theme="light"]) button[title="Close"]:hover,
+html:not(.light):not([data-theme="light"]) button[title="Close notification"]:hover {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}
+
 /* Light mode subtle box shadows for cards */
 html.light .shadow-2xl {
   box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);

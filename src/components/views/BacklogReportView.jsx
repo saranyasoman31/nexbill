@@ -494,7 +494,13 @@ export default function BacklogReportView() {
                   <p className="text-[11px] text-slate-400">Captured at {new Date(selectedLog.timestamp).toLocaleString()}</p>
                 </div>
               </div>
-              <button onClick={() => setSelectedLog(null)} className="text-slate-400 hover:text-white p-1 rounded-lg">
+              <button
+                type="button"
+                onClick={() => setSelectedLog(null)}
+                className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+                title="Close"
+                aria-label="Close"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>

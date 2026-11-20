@@ -1238,8 +1238,11 @@ export default function PurchaseOrderView() {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setIsFormModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg"
+                className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+                title="Close"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1822,8 +1825,11 @@ export default function PurchaseOrderView() {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setRateModal({ isOpen: false, product: null, rates: [], targetLineIdx: null, customRate: '' })}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+                title="Close"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1934,8 +1940,11 @@ export default function PurchaseOrderView() {
                   <span>A4 Print</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => setViewingPO(null)}
-                  className="text-slate-400 hover:text-white p-1 rounded-lg"
+                  className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+                  title="Close"
+                  aria-label="Close"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -2124,7 +2133,13 @@ export default function PurchaseOrderView() {
                   <p className="text-[11px] text-slate-400">Order #{emailingPO.poNumber}</p>
                 </div>
               </div>
-              <button onClick={() => setEmailingPO(null)} className="text-slate-400 hover:text-white">
+              <button
+                type="button"
+                onClick={() => setEmailingPO(null)}
+                className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+                title="Close"
+                aria-label="Close"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>

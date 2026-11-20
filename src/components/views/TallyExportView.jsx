@@ -11,6 +11,7 @@ import {
   Receipt,
   Building2,
   Calendar,
+  X,
 } from 'lucide-react';
 import ExportButtons from '../common/ExportButtons.jsx';
 
@@ -258,7 +259,15 @@ export default function TallyExportView() {
                 <h3 className="font-bold text-white text-base">Tally XML Payload: {selectedBatch.batchNumber}</h3>
                 <p className="text-xs text-slate-400">Compliant Tally Prime / ERP 9 Import Envelope ({selectedBatch.voucherCount} Vouchers)</p>
               </div>
-              <button onClick={() => setSelectedBatch(null)} className="text-slate-400 hover:text-white">✕</button>
+              <button
+                type="button"
+                onClick={() => setSelectedBatch(null)}
+                className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+                title="Close"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
             <div className="px-5">
