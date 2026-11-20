@@ -1203,26 +1203,9 @@ export default function MastersView() {
 
                   {/* Local / Interstate */}
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="font-semibold text-slate-300 block">
-                        Tax Treatment & Supply <span className="text-rose-500 font-bold ml-0.5">*</span>
-                      </label>
-                      <div className="text-[11px] text-slate-400 flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
-                        <span>Cust:</span>
-                        <span className="font-mono font-bold text-emerald-400">{newCustomer.stateCode || DEFAULT_CUSTOMER_STATE_CODE}</span>
-                        <span className="text-slate-600">vs</span>
-                        <span>Store:</span>
-                        <span className="font-mono font-bold text-indigo-400">{defaultStoreStateCode}</span>
-                        <span className="text-slate-600">→</span>
-                        <span className={`font-bold text-[9px] px-1.5 py-0.2 rounded ${
-                          newCustomer.supplyType === 'LOCAL'
-                            ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/50'
-                            : 'bg-amber-950 text-amber-300 border border-amber-700/50'
-                        }`}>
-                          {newCustomer.supplyType === 'LOCAL' ? 'INTRA' : 'INTER'}
-                        </span>
-                      </div>
-                    </div>
+                    <label className="font-semibold text-slate-300 block mb-1">
+                      Local / Interstate <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    </label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"

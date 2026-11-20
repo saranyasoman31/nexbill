@@ -1237,26 +1237,9 @@ export default function CreditCustomerView() {
 
                 {/* Local / Interstate */}
                 <div className="col-span-2 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label className="font-semibold text-slate-300 block">
-                      Tax Treatment & Supply <span className="text-rose-500 font-bold ml-0.5">*</span>
-                    </label>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-1.5 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
-                      <span className="text-slate-400">Customer State:</span>
-                      <span className="font-mono font-bold text-emerald-400">{newCustomer.stateCode || DEFAULT_CUSTOMER_STATE_CODE}</span>
-                      <span className="text-slate-600">vs</span>
-                      <span className="text-slate-400">Store State:</span>
-                      <span className="font-mono font-bold text-indigo-400">{defaultStoreStateCode}</span>
-                      <span className="text-slate-600">→</span>
-                      <span className={`font-bold text-[10px] px-2 py-0.5 rounded ${
-                        newCustomer.supplyType === 'LOCAL'
-                          ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/50'
-                          : 'bg-amber-950 text-amber-300 border border-amber-700/50'
-                      }`}>
-                        {newCustomer.supplyType === 'LOCAL' ? 'INTRA-STATE (CGST+SGST)' : 'INTER-STATE (IGST)'}
-                      </span>
-                    </div>
-                  </div>
+                  <label className="font-semibold text-slate-300 block">
+                    Local / Interstate <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
@@ -1644,26 +1627,9 @@ export default function CreditCustomerView() {
 
                 {/* Local / Interstate */}
                 <div className="col-span-2 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label className="font-semibold text-slate-300 block">
-                      Tax Treatment & Supply <span className="text-rose-500 font-bold ml-0.5">*</span>
-                    </label>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-1.5 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
-                      <span className="text-slate-400">Customer State:</span>
-                      <span className="font-mono font-bold text-emerald-400">{editingCustomer.stateCode || DEFAULT_CUSTOMER_STATE_CODE}</span>
-                      <span className="text-slate-600">vs</span>
-                      <span className="text-slate-400">Store State:</span>
-                      <span className="font-mono font-bold text-indigo-400">{defaultStoreStateCode}</span>
-                      <span className="text-slate-600">→</span>
-                      <span className={`font-bold text-[10px] px-2 py-0.5 rounded ${
-                        (editingCustomer.supplyType || 'LOCAL') === 'LOCAL'
-                          ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/50'
-                          : 'bg-amber-950 text-amber-300 border border-amber-700/50'
-                      }`}>
-                        {(editingCustomer.supplyType || 'LOCAL') === 'LOCAL' ? 'INTRA-STATE (CGST+SGST)' : 'INTER-STATE (IGST)'}
-                      </span>
-                    </div>
-                  </div>
+                  <label className="font-semibold text-slate-300 block">
+                    Local / Interstate <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
