@@ -29,6 +29,10 @@ export default function MastersView() {
   const defaultStoreStateCode = activeStore?.stateCode || defaultStoreStateObj?.code || '27';
   const defaultStateName = activeStore?.state || defaultStoreStateObj?.name || 'Maharashtra';
 
+  // Default Customer State is Kerala (Code: 32)
+  const DEFAULT_CUSTOMER_STATE_CODE = '32';
+  const DEFAULT_CUSTOMER_STATE_NAME = 'Kerala';
+
   // Ensure db.states is populated in database
   useEffect(() => {
     if (!db.states || db.states.length === 0) {
@@ -66,9 +70,9 @@ export default function MastersView() {
     email: '',
     gstin: '',
     businessType: 'B2B',
-    supplyType: 'LOCAL',
-    stateCode: defaultStoreStateCode,
-    state: defaultStateName,
+    supplyType: DEFAULT_CUSTOMER_STATE_CODE === defaultStoreStateCode ? 'LOCAL' : 'INTERSTATE',
+    stateCode: DEFAULT_CUSTOMER_STATE_CODE,
+    state: DEFAULT_CUSTOMER_STATE_NAME,
     creditLimit: 10000,
     active: true,
   });
@@ -216,9 +220,9 @@ export default function MastersView() {
       email: emailVal,
       gstin: (newCustomer.gstin || '').trim(),
       businessType: newCustomer.businessType || 'B2B',
-      supplyType: newCustomer.supplyType || 'LOCAL',
-      stateCode: newCustomer.stateCode || defaultStoreStateCode,
-      state: stateObj?.name || newCustomer.state || defaultStateName,
+      supplyType: newCustomer.supplyType || (newCustomer.stateCode === defaultStoreStateCode ? 'LOCAL' : 'INTERSTATE'),
+      stateCode: newCustomer.stateCode || DEFAULT_CUSTOMER_STATE_CODE,
+      state: stateObj?.name || newCustomer.state || DEFAULT_CUSTOMER_STATE_NAME,
       creditLimit: Number(newCustomer.creditLimit) || 0,
       creditOutstanding: 0,
       loyaltyPoints: 0,
@@ -242,9 +246,9 @@ export default function MastersView() {
       email: '',
       gstin: '',
       businessType: 'B2B',
-      supplyType: 'LOCAL',
-      stateCode: defaultStoreStateCode,
-      state: defaultStateName,
+      supplyType: DEFAULT_CUSTOMER_STATE_CODE === defaultStoreStateCode ? 'LOCAL' : 'INTERSTATE',
+      stateCode: DEFAULT_CUSTOMER_STATE_CODE,
+      state: DEFAULT_CUSTOMER_STATE_NAME,
       creditLimit: 10000,
       active: true,
     });
@@ -500,8 +504,8 @@ export default function MastersView() {
                 const bType = c.businessType || (c.gstin ? 'B2B' : 'B2C');
                 const resolvedState = statesList.find(s => s.code === c.stateCode) || 
                                       statesList.find(s => s.name?.toLowerCase() === c.state?.toLowerCase());
-                const displayStateCode = c.stateCode || resolvedState?.code || defaultStoreStateCode;
-                const displayStateName = c.state || resolvedState?.name || defaultStateName;
+                const displayStateCode = c.stateCode || resolvedState?.code || DEFAULT_CUSTOMER_STATE_CODE;
+                const displayStateName = c.state || resolvedState?.name || DEFAULT_CUSTOMER_STATE_NAME;
                 const sType = c.supplyType || (displayStateCode !== defaultStoreStateCode ? 'INTERSTATE' : 'LOCAL');
 
                 return (
@@ -1165,12 +1169,12 @@ export default function MastersView() {
                       <span className="text-xs text-slate-400 flex items-center gap-1.5">
                         <span>State Code:</span>
                         <span className="font-mono font-bold text-emerald-400 bg-slate-950 px-1.5 py-0.2 rounded border border-emerald-500/40 text-xs shadow-sm">
-                          {newCustomer.stateCode || defaultStoreStateCode}
+                          {newCustomer.stateCode || DEFAULT_CUSTOMER_STATE_CODE}
                         </span>
                       </span>
                     </div>
                     <select
-                      value={newCustomer.stateCode || defaultStoreStateCode}
+                      value={newCustomer.stateCode || DEFAULT_CUSTOMER_STATE_CODE}
                       onChange={(e) => {
                         const code = e.target.value;
                         const st = statesList.find(s => s.code === code);
@@ -1205,7 +1209,7 @@ export default function MastersView() {
                       </label>
                       <div className="text-[11px] text-slate-400 flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
                         <span>Cust:</span>
-                        <span className="font-mono font-bold text-emerald-400">{newCustomer.stateCode || defaultStoreStateCode}</span>
+                        <span className="font-mono font-bold text-emerald-400">{newCustomer.stateCode || DEFAULT_CUSTOMER_STATE_CODE}</span>
                         <span className="text-slate-600">vs</span>
                         <span>Store:</span>
                         <span className="font-mono font-bold text-indigo-400">{defaultStoreStateCode}</span>

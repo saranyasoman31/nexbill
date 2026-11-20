@@ -38,7 +38,11 @@ export default function CreditCustomerView() {
   const defaultStoreStateObj = statesList.find(s => s.code === activeStore?.stateCode) || 
                                statesList.find(s => s.name?.toLowerCase() === activeStore?.state?.toLowerCase());
   const defaultStoreStateCode = activeStore?.stateCode || defaultStoreStateObj?.code || '27';
-  const defaultStateName = activeStore?.state || defaultStoreStateObj?.name || 'Maharashtra';
+  const defaultStoreStateName = activeStore?.state || defaultStoreStateObj?.name || 'Maharashtra';
+
+  // Default Customer State is Kerala (Code: 32)
+  const DEFAULT_CUSTOMER_STATE_CODE = '32';
+  const DEFAULT_CUSTOMER_STATE_NAME = 'Kerala';
 
   // Ensure db.states is populated in database
   useEffect(() => {
@@ -59,16 +63,16 @@ export default function CreditCustomerView() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentCustomer, setPaymentCustomer] = useState(null);
 
-  // New Credit Customer Form State
+  // New Credit Customer Form State (Default Customer State: Kerala 32)
   const [newCustomer, setNewCustomer] = useState({
     name: '',
     phone: '',
     email: '',
     gstin: '',
     businessType: 'B2B', // B2B | B2C
-    supplyType: 'LOCAL',  // LOCAL | INTERSTATE
-    stateCode: defaultStoreStateCode,
-    state: defaultStateName,
+    supplyType: DEFAULT_CUSTOMER_STATE_CODE === defaultStoreStateCode ? 'LOCAL' : 'INTERSTATE',
+    stateCode: DEFAULT_CUSTOMER_STATE_CODE,
+    state: DEFAULT_CUSTOMER_STATE_NAME,
     creditLimit: 25000,
     creditDays: 30,
     address: '',
@@ -138,8 +142,8 @@ export default function CreditCustomerView() {
     const bType = cust.businessType || (cust.gstin ? 'B2B' : 'B2C');
     const resolvedState = statesList.find(s => s.code === cust.stateCode) || 
                           statesList.find(s => s.name?.toLowerCase() === cust.state?.toLowerCase());
-    const sc = cust.stateCode || resolvedState?.code || defaultStoreStateCode;
-    const sn = cust.state || resolvedState?.name || defaultStateName;
+    const sc = cust.stateCode || resolvedState?.code || DEFAULT_CUSTOMER_STATE_CODE;
+    const sn = cust.state || resolvedState?.name || DEFAULT_CUSTOMER_STATE_NAME;
     const sType = cust.supplyType || (sc !== defaultStoreStateCode ? 'INTERSTATE' : 'LOCAL');
     setEditingCustomer({
       ...cust,
@@ -289,9 +293,9 @@ export default function CreditCustomerView() {
         email: emailVal,
         gstin: cleanGstin,
         businessType: editingCustomer.businessType || 'B2B',
-        supplyType: editingCustomer.supplyType || 'LOCAL',
-        stateCode: editingCustomer.stateCode || defaultStoreStateCode,
-        state: stateObj?.name || editingCustomer.state || defaultStateName,
+        supplyType: editingCustomer.supplyType || (editingCustomer.stateCode === defaultStoreStateCode ? 'LOCAL' : 'INTERSTATE'),
+        stateCode: editingCustomer.stateCode || DEFAULT_CUSTOMER_STATE_CODE,
+        state: stateObj?.name || editingCustomer.state || DEFAULT_CUSTOMER_STATE_NAME,
         creditLimit: Number(editingCustomer.creditLimit) || 0,
         creditDays: Number(editingCustomer.creditDays) || 30,
         address: (editingCustomer.address || '').trim(),
@@ -395,9 +399,9 @@ export default function CreditCustomerView() {
       email: emailVal,
       gstin: cleanGstin,
       businessType: newCustomer.businessType || 'B2B',
-      supplyType: newCustomer.supplyType || 'LOCAL',
-      stateCode: newCustomer.stateCode || defaultStoreStateCode,
-      state: stateObj?.name || newCustomer.state || defaultStateName,
+      supplyType: newCustomer.supplyType || (newCustomer.stateCode === defaultStoreStateCode ? 'LOCAL' : 'INTERSTATE'),
+      stateCode: newCustomer.stateCode || DEFAULT_CUSTOMER_STATE_CODE,
+      state: stateObj?.name || newCustomer.state || DEFAULT_CUSTOMER_STATE_NAME,
       creditLimit: Number(newCustomer.creditLimit) || 0,
       creditDays: Number(newCustomer.creditDays) || 30,
       creditOutstanding: 0,
@@ -436,9 +440,9 @@ export default function CreditCustomerView() {
       email: '',
       gstin: '',
       businessType: 'B2B',
-      supplyType: 'LOCAL',
-      stateCode: defaultStoreStateCode,
-      state: defaultStateName,
+      supplyType: DEFAULT_CUSTOMER_STATE_CODE === defaultStoreStateCode ? 'LOCAL' : 'INTERSTATE',
+      stateCode: DEFAULT_CUSTOMER_STATE_CODE,
+      state: DEFAULT_CUSTOMER_STATE_NAME,
       creditLimit: 25000,
       creditDays: 30,
       address: '',
@@ -603,8 +607,8 @@ export default function CreditCustomerView() {
             data={creditCustomers.map((cust, idx) => {
               const resolvedState = statesList.find(s => s.code === cust.stateCode) || 
                                     statesList.find(s => s.name?.toLowerCase() === cust.state?.toLowerCase());
-              const displayStateCode = cust.stateCode || resolvedState?.code || defaultStoreStateCode;
-              const displayStateName = cust.state || resolvedState?.name || defaultStateName;
+              const displayStateCode = cust.stateCode || resolvedState?.code || DEFAULT_CUSTOMER_STATE_CODE;
+              const displayStateName = cust.state || resolvedState?.name || DEFAULT_CUSTOMER_STATE_NAME;
               return {
                 '#': idx + 1,
                 'Customer ID': cust.id,
@@ -715,8 +719,8 @@ export default function CreditCustomerView() {
                   const custBusinessType = cust.businessType || (cust.gstin ? 'B2B' : 'B2C');
                   const resolvedState = statesList.find(s => s.code === cust.stateCode) || 
                                         statesList.find(s => s.name?.toLowerCase() === cust.state?.toLowerCase());
-                  const displayStateCode = cust.stateCode || resolvedState?.code || defaultStoreStateCode;
-                  const displayStateName = cust.state || resolvedState?.name || defaultStateName;
+                  const displayStateCode = cust.stateCode || resolvedState?.code || DEFAULT_CUSTOMER_STATE_CODE;
+                  const displayStateName = cust.state || resolvedState?.name || DEFAULT_CUSTOMER_STATE_NAME;
                   const custSupplyType = cust.supplyType || (displayStateCode !== defaultStoreStateCode ? 'INTERSTATE' : 'LOCAL');
 
                   return (
@@ -1199,12 +1203,12 @@ export default function CreditCustomerView() {
                     <span className="text-xs text-slate-400 flex items-center gap-1.5">
                       <span>Customer State Code:</span>
                       <span className="font-mono font-bold text-emerald-400 bg-slate-950 px-2 py-0.5 rounded border border-emerald-500/40 text-xs shadow-sm">
-                        {newCustomer.stateCode || defaultStoreStateCode}
+                        {newCustomer.stateCode || DEFAULT_CUSTOMER_STATE_CODE}
                       </span>
                     </span>
                   </div>
                   <select
-                    value={newCustomer.stateCode || defaultStoreStateCode}
+                    value={newCustomer.stateCode || DEFAULT_CUSTOMER_STATE_CODE}
                     onChange={(e) => {
                       const code = e.target.value;
                       const st = statesList.find(s => s.code === code);
@@ -1239,7 +1243,7 @@ export default function CreditCustomerView() {
                     </label>
                     <div className="text-[11px] text-slate-400 flex items-center gap-1.5 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
                       <span className="text-slate-400">Customer State:</span>
-                      <span className="font-mono font-bold text-emerald-400">{newCustomer.stateCode || defaultStoreStateCode}</span>
+                      <span className="font-mono font-bold text-emerald-400">{newCustomer.stateCode || DEFAULT_CUSTOMER_STATE_CODE}</span>
                       <span className="text-slate-600">vs</span>
                       <span className="text-slate-400">Store State:</span>
                       <span className="font-mono font-bold text-indigo-400">{defaultStoreStateCode}</span>
@@ -1606,12 +1610,12 @@ export default function CreditCustomerView() {
                     <span className="text-xs text-slate-400 flex items-center gap-1.5">
                       <span>Customer State Code:</span>
                       <span className="font-mono font-bold text-emerald-400 bg-slate-950 px-2 py-0.5 rounded border border-emerald-500/40 text-xs shadow-sm">
-                        {editingCustomer.stateCode || defaultStoreStateCode}
+                        {editingCustomer.stateCode || DEFAULT_CUSTOMER_STATE_CODE}
                       </span>
                     </span>
                   </div>
                   <select
-                    value={editingCustomer.stateCode || defaultStoreStateCode}
+                    value={editingCustomer.stateCode || DEFAULT_CUSTOMER_STATE_CODE}
                     onChange={(e) => {
                       const code = e.target.value;
                       const st = statesList.find(s => s.code === code);
@@ -1646,7 +1650,7 @@ export default function CreditCustomerView() {
                     </label>
                     <div className="text-[11px] text-slate-400 flex items-center gap-1.5 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
                       <span className="text-slate-400">Customer State:</span>
-                      <span className="font-mono font-bold text-emerald-400">{editingCustomer.stateCode || defaultStoreStateCode}</span>
+                      <span className="font-mono font-bold text-emerald-400">{editingCustomer.stateCode || DEFAULT_CUSTOMER_STATE_CODE}</span>
                       <span className="text-slate-600">vs</span>
                       <span className="text-slate-400">Store State:</span>
                       <span className="font-mono font-bold text-indigo-400">{defaultStoreStateCode}</span>

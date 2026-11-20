@@ -165,20 +165,25 @@ export function initializeDatabase(forceReset = false) {
           });
         }
 
-        // Ensure all customers have businessType, supplyType, and state
+        // Ensure all customers have businessType, supplyType, and state (Default Customer State: Kerala - 32)
         if (parsed.customers) {
           parsed.customers.forEach((c) => {
             if (!c.businessType) {
               c.businessType = (c.gstin && c.gstin.trim().length > 0) ? 'B2B' : 'B2C';
               mutated = true;
             }
-            if (!c.supplyType) {
-              c.supplyType = (c.stateCode && c.stateCode !== '27') ? 'INTERSTATE' : 'LOCAL';
+            if (!c.stateCode) {
+              c.stateCode = '32';
               mutated = true;
             }
             if (!c.state) {
-              const st = INITIAL_STATES.find(s => s.code === (c.stateCode || '27'));
-              c.state = st ? st.name : 'Maharashtra';
+              const st = INITIAL_STATES.find(s => s.code === (c.stateCode || '32'));
+              c.state = st ? st.name : 'Kerala';
+              mutated = true;
+            }
+            if (!c.supplyType) {
+              const storeStateCode = parsed.stores?.[0]?.stateCode || '32';
+              c.supplyType = (c.stateCode && c.stateCode !== storeStateCode) ? 'INTERSTATE' : 'LOCAL';
               mutated = true;
             }
           });
