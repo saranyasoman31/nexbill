@@ -620,9 +620,9 @@ export default function CreditCustomerView() {
                 'Phone': cust.phone,
                 'Email': cust.email || '',
                 'GSTIN': cust.gstin || '',
-                'Credit Limit': `₹${Number(cust.creditLimit || 0).toLocaleString('en-IN')}`,
-                'Outstanding': `₹${Number(cust.creditOutstanding || 0).toLocaleString('en-IN')}`,
-                'Available Credit': `₹${Math.max(0, (Number(cust.creditLimit) || 0) - (Number(cust.creditOutstanding) || 0)).toLocaleString('en-IN')}`,
+                'Credit Limit': Number(cust.creditLimit || 0).toLocaleString('en-IN'),
+                'Outstanding': Number(cust.creditOutstanding || 0).toLocaleString('en-IN'),
+                'Available Credit': Math.max(0, (Number(cust.creditLimit) || 0) - (Number(cust.creditOutstanding) || 0)).toLocaleString('en-IN'),
                 'Status': cust.active !== false ? 'Active' : 'Inactive'
               };
             })}

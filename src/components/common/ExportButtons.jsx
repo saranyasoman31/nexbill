@@ -40,26 +40,21 @@ export default function ExportButtons({
 
     if (tableId || tableRef) {
       const el = tableRef?.current || tableId;
-      const success = exportTableElementToExcel(el, filename, sheetName);
-      if (success && notify) notify(`Exported ${title} to Excel successfully!`, 'success');
+      exportTableElementToExcel(el, filename, sheetName);
       return;
     }
 
     if (!data || data.length === 0) {
-      if (notify) notify('No data to export.', 'warning');
       return;
     }
 
-    const success = exportToExcel({
+    exportToExcel({
       data,
       columns,
       filename,
       sheetName,
       title,
     });
-    if (success && notify) {
-      notify(`Exported ${title} to Excel (.xlsx)`, 'success');
-    }
   };
 
   const handlePdf = (e) => {
@@ -73,7 +68,7 @@ export default function ExportButtons({
 
     if (tableId || tableRef) {
       const el = tableRef?.current || tableId;
-      const success = exportTableElementToPdf(el, {
+      exportTableElementToPdf(el, {
         filename,
         title,
         subtitle,
@@ -81,16 +76,14 @@ export default function ExportButtons({
         storeName: activeStore?.name || 'NexBill Retail',
         user: currentUser,
       });
-      if (success && notify) notify(`Exported ${title} to PDF successfully!`, 'success');
       return;
     }
 
     if (!data || data.length === 0) {
-      if (notify) notify('No data to export.', 'warning');
       return;
     }
 
-    const success = exportToPdf({
+    exportToPdf({
       data,
       columns,
       filename,
@@ -101,9 +94,6 @@ export default function ExportButtons({
       user: currentUser,
       summaryCards,
     });
-    if (success && notify) {
-      notify(`Exported ${title} to PDF (.pdf)`, 'success');
-    }
   };
 
   const btnBaseClass = size === 'small'

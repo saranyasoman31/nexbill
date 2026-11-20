@@ -894,8 +894,8 @@ export default function DashboardView() {
                       '#': idx + 1,
                       'Customer Name': cust.name,
                       'Phone': cust.phone || '',
-                      'Credit Limit': `₹${Number(cust.creditLimit || 0).toLocaleString('en-IN')}`,
-                      'Current Balance': `₹${Number(cust.creditOutstanding || 0).toLocaleString('en-IN')}`
+                      'Credit Limit': Number(cust.creditLimit || 0).toLocaleString('en-IN'),
+                      'Current Balance': Number(cust.creditOutstanding || 0).toLocaleString('en-IN')
                     }))}
                     filename="DASHBOARD_CREDIT_CUSTOMERS"
                     title="CUSTOMER CREDIT ACCOUNTS"

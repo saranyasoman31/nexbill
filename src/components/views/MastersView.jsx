@@ -327,8 +327,8 @@ export default function MastersView() {
                     'Phone': c.phone,
                     'Email': c.email || '',
                     'GSTIN': c.gstin || '',
-                    'Credit Limit': `₹${Number(c.creditLimit || 0).toLocaleString('en-IN')}`,
-                    'Outstanding': `₹${Number(c.creditOutstanding || 0).toLocaleString('en-IN')}`,
+                    'Credit Limit': Number(c.creditLimit || 0).toLocaleString('en-IN'),
+                    'Outstanding': Number(c.creditOutstanding || 0).toLocaleString('en-IN'),
                     'Status': c.active !== false ? 'Active' : 'Inactive'
                   }))
                 : activeSubTab === 'suppliers'

@@ -182,6 +182,14 @@ html.light .bg-rose-600.text-white {
 /* Prevents close buttons ('X' icons) from blending into light backgrounds   */
 /* when hovered.                                                             */
 /* ========================================================================= */
+/* Ensure toast banners stay completely stationary with zero bouncing, sliding, or movement */
+.toast-container,
+[class*="fixed top-3 right-4"],
+[class*="fixed top-3"] {
+  animation: none !important;
+  transform: none !important;
+}
+
 button:has(> svg.lucide-x),
 button:has(> svg.lucide-circle-x),
 button[aria-label="Close"],

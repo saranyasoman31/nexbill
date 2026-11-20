@@ -56,13 +56,22 @@ function ERPAppContent() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [setActiveTab]);
 
+  // Fail-safe: automatically dismiss toast popups after 3.2 seconds
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => {
+      setToast(null);
+    }, 3200);
+    return () => clearTimeout(timer);
+  }, [toast, setToast]);
+
   // If not authenticated, display login page with Captcha
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
         {/* Toast Notification Banner on Login */}
         {toast && (
-          <div className="fixed top-3 right-4 z-50 transition-all duration-200">
+          <div className="fixed top-3 right-4 z-50 pointer-events-auto">
             <div
               className={`flex items-start gap-3 p-3.5 rounded-xl border shadow-2xl backdrop-blur-md max-w-md ${
                 toast.type === 'success'
@@ -82,11 +91,11 @@ function ERPAppContent() {
               <button
                 type="button"
                 onClick={() => setToast(null)}
-                className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition cursor-pointer shrink-0"
+                className="text-current opacity-70 hover:opacity-100 p-1 rounded-lg hover:bg-black/15 dark:hover:bg-white/20 transition-colors cursor-pointer shrink-0"
                 title="Close notification"
                 aria-label="Close"
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4 stroke-[2.5]" />
               </button>
             </div>
           </div>
@@ -122,9 +131,9 @@ function ERPAppContent() {
 
   return (
     <div className="h-screen min-h-[100dvh] bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-600 selection:text-white overflow-hidden">
-      {/* Toast Notification Banner */}
+      {/* Toast Notification Banner - Completely Static with zero movement */}
       {toast && (
-        <div className="fixed top-3 right-4 z-50 transition-all duration-200">
+        <div className="fixed top-3 right-4 z-50 pointer-events-auto">
           <div
             className={`flex items-start gap-3 p-3.5 rounded-xl border shadow-2xl backdrop-blur-md max-w-md ${
               toast.type === 'success'
@@ -149,11 +158,11 @@ function ERPAppContent() {
             <button
               type="button"
               onClick={() => setToast(null)}
-              className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition cursor-pointer shrink-0"
+              className="text-current opacity-70 hover:opacity-100 p-1 rounded-lg hover:bg-black/15 dark:hover:bg-white/20 transition-colors cursor-pointer shrink-0"
               title="Close notification"
               aria-label="Close"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4 stroke-[2.5]" />
             </button>
           </div>
         </div>

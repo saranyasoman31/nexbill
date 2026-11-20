@@ -115,9 +115,6 @@ export function exportToExcel({
   title = ''
 }) {
   if (!data || data.length === 0) {
-    if (typeof window !== 'undefined' && window.alert) {
-      alert('No data available to export to Excel.');
-    }
     return false;
   }
 
@@ -184,13 +181,29 @@ export function exportToPdf({
   summaryCards = null,
 }) {
   if (!data || data.length === 0) {
-    if (typeof window !== 'undefined' && window.alert) {
-      alert('No data available to export to PDF.');
-    }
     return false;
   }
 
   const { headers, rows } = prepareDataForExport(data, columns);
+
+  // Sanitize headers and cell values for PDF standard Helvetica font (strips raw ₹ / \u20B9 which otherwise renders as unwanted '1')
+  const cleanPdfHeader = (val) => {
+    if (val === null || val === undefined) return '';
+    return String(val)
+      .replace(/₹/g, 'Rs.')
+      .replace(/\u20B9/g, 'Rs.');
+  };
+
+  const cleanPdfCell = (val) => {
+    if (val === null || val === undefined) return '';
+    if (typeof val === 'number') return val;
+    return String(val)
+      .replace(/₹\s*/g, '')
+      .replace(/\u20B9\s*/g, '');
+  };
+
+  const pdfHeaders = headers.map(cleanPdfHeader);
+  const pdfRows = rows.map(r => r.map(cleanPdfCell));
 
   // Auto-detect orientation: landscape if > 5 columns
   const isLandscape = orientation === 'landscape' || (orientation === 'auto' && headers.length > 5);
@@ -213,13 +226,13 @@ export function exportToPdf({
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(255, 255, 255);
-  doc.text(storeName || 'NexBill Retail ERP', 12, 9);
+  doc.text(cleanPdfHeader(storeName) || 'NexBill Retail ERP', 12, 9);
 
   // Document Title
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(226, 232, 240); // Slate-200
-  doc.text(String(title).toUpperCase(), 12, 16);
+  doc.text(cleanPdfHeader(String(title)).toUpperCase(), 12, 16);
 
   // Generation details (right-aligned)
   const now = new Date();
@@ -242,7 +255,7 @@ export function exportToPdf({
     const userText = typeof user === 'string'
       ? user
       : `${user.name || user.username || 'Admin'} (${user.role || 'User'})`;
-    doc.text(`User: ${userText}`, pageWidth - 12, 15, { align: 'right' });
+    doc.text(`User: ${cleanPdfHeader(userText)}`, pageWidth - 12, 15, { align: 'right' });
   }
 
   let startY = 27;
@@ -253,7 +266,7 @@ export function exportToPdf({
       doc.setFont('helvetica', 'italic');
       doc.setFontSize(8.5);
       doc.setTextColor(71, 85, 105);
-      doc.text(subtitle, 12, startY);
+      doc.text(cleanPdfHeader(subtitle), 12, startY);
       startY += 5;
     }
 
@@ -261,7 +274,7 @@ export function exportToPdf({
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8);
       doc.setTextColor(30, 41, 59);
-      const summaryText = summaryCards.map(s => `${s.label}: ${s.value}`).join('   |   ');
+      const summaryText = summaryCards.map(s => `${cleanPdfHeader(s.label)}: ${cleanPdfCell(s.value)}`).join('   |   ');
       doc.text(summaryText, 12, startY);
       startY += 5;
     }
@@ -270,8 +283,8 @@ export function exportToPdf({
 
   // Draw AutoTable
   autoTable(doc, {
-    head: [headers],
-    body: rows,
+    head: [pdfHeaders],
+    body: pdfRows,
     startY: startY,
     theme: 'grid',
     headStyles: {
@@ -281,6 +294,32 @@ export function exportToPdf({
       fontStyle: 'bold',
       halign: 'left',
       cellPadding: 2,
+    },
+    bodyStyles: {
+      textColor: [30, 41, 59],
+      fontSize: 7,
+      cellPadding: 2,
+    },
+    alternateRowStyles: {
+      fillColor: [248, 250, 252], // Slate 50
+    },
+    styles: {
+      overflow: 'linebreak',
+      lineColor: [226, 232, 240],
+      lineWidth: 0.15,
+    },
+    margin: { top: 26, left: 10, right: 10, bottom: 12 },
+    didParseCell: (data) => {
+      // Ensure no raw ₹ characters slip into rendered text lines
+      if (data.cell && data.cell.text) {
+        if (data.section === 'head') {
+          data.cell.text = data.cell.text.map(line => String(line).replace(/₹/g, 'Rs.').replace(/\u20B9/g, 'Rs.'));
+        } else {
+          data.cell.text = data.cell.text.map(line => String(line).replace(/₹\s*/g, '').replace(/\u20B9\s*/g, ''));
+        }
+      }
+    },
+    didDrawPage: (data) => {
     },
     bodyStyles: {
       textColor: [30, 41, 59],
@@ -379,6 +418,16 @@ export function exportTableElementToPdf(tableElementOrId, {
       fillColor: [248, 250, 252],
     },
     margin: { top: 26, left: 10, right: 10, bottom: 12 },
+    didParseCell: (data) => {
+      // Ensure no raw ₹ characters slip into rendered text lines from HTML elements
+      if (data.cell && data.cell.text) {
+        if (data.section === 'head') {
+          data.cell.text = data.cell.text.map(line => String(line).replace(/₹/g, 'Rs.').replace(/\u20B9/g, 'Rs.'));
+        } else {
+          data.cell.text = data.cell.text.map(line => String(line).replace(/₹\s*/g, '').replace(/\u20B9\s*/g, ''));
+        }
+      }
+    },
     didDrawPage: (data) => {
       doc.setFontSize(7);
       doc.setTextColor(148, 163, 184);

@@ -125,10 +125,11 @@ export function AppProvider({ children }) {
 
 
   const notify = (type, message, title = '') => {
-    setToast({ type, message, title, id: Date.now() });
+    const id = Date.now();
+    setToast({ type, message, title, id });
     setTimeout(() => {
-      setToast(curr => (curr && curr.id === Date.now() ? null : curr));
-    }, 4500);
+      setToast(curr => (curr && curr.id === id ? null : curr));
+    }, 3000);
   };
 
   const resetAllData = () => {
