@@ -70,7 +70,7 @@ export default function CreditCustomerView() {
     email: '',
     gstin: '',
     businessType: 'B2B', // B2B | B2C
-    supplyType: DEFAULT_CUSTOMER_STATE_CODE === defaultStoreStateCode ? 'LOCAL' : 'INTERSTATE',
+    supplyType: 'LOCAL',  // Default Local (Intra-state)
     stateCode: DEFAULT_CUSTOMER_STATE_CODE,
     state: DEFAULT_CUSTOMER_STATE_NAME,
     creditLimit: 25000,
@@ -1142,7 +1142,7 @@ export default function CreditCustomerView() {
                         const codePrefix = val.slice(0, 2);
                         if (statesList.some(s => s.code === codePrefix)) {
                           autoState = codePrefix;
-                          autoSupply = codePrefix === defaultStoreStateCode ? 'LOCAL' : 'INTERSTATE';
+                          autoSupply = (codePrefix === defaultStoreStateCode || codePrefix === DEFAULT_CUSTOMER_STATE_CODE) ? 'LOCAL' : 'INTERSTATE';
                         }
                       }
                       setNewCustomer({
@@ -1212,7 +1212,7 @@ export default function CreditCustomerView() {
                     onChange={(e) => {
                       const code = e.target.value;
                       const st = statesList.find(s => s.code === code);
-                      const isLocal = code === defaultStoreStateCode;
+                      const isLocal = code === defaultStoreStateCode || code === DEFAULT_CUSTOMER_STATE_CODE;
                       let updatedGstin = newCustomer.gstin || '';
                       if (updatedGstin.trim().length >= 2) {
                         updatedGstin = code + updatedGstin.trim().slice(2);
@@ -1532,7 +1532,7 @@ export default function CreditCustomerView() {
                         const codePrefix = val.slice(0, 2);
                         if (statesList.some(s => s.code === codePrefix)) {
                           autoState = codePrefix;
-                          autoSupply = codePrefix === defaultStoreStateCode ? 'LOCAL' : 'INTERSTATE';
+                          autoSupply = (codePrefix === defaultStoreStateCode || codePrefix === DEFAULT_CUSTOMER_STATE_CODE) ? 'LOCAL' : 'INTERSTATE';
                         }
                       }
                       setEditingCustomer({
@@ -1602,7 +1602,7 @@ export default function CreditCustomerView() {
                     onChange={(e) => {
                       const code = e.target.value;
                       const st = statesList.find(s => s.code === code);
-                      const isLocal = code === defaultStoreStateCode;
+                      const isLocal = code === defaultStoreStateCode || code === DEFAULT_CUSTOMER_STATE_CODE;
                       let updatedGstin = editingCustomer.gstin || '';
                       if (updatedGstin.trim().length >= 2) {
                         updatedGstin = code + updatedGstin.trim().slice(2);
