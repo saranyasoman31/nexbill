@@ -3839,7 +3839,9 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                     </div>
                     <div className="space-y-1">
                       <label className="font-semibold text-slate-300 block">
-                        Code / Identifier {activeEntity === 'main_category' || activeEntity === 'category' || activeEntity === 'brand' || activeEntity === 'unit' || activeEntity === 'payment_mode' ? '*' : ''}
+                        Code / Identifier {(activeEntity === 'main_category' || activeEntity === 'category' || activeEntity === 'brand' || activeEntity === 'unit' || activeEntity === 'payment_mode') && (
+                          <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
+                        )}
                       </label>
                       <input
                         type="text"
