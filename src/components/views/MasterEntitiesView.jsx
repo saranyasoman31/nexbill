@@ -1890,7 +1890,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
       payload.name = (formData.name || '').trim();
       payload.mainCategoryId = formData.mainCategoryId || db.mainCategories?.[0]?.id || 'MCAT-01';
       payload.hsnCode = (formData.hsnCode || '').toString().replace(/\D/g, '').slice(0, 8);
-      payload.defaultTaxRate = Number(formData.defaultTaxRate ?? 5);
+      payload.defaultTaxRate = Number(formData.defaultTaxRate ?? editingItem?.defaultTaxRate ?? 5);
     }
 
     if (activeEntity === 'brand') {
@@ -4199,23 +4199,6 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                               2 to 8 digits GST HSN (Digits only)
                             </span>
                           </div>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="font-semibold text-slate-300 block">Default GST Rate %</label>
-                          <select
-                            value={formData.defaultTaxRate ?? 5}
-                            onChange={(e) => setFormData({ ...formData, defaultTaxRate: Number(e.target.value) })}
-                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:border-indigo-500 font-bold text-emerald-400"
-                          >
-                            <option value={0}>GST 0% (Nil / Exempted)</option>
-                            <option value={5}>GST 5% (Essential Goods)</option>
-                            <option value={12}>GST 12% (Standard Low)</option>
-                            <option value={18}>GST 18% (Standard General)</option>
-                            <option value={28}>GST 28% (Luxury / Sin Goods)</option>
-                          </select>
-                          <span className="text-[10px] text-slate-400 block">
-                            Default tax rate applied to products in this category
-                          </span>
                         </div>
                       </div>
                     )}
