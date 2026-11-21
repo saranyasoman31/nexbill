@@ -18,6 +18,7 @@ import {
   Edit,
   Printer,
   Trash2,
+  Lock,
   X,
   CheckCircle2,
   AlertTriangle,
@@ -739,14 +740,34 @@ export default function PurchaseReturnView() {
                                 <Printer className="w-4 h-4" />
                               </button>
 
-                              {/* DELETE */}
-                              <button
-                                onClick={() => setDeletingReturn(r)}
-                                title="Delete Return & Restore Stock"
-                                className="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition cursor-pointer"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {/* DELETE (Locked if Debit Note is settled or referenced in supplier ledger) */}
+                              {(() => {
+                                const linkedSettlements = (db.supplierTransactions || []).filter(
+                                  (st) => st.refDocNumber === r.docNumber || st.refDocId === r.id || st.debitNoteId === r.id
+                                );
+                                const isSettled = r.isSettled === true || r.status === 'SETTLED' || linkedSettlements.length > 0;
+                                if (isSettled) {
+                                  return (
+                                    <button
+                                      type="button"
+                                      disabled
+                                      className="p-1 rounded bg-slate-800/90 text-amber-400 border border-amber-800/50 cursor-not-allowed transition"
+                                      title="Delete locked: Debit note is settled against supplier ledger/payments."
+                                    >
+                                      <Lock className="w-4 h-4" />
+                                    </button>
+                                  );
+                                }
+                                return (
+                                  <button
+                                    onClick={() => setDeletingReturn(r)}
+                                    title="Delete Return & Restore Stock"
+                                    className="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition cursor-pointer"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                );
+                              })()}
                             </div>
                           </td>
                         </tr>

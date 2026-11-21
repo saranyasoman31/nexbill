@@ -20,6 +20,7 @@ import {
   X,
   Edit2,
   Trash2,
+  Lock,
   ShieldAlert,
 } from 'lucide-react';
 import ExportButtons from '../common/ExportButtons.jsx';
@@ -500,13 +501,47 @@ export default function CreditCustomerView() {
     setIsPaymentModalOpen(false);
   };
 
+  // Helper to check if a Customer has references in other forms/records
+  const getCustomerReferences = (cust, database = db) => {
+    if (!cust) return { isLocked: false, count: 0, summary: '' };
+    const reasons = [];
+
+    const hasBalance = Number(cust.creditOutstanding || 0) > 0;
+    if (hasBalance) {
+      reasons.push(`active ledger outstanding balance of ₹${cust.creditOutstanding}`);
+    }
+
+    const invoices = (database.invoices || []).filter(
+      (inv) => inv.customerId === cust.id || (cust.phone && inv.customerPhone === cust.phone)
+    );
+    if (invoices.length > 0) {
+      reasons.push(`${invoices.length} Sales Invoice(s)`);
+    }
+
+    const transactions = (database.customerTransactions || []).filter((tx) => tx.customerId === cust.id);
+    if (transactions.length > 0) {
+      reasons.push(`${transactions.length} payment/credit transaction(s)`);
+    }
+
+    return {
+      isLocked: reasons.length > 0,
+      count: reasons.length,
+      summary: reasons.join(', '),
+    };
+  };
+
   const handleDeleteCustomer = (cust) => {
     if (!canDelete) {
       notify('error', 'You do not have permission to delete customer records.', 'Permission Denied');
       return;
     }
-    if (Number(cust.creditOutstanding) > 0) {
-      notify('error', `Cannot delete customer ${cust.name} with active outstanding balance ₹${cust.creditOutstanding}. Settle all balances first.`, 'Action Blocked');
+    const ref = getCustomerReferences(cust, db);
+    if (ref.isLocked) {
+      notify(
+        'error',
+        `Cannot delete customer "${cust.name}": Customer is referenced in ${ref.summary}. Delete button is locked.`,
+        'Customer Deletion Locked'
+      );
       return;
     }
     if (window.confirm(`Are you sure you want to delete customer "${cust.name}"?`)) {
@@ -839,15 +874,30 @@ export default function CreditCustomerView() {
                             </button>
                           )}
 
-                          {canDelete && (
-                            <button
-                              onClick={() => handleDeleteCustomer(cust)}
-                              className="p-1 rounded bg-slate-800 hover:bg-rose-900/60 text-slate-400 hover:text-rose-300 transition"
-                              title="Delete Customer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          {canDelete && (() => {
+                            const ref = getCustomerReferences(cust, db);
+                            if (ref.isLocked) {
+                              return (
+                                <button
+                                  type="button"
+                                  disabled
+                                  className="p-1 rounded bg-slate-800/90 text-amber-400 border border-amber-800/50 cursor-not-allowed transition"
+                                  title={`Delete locked: Customer "${cust.name}" is referenced in ${ref.summary}. Cannot delete.`}
+                                >
+                                  <Lock className="w-3.5 h-3.5" />
+                                </button>
+                              );
+                            }
+                            return (
+                              <button
+                                onClick={() => handleDeleteCustomer(cust)}
+                                className="p-1 rounded bg-slate-800 hover:bg-rose-900/60 text-slate-400 hover:text-rose-300 transition"
+                                title="Delete Customer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            );
+                          })()}
 
                           {canView && (
                             <button

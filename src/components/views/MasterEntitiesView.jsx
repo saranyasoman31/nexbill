@@ -892,6 +892,142 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
     );
   };
 
+  // Helper to check if a Product has references in other forms/records
+  const getProductReferences = (pItem, database = db) => {
+    if (!pItem) return { isLocked: false, count: 0, summary: '' };
+    const pId = pItem.id;
+    const pSku = pItem.sku;
+    const reasons = [];
+
+    const invoices = (database.invoices || []).filter((inv) =>
+      (inv.items || []).some((it) => it.productId === pId || (pSku && it.sku === pSku))
+    );
+    if (invoices.length > 0) reasons.push(`${invoices.length} Sales Invoice(s)`);
+
+    const purchases = (database.purchases || []).filter((pur) =>
+      (pur.lines || []).some((l) => l.productId === pId || (pSku && l.sku === pSku))
+    );
+    if (purchases.length > 0) reasons.push(`${purchases.length} Inward Purchase(s)`);
+
+    const pos = (database.purchaseOrders || []).filter((po) =>
+      (po.lines || []).some((l) => l.productId === pId || (pSku && l.sku === pSku))
+    );
+    if (pos.length > 0) reasons.push(`${pos.length} Purchase Order(s)`);
+
+    const returns = (database.purchaseReturns || []).filter(
+      (pr) => pr.productId === pId || (pr.lines || []).some((l) => l.productId === pId)
+    );
+    if (returns.length > 0) reasons.push(`${returns.length} Purchase Return(s)`);
+
+    const stock = (database.stockBalances || []).filter(
+      (sb) => sb.productId === pId && Number(sb.quantity || 0) > 0
+    );
+    if (stock.length > 0) reasons.push(`active inventory stock`);
+
+    const adjs = (database.stockAdjustments || []).filter((adj) => adj.productId === pId);
+    if (adjs.length > 0) reasons.push(`${adjs.length} Stock Adjustment(s)`);
+
+    const inits = (database.initialStocks || []).filter((init) => init.productId === pId);
+    if (inits.length > 0) reasons.push(`${inits.length} Opening Stock Cutover(s)`);
+
+    return {
+      isLocked: reasons.length > 0,
+      count: reasons.length,
+      summary: reasons.join(', '),
+    };
+  };
+
+  // Helper to check if a Supplier has references in other forms/records
+  const getSupplierReferences = (sItem, database = db) => {
+    if (!sItem) return { isLocked: false, count: 0, summary: '' };
+    const sId = sItem.id;
+    const sName = (sItem.name || '').trim().toLowerCase();
+    const reasons = [];
+
+    const purchases = (database.purchases || []).filter(
+      (pur) => pur.supplierId === sId || (sName && (pur.supplierName || '').trim().toLowerCase() === sName)
+    );
+    if (purchases.length > 0) reasons.push(`${purchases.length} Purchase Bill(s)`);
+
+    const pos = (database.purchaseOrders || []).filter(
+      (po) => po.supplierId === sId || (sName && (po.supplierName || '').trim().toLowerCase() === sName)
+    );
+    if (pos.length > 0) reasons.push(`${pos.length} Purchase Order(s)`);
+
+    const returns = (database.purchaseReturns || []).filter(
+      (pr) => pr.supplierId === sId || (sName && (pr.supplierName || '').trim().toLowerCase() === sName)
+    );
+    if (returns.length > 0) reasons.push(`${returns.length} Purchase Return(s)`);
+
+    const products = (database.products || []).filter(
+      (p) => p.supplierId === sId || (sName && (p.supplierName || '').trim().toLowerCase() === sName)
+    );
+    if (products.length > 0) reasons.push(`${products.length} Catalog Product(s)`);
+
+    return {
+      isLocked: reasons.length > 0,
+      count: reasons.length,
+      summary: reasons.join(', '),
+    };
+  };
+
+  // Helper to check if a Branch (Store/Warehouse) has references
+  const getBranchReferences = (bItem, database = db) => {
+    if (!bItem) return { isLocked: false, count: 0, summary: '' };
+    const bId = bItem.id;
+    const reasons = [];
+
+    const invoices = (database.invoices || []).filter((inv) => inv.storeId === bId || inv.warehouseId === bId);
+    if (invoices.length > 0) reasons.push(`${invoices.length} Sales Invoice(s)`);
+
+    const purchases = (database.purchases || []).filter((pur) => pur.storeId === bId || pur.warehouseId === bId);
+    if (purchases.length > 0) reasons.push(`${purchases.length} Inward Purchase(s)`);
+
+    const pos = (database.purchaseOrders || []).filter((po) => po.storeId === bId || po.warehouseId === bId);
+    if (pos.length > 0) reasons.push(`${pos.length} Purchase Order(s)`);
+
+    const stock = (database.stockBalances || []).filter(
+      (sb) => (sb.warehouseId === bId || sb.storeId === bId) && Number(sb.quantity || 0) > 0
+    );
+    if (stock.length > 0) reasons.push(`active warehouse inventory`);
+
+    const users = (database.users || []).filter((u) => u.storeId === bId || u.warehouseId === bId);
+    if (users.length > 0) reasons.push(`${users.length} assigned staff member(s)`);
+
+    return {
+      isLocked: reasons.length > 0,
+      count: reasons.length,
+      summary: reasons.join(', '),
+    };
+  };
+
+  // Helper to check if Staff member has references or is protected
+  const getStaffReferences = (staffItem, database = db, authUser = currentUser) => {
+    if (!staffItem) return { isLocked: false, count: 0, summary: '' };
+    const reasons = [];
+
+    if (authUser && (staffItem.id === authUser.id || staffItem.username === authUser.username)) {
+      reasons.push('Current logged-in session account');
+    }
+    if (staffItem.isSystem || staffItem.role === 'ADMINISTRATOR' || staffItem.id === 'USR-ADMIN') {
+      reasons.push('Root System Administrator privileges');
+    }
+
+    const invoices = (database.invoices || []).filter(
+      (inv) => inv.cashierId === staffItem.id || inv.createdBy === staffItem.id
+    );
+    if (invoices.length > 0) reasons.push(`${invoices.length} billed invoice(s)`);
+
+    const purchases = (database.purchases || []).filter((pur) => pur.createdBy === staffItem.id);
+    if (purchases.length > 0) reasons.push(`${purchases.length} authored purchase(s)`);
+
+    return {
+      isLocked: reasons.length > 0,
+      count: reasons.length,
+      summary: reasons.join(', '),
+    };
+  };
+
   // Real-time duplicate checking for Tax Rate % under same Tax Regime
   const isTaxRateDuplicate =
     activeEntity === 'tax' &&
@@ -2081,14 +2217,68 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
   };
 
   const handleDelete = (item) => {
+    if (activeEntity === 'product') {
+      const ref = getProductReferences(item, db);
+      if (ref.isLocked) {
+        notify(
+          'error',
+          `Cannot delete Product "${item.name}": It is referenced in ${ref.summary}. Delete button is locked.`,
+          'Product Deletion Locked'
+        );
+        return;
+      }
+    }
+
+    if (activeEntity === 'supplier') {
+      const ref = getSupplierReferences(item, db);
+      if (ref.isLocked) {
+        notify(
+          'error',
+          `Cannot delete Supplier "${item.name}": It is referenced in ${ref.summary}. Delete button is locked.`,
+          'Supplier Deletion Locked'
+        );
+        return;
+      }
+    }
+
+    if (activeEntity === 'branch') {
+      const ref = getBranchReferences(item, db);
+      if (ref.isLocked) {
+        notify(
+          'error',
+          `Cannot delete Store/Branch "${item.name}": It is referenced in ${ref.summary}. Delete button is locked.`,
+          'Branch Deletion Locked'
+        );
+        return;
+      }
+    }
+
+    if (activeEntity === 'staff') {
+      const ref = getStaffReferences(item, db, currentUser);
+      if (ref.isLocked) {
+        notify(
+          'error',
+          `Cannot delete Staff member "${item.name}": ${ref.summary}. Delete button is locked.`,
+          'Staff Deletion Locked'
+        );
+        return;
+      }
+    }
+
     if (activeEntity === 'main_category') {
       const linkedCats = (db.categories || []).filter(
         (c) => c.mainCategoryId === item.id || (item.name && c.mainCategory === item.name)
       );
-      if (linkedCats.length > 0) {
+      const linkedDirectProducts = (db.products || []).filter(
+        (p) => p.mainCategoryId === item.id || (item.name && p.mainCategory === item.name)
+      );
+      if (linkedCats.length > 0 || linkedDirectProducts.length > 0) {
+        const parts = [];
+        if (linkedCats.length > 0) parts.push(`${linkedCats.length} category (${linkedCats.slice(0, 3).map((c) => c.name).join(', ')})`);
+        if (linkedDirectProducts.length > 0) parts.push(`${linkedDirectProducts.length} product(s)`);
         notify(
           'error',
-          `Cannot delete Main Category "${item.name}": It is currently linked to ${linkedCats.length} category (${linkedCats.slice(0, 3).map((c) => c.name).join(', ')}${linkedCats.length > 3 ? '...' : ''}). Delete or reassign those categories first.`,
+          `Cannot delete Main Category "${item.name}": It is currently linked to ${parts.join(' and ')}. Delete or reassign them first.`,
           'Main Category Locked'
         );
         return;
@@ -2133,10 +2323,14 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
     if (activeEntity === 'company') {
       const linkedProducts = getProductsLinkedToCompany(item, db.products);
-      if (linkedProducts.length > 0) {
+      const linkedStores = (db.stores || []).filter((s) => s.companyId === item.id);
+      if (linkedProducts.length > 0 || linkedStores.length > 0) {
+        const parts = [];
+        if (linkedProducts.length > 0) parts.push(`${linkedProducts.length} product(s)`);
+        if (linkedStores.length > 0) parts.push(`${linkedStores.length} store branch(es)`);
         notify(
           'error',
-          `Cannot delete Company "${item.name}": It is currently assigned to ${linkedProducts.length} product(s) (${linkedProducts.slice(0, 3).map((p) => p.name).join(', ')}${linkedProducts.length > 3 ? '...' : ''}). Delete button is locked. Reassign or remove company from linked products first.`,
+          `Cannot delete Company "${item.name}": It is currently assigned to ${parts.join(' and ')}. Delete button is locked. Reassign them first.`,
           'Company Deletion Locked'
         );
         return;
@@ -2853,10 +3047,21 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                           </button>
                         )}
                         {canDelete && (() => {
+                          const productRef = activeEntity === 'product' ? getProductReferences(item, db) : null;
+                          const supplierRef = activeEntity === 'supplier' ? getSupplierReferences(item, db) : null;
+                          const branchRef = activeEntity === 'branch' ? getBranchReferences(item, db) : null;
+                          const staffRef = activeEntity === 'staff' ? getStaffReferences(item, db, currentUser) : null;
+
                           const linkedCats =
                             activeEntity === 'main_category'
                               ? (db.categories || []).filter(
                                   (c) => c.mainCategoryId === item.id || (item.name && c.mainCategory === item.name)
+                                )
+                              : [];
+                          const linkedDirectProductsForMainCat =
+                            activeEntity === 'main_category'
+                              ? (db.products || []).filter(
+                                  (p) => p.mainCategoryId === item.id || (item.name && p.mainCategory === item.name)
                                 )
                               : [];
                           const linkedProducts =
@@ -2875,6 +3080,10 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                             activeEntity === 'company'
                               ? getProductsLinkedToCompany(item, db.products)
                               : [];
+                          const linkedStoresForCompany =
+                            activeEntity === 'company'
+                              ? (db.stores || []).filter((s) => s.companyId === item.id)
+                              : [];
                           const linkedInvoicesForPaymentMode =
                             activeEntity === 'payment_mode'
                               ? getInvoicesLinkedToPaymentMode(item, db.invoices)
@@ -2883,44 +3092,45 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                             activeEntity === 'tax'
                               ? (db.products || []).filter((p) => Number(p.taxRate) === Number(item.rate))
                               : [];
+
                           const isDeleteLocked =
-                            (activeEntity === 'main_category' && linkedCats.length > 0) ||
+                            (activeEntity === 'product' && productRef?.isLocked) ||
+                            (activeEntity === 'supplier' && supplierRef?.isLocked) ||
+                            (activeEntity === 'branch' && branchRef?.isLocked) ||
+                            (activeEntity === 'staff' && staffRef?.isLocked) ||
+                            (activeEntity === 'main_category' && (linkedCats.length > 0 || linkedDirectProductsForMainCat.length > 0)) ||
                             (activeEntity === 'category' && linkedProducts.length > 0) ||
                             (activeEntity === 'brand' && linkedProductsForBrand.length > 0) ||
                             (activeEntity === 'unit' && linkedProductsForUnit.length > 0) ||
-                            (activeEntity === 'company' && linkedProductsForCompany.length > 0) ||
+                            (activeEntity === 'company' && (linkedProductsForCompany.length > 0 || linkedStoresForCompany.length > 0)) ||
                             (activeEntity === 'payment_mode' && linkedInvoicesForPaymentMode.length > 0) ||
                             (activeEntity === 'tax' && linkedProductsForTax.length > 0);
 
                           if (isDeleteLocked) {
-                            const lockedMsg =
-                              activeEntity === 'main_category'
-                                ? `Delete Locked: Main Category is in use by ${linkedCats.length} category (${linkedCats.slice(0, 3).map((c) => c.name).join(', ')}${
-                                    linkedCats.length > 3 ? '...' : ''
-                                  }). Reassign or delete categories first.`
-                                : activeEntity === 'category'
-                                ? `Delete Locked: Category is in use by ${linkedProducts.length} product(s) (${linkedProducts.slice(0, 3).map((p) => p.name).join(', ')}${
-                                    linkedProducts.length > 3 ? '...' : ''
-                                  }). Reassign or delete products first.`
-                                : activeEntity === 'brand'
-                                ? `Delete Locked: Brand is in use by ${linkedProductsForBrand.length} product(s) (${linkedProductsForBrand.slice(0, 3).map((p) => p.name).join(', ')}${
-                                    linkedProductsForBrand.length > 3 ? '...' : ''
-                                  }). Reassign or delete products first.`
-                                : activeEntity === 'unit'
-                                ? `Delete Locked: Unit is in use by ${linkedProductsForUnit.length} product(s) (${linkedProductsForUnit.slice(0, 3).map((p) => p.name).join(', ')}${
-                                    linkedProductsForUnit.length > 3 ? '...' : ''
-                                  }). Reassign or delete products first.`
-                                : activeEntity === 'company'
-                                ? `Delete Locked: Company "${item.name}" is in use by ${linkedProductsForCompany.length} product(s) (${linkedProductsForCompany.slice(0, 3).map((p) => p.name).join(', ')}${
-                                    linkedProductsForCompany.length > 3 ? '...' : ''
-                                  }). Reassign or remove company from products first.`
-                                : activeEntity === 'tax'
-                                ? `Delete Locked: Tax Slab ${item.rate}% is in use by ${linkedProductsForTax.length} product(s) (${linkedProductsForTax.slice(0, 3).map((p) => p.name).join(', ')}${
-                                    linkedProductsForTax.length > 3 ? '...' : ''
-                                  }). Reassign or delete products first.`
-                                : `Delete Locked: Payment Mode is in use by ${linkedInvoicesForPaymentMode.length} invoice(s) (${linkedInvoicesForPaymentMode.slice(0, 3).map((inv) => inv.docNumber || inv.id).join(', ')}${
-                                    linkedInvoicesForPaymentMode.length > 3 ? '...' : ''
-                                  }). Cannot delete active billing payment mode.`;
+                            let lockedMsg = '';
+                            if (activeEntity === 'product') {
+                              lockedMsg = `Delete Locked: Product "${item.name}" is referenced in ${productRef.summary}. Cannot delete active product.`;
+                            } else if (activeEntity === 'supplier') {
+                              lockedMsg = `Delete Locked: Supplier "${item.name}" is referenced in ${supplierRef.summary}. Cannot delete.`;
+                            } else if (activeEntity === 'branch') {
+                              lockedMsg = `Delete Locked: Store/Branch "${item.name}" is referenced in ${branchRef.summary}. Cannot delete.`;
+                            } else if (activeEntity === 'staff') {
+                              lockedMsg = `Delete Locked: Staff member "${item.name}" (${staffRef.summary}). Cannot delete.`;
+                            } else if (activeEntity === 'main_category') {
+                              lockedMsg = `Delete Locked: Main Category is in use by ${linkedCats.length} category and ${linkedDirectProductsForMainCat.length} product(s). Reassign them first.`;
+                            } else if (activeEntity === 'category') {
+                              lockedMsg = `Delete Locked: Category is in use by ${linkedProducts.length} product(s) (${linkedProducts.slice(0, 3).map((p) => p.name).join(', ')}${linkedProducts.length > 3 ? '...' : ''}). Reassign or delete products first.`;
+                            } else if (activeEntity === 'brand') {
+                              lockedMsg = `Delete Locked: Brand is in use by ${linkedProductsForBrand.length} product(s) (${linkedProductsForBrand.slice(0, 3).map((p) => p.name).join(', ')}${linkedProductsForBrand.length > 3 ? '...' : ''}). Reassign or delete products first.`;
+                            } else if (activeEntity === 'unit') {
+                              lockedMsg = `Delete Locked: Unit is in use by ${linkedProductsForUnit.length} product(s) (${linkedProductsForUnit.slice(0, 3).map((p) => p.name).join(', ')}${linkedProductsForUnit.length > 3 ? '...' : ''}). Reassign or delete products first.`;
+                            } else if (activeEntity === 'company') {
+                              lockedMsg = `Delete Locked: Company "${item.name}" is in use by ${linkedProductsForCompany.length} product(s) and ${linkedStoresForCompany.length} store branch(es). Reassign them first.`;
+                            } else if (activeEntity === 'tax') {
+                              lockedMsg = `Delete Locked: Tax Slab ${item.rate}% is in use by ${linkedProductsForTax.length} product(s) (${linkedProductsForTax.slice(0, 3).map((p) => p.name).join(', ')}${linkedProductsForTax.length > 3 ? '...' : ''}). Reassign or delete products first.`;
+                            } else {
+                              lockedMsg = `Delete Locked: Payment Mode is in use by ${linkedInvoicesForPaymentMode.length} invoice(s) (${linkedInvoicesForPaymentMode.slice(0, 3).map((inv) => inv.docNumber || inv.id).join(', ')}${linkedInvoicesForPaymentMode.length > 3 ? '...' : ''}). Cannot delete active billing payment mode.`;
+                            }
 
                             return (
                               <button

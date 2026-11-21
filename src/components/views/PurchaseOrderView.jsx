@@ -1189,15 +1189,19 @@ export default function PurchaseOrderView() {
 
                           {/* 8. Delete Option (Locked if converted to purchase or not DRAFT) */}
                           {canDelete && (
-                            isConverted ? (
+                            isConverted || po.status !== 'DRAFT' ? (
                               <button
                                 disabled
-                                className="p-1 rounded bg-slate-800/40 text-slate-600 cursor-not-allowed border border-slate-800"
-                                title="Locked: Order converted to Purchase Inward. Deletion is disabled."
+                                className="p-1 rounded bg-slate-800/90 text-amber-400 border border-amber-800/50 cursor-not-allowed transition"
+                                title={
+                                  isConverted
+                                    ? "Delete locked: Order is converted to Inward Purchase Receipt. Deletion is disabled."
+                                    : `Delete locked: Cannot delete PO in ${po.status} status. Only unapproved DRAFT orders can be deleted.`
+                                }
                               >
-                                <Lock className="w-3.5 h-3.5 text-slate-500" />
+                                <Lock className="w-3.5 h-3.5" />
                               </button>
-                            ) : po.status === 'DRAFT' ? (
+                            ) : (
                               <button
                                 onClick={() => handleDeletePO(po)}
                                 className="p-1 rounded bg-slate-800 hover:bg-rose-900/60 text-slate-400 hover:text-rose-300 transition"
@@ -1205,7 +1209,7 @@ export default function PurchaseOrderView() {
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
-                            ) : null
+                            )
                           )}
                         </div>
                       </td>

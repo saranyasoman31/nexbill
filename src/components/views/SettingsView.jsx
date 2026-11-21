@@ -1080,16 +1080,38 @@ export default function SettingsView({ initialSubTab = 'profile' }) {
                     </div>
                   </div>
 
-                  {!selectedRole.isSystem && (
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteRole(selectedRole.id)}
-                      className="p-2 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 transition"
-                      title="Delete this custom role"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
+                  {(() => {
+                    const assignedUsers = (db.users || []).filter(
+                      (u) => u.roleId === selectedRole.id || u.role === selectedRole.code
+                    );
+                    const isLocked = selectedRole.isSystem || assignedUsers.length > 0;
+                    if (isLocked) {
+                      return (
+                        <button
+                          type="button"
+                          disabled
+                          className="p-2 rounded-lg bg-slate-800/90 text-amber-400 border border-amber-800/50 cursor-not-allowed transition"
+                          title={
+                            selectedRole.isSystem
+                              ? 'Delete locked: System protected roles cannot be deleted.'
+                              : `Delete locked: Role is in use by ${assignedUsers.length} user(s) (${assignedUsers.slice(0, 3).map((u) => u.name).join(', ')}${assignedUsers.length > 3 ? '...' : ''}). Reassign users first.`
+                          }
+                        >
+                          <Lock className="w-4 h-4" />
+                        </button>
+                      );
+                    }
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteRole(selectedRole.id)}
+                        className="p-2 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/50 transition"
+                        title="Delete this custom role"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
 

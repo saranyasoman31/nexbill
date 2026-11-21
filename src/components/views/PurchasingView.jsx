@@ -1113,14 +1113,33 @@ export default function PurchasingView() {
                                 <Printer className="w-4 h-4" />
                               </button>
 
-                              {/* DELETE */}
-                              <button
-                                onClick={() => setDeletingPurchase(p)}
-                                title={isInit ? 'Delete Initial Stock & Reverse Stock' : 'Delete Purchase Receipt & Reverse Stock'}
-                                className="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition cursor-pointer"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {/* DELETE (Locked if Debit Notes / Purchase Returns exist) */}
+                              {(() => {
+                                const linkedReturns = (db.purchaseReturns || []).filter(
+                                  (pr) => pr.originalPurchaseId === p.id || pr.originalPurchaseDocNumber === p.docNumber
+                                );
+                                if (linkedReturns.length > 0) {
+                                  return (
+                                    <button
+                                      type="button"
+                                      disabled
+                                      className="p-1 rounded bg-slate-800/90 text-amber-400 border border-amber-800/50 cursor-not-allowed transition"
+                                      title={`Delete locked: ${linkedReturns.length} Debit Note / Return(s) (${linkedReturns.slice(0, 2).map((r) => r.docNumber).join(', ')}) reference this purchase.`}
+                                    >
+                                      <Lock className="w-4 h-4" />
+                                    </button>
+                                  );
+                                }
+                                return (
+                                  <button
+                                    onClick={() => setDeletingPurchase(p)}
+                                    title={isInit ? 'Delete Initial Stock & Reverse Stock' : 'Delete Purchase Receipt & Reverse Stock'}
+                                    className="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition cursor-pointer"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                );
+                              })()}
                             </div>
                           </td>
                         </tr>
