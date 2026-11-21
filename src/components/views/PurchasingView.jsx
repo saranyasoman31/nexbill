@@ -908,8 +908,8 @@ export default function PurchasingView() {
               </button>
             </div>
 
-            <div className="text-xs text-slate-400">
-              Showing <span className="font-bold text-white">{filteredPurchases.length}</span> record{filteredPurchases.length === 1 ? '' : 's'}
+            <div className="text-xs pagination-label font-medium">
+              Showing <span className="font-bold pagination-number font-mono">{filteredPurchases.length}</span> {filteredPurchases.length === 1 ? 'entry' : 'entries'}
             </div>
           </div>
 

@@ -848,8 +848,8 @@ export default function StockAdjustmentView() {
               </select>
             </div>
 
-            <span className="text-xs text-slate-400 font-mono">
-              Showing {filteredAdjustmentsLog.length} of {db.stockAdjustments?.length || 0} adjustments
+            <span className="text-xs pagination-label font-medium">
+              Showing <span className="font-bold pagination-number font-mono">{filteredAdjustmentsLog.length}</span> of <span className="font-extrabold pagination-total font-mono">{db.stockAdjustments?.length || 0}</span> entries
             </span>
           </div>
 

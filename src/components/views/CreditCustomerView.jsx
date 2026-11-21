@@ -871,6 +871,18 @@ export default function CreditCustomerView() {
             </tbody>
           </table>
         </div>
+
+        {/* Table Summary Footer */}
+        <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 border-t border-slate-800 text-xs pagination-container">
+          <div className="pagination-label font-medium">
+            Showing <span className="font-bold pagination-number font-mono">{creditCustomers.length > 0 ? 1 : 0}</span> to{' '}
+            <span className="font-bold pagination-number font-mono">{creditCustomers.length}</span> of{' '}
+            <span className="font-extrabold pagination-total font-mono">{creditCustomers.length}</span> entries
+          </div>
+          <div className="text-slate-400 text-[11px] font-mono">
+            Total Customers: <span className="font-bold text-slate-200">{creditCustomers.length}</span>
+          </div>
+        </div>
       </div>
 
       {/* Customer Invoices / Statement Modal */}

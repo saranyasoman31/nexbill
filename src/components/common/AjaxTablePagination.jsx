@@ -13,10 +13,11 @@ import {
  * 
  * Specifically designed for high-scale enterprise datasets (3 Lakh+ products/rows):
  * - Indian number locale formatting (e.g., 3,00,000 entries)
- * - Page size selector (25, 50, 100, 250, 500)
+ * - Page size selector: "Show [25, 50, 100, 250, 500] entries"
+ * - Record counter: "Showing X to Y of Z entries"
  * - Non-blocking asynchronous navigation with loading state
  * - Intelligent pagination window with jump-to-page
- * - Indexed execution metrics badge
+ * - High-contrast theme styling for both Light & Dark modes
  */
 export default function AjaxTablePagination({
   totalCount = 0,
@@ -29,7 +30,7 @@ export default function AjaxTablePagination({
   onPageSizeChange,
   isLoading = false,
   executionTimeMs = null,
-  pageSizeOptions = [25, 50, 100, 250, 500],
+  pageSizeOptions = [10, 25, 50, 100, 250, 500],
   className = '',
 }) {
   const [jumpPageInput, setJumpPageInput] = useState('');
@@ -78,68 +79,70 @@ export default function AjaxTablePagination({
 
   if (totalCount === 0 && !isLoading) {
     return (
-      <div className={`p-4 text-center text-sm text-slate-500 bg-slate-50/70 rounded-lg border border-slate-200/80 ${className}`}>
-        No records match the active filter criteria.
+      <div className={`p-4 text-center text-xs font-medium pagination-label bg-slate-900/60 rounded-lg border border-slate-800 ${className}`}>
+        No entries match the active filter criteria.
       </div>
     );
   }
 
   return (
     <div
-      className={`flex flex-col lg:flex-row items-center justify-between gap-4 px-4 py-3 bg-white border-t border-slate-200 text-xs text-slate-600 select-none ${className}`}
+      className={`pagination-container flex flex-col lg:flex-row items-center justify-between gap-4 px-4 py-3 bg-slate-900 border-t border-slate-800 text-xs text-slate-300 select-none ${className}`}
     >
       {/* Left: Record summary & performance execution badge */}
-      <div className="flex flex-wrap items-center gap-2.5">
-        <div className="font-medium text-slate-700">
-          Showing <span className="font-semibold text-slate-900">{formatNumber(startIndex)}</span> to{' '}
-          <span className="font-semibold text-slate-900">{formatNumber(endIndex)}</span> of{' '}
-          <span className="font-bold text-indigo-700">{formatNumber(totalCount)}</span> records
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="pagination-label font-medium text-slate-400">
+          Showing <span className="pagination-number font-bold text-indigo-400 font-mono text-xs">{formatNumber(startIndex)}</span> to{' '}
+          <span className="pagination-number font-bold text-indigo-400 font-mono text-xs">{formatNumber(endIndex)}</span> of{' '}
+          <span className="pagination-total font-extrabold text-emerald-400 font-mono text-xs">{formatNumber(totalCount)}</span> entries
         </div>
 
         {isLoading ? (
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/30 animate-pulse">
             <RotateCw className="w-3 h-3 animate-spin" />
             Loading AJAX...
           </span>
         ) : executionTimeMs !== null ? (
           <span
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono bg-emerald-50 text-emerald-700 border border-emerald-200"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
             title="Indexed Database Query Execution Latency"
           >
-            <Zap className="w-3 h-3 text-emerald-600" />
+            <Zap className="w-3 h-3 text-emerald-400" />
             {executionTimeMs}ms
           </span>
         ) : null}
 
-        {/* Rows per page selector */}
+        {/* Show entries selector */}
         <div className="flex items-center gap-1.5 ml-1 sm:ml-3">
-          <span className="text-slate-500">Rows:</span>
+          <span className="pagination-label font-semibold text-slate-300">Show</span>
           <select
             value={pageSize}
             disabled={isLoading}
             onChange={(e) => onPageSizeChange && onPageSizeChange(Number(e.target.value))}
-            className="px-2 py-1 bg-slate-50 border border-slate-300 rounded text-slate-700 text-xs font-medium focus:ring-1 focus:ring-indigo-500 focus:outline-none cursor-pointer"
+            className="pagination-select px-2.5 py-1 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 font-bold font-mono text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none cursor-pointer shadow-xs"
           >
             {pageSizeOptions.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt} / page
+              <option key={opt} value={opt} className="bg-slate-900 text-slate-100 font-semibold font-mono">
+                {opt}
               </option>
             ))}
           </select>
+          <span className="pagination-label font-semibold text-slate-300">entries</span>
         </div>
       </div>
 
       {/* Right: Pagination buttons & jump to page */}
-      <div className="flex flex-wrap items-center gap-2 justify-center lg:justify-end">
+      <div className="flex flex-wrap items-center gap-2.5 justify-center lg:justify-end">
         {/* Navigation buttons */}
-        <div className="inline-flex items-center rounded-md shadow-sm -space-x-px border border-slate-300 bg-white">
+        <div className="inline-flex items-center rounded-lg shadow-sm -space-x-px border border-slate-700 bg-slate-950 overflow-hidden">
           {/* First Page */}
           <button
             type="button"
             onClick={() => onPageChange(1)}
             disabled={page <= 1 || isLoading}
-            className="px-2 py-1.5 rounded-l-md border-r border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+            className="pagination-btn px-2.5 py-1.5 border-r border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-25 disabled:cursor-not-allowed transition cursor-pointer"
             title="First Page"
+            aria-label="First Page"
           >
             <ChevronsLeft className="w-3.5 h-3.5" />
           </button>
@@ -149,8 +152,9 @@ export default function AjaxTablePagination({
             type="button"
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1 || isLoading}
-            className="px-2 py-1.5 border-r border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+            className="pagination-btn px-2.5 py-1.5 border-r border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-25 disabled:cursor-not-allowed transition cursor-pointer"
             title="Previous Page"
+            aria-label="Previous Page"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
           </button>
@@ -161,7 +165,7 @@ export default function AjaxTablePagination({
               return (
                 <span
                   key={`ellipsis-${idx}`}
-                  className="px-2.5 py-1.5 text-slate-400 font-bold border-r border-slate-200 select-none text-xs"
+                  className="px-2.5 py-1.5 text-slate-500 font-bold border-r border-slate-800 select-none text-xs"
                 >
                   ...
                 </span>
@@ -175,10 +179,10 @@ export default function AjaxTablePagination({
                 type="button"
                 onClick={() => onPageChange(pNum)}
                 disabled={isLoading}
-                className={`px-3 py-1.5 text-xs font-semibold border-r border-slate-200 transition ${
+                className={`px-3 py-1.5 text-xs font-bold border-r border-slate-800 transition cursor-pointer ${
                   isCurrent
-                    ? 'bg-indigo-600 text-white font-bold border-indigo-600 z-10'
-                    : 'text-slate-700 hover:bg-slate-100'
+                    ? 'bg-indigo-600 text-white font-black shadow-inner shadow-black/20 z-10'
+                    : 'pagination-btn text-slate-300 hover:text-white hover:bg-slate-800'
                 }`}
               >
                 {pNum}
@@ -191,8 +195,9 @@ export default function AjaxTablePagination({
             type="button"
             onClick={() => onPageChange(page + 1)}
             disabled={page >= totalPages || isLoading}
-            className="px-2 py-1.5 border-r border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+            className="pagination-btn px-2.5 py-1.5 border-r border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-25 disabled:cursor-not-allowed transition cursor-pointer"
             title="Next Page"
+            aria-label="Next Page"
           >
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
@@ -202,8 +207,9 @@ export default function AjaxTablePagination({
             type="button"
             onClick={() => onPageChange(totalPages)}
             disabled={page >= totalPages || isLoading}
-            className="px-2 py-1.5 rounded-r-md text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition"
+            className="pagination-btn px-2.5 py-1.5 text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-25 disabled:cursor-not-allowed transition cursor-pointer"
             title="Last Page"
+            aria-label="Last Page"
           >
             <ChevronsRight className="w-3.5 h-3.5" />
           </button>
@@ -211,8 +217,8 @@ export default function AjaxTablePagination({
 
         {/* Jump to page form */}
         {totalPages > 3 && (
-          <form onSubmit={handleJumpSubmit} className="flex items-center gap-1 ml-1 sm:ml-2">
-            <span className="text-slate-500">Go to:</span>
+          <form onSubmit={handleJumpSubmit} className="flex items-center gap-1.5 ml-1 sm:ml-2">
+            <span className="pagination-label font-semibold text-slate-300">Go to:</span>
             <input
               type="number"
               min={1}
@@ -220,12 +226,12 @@ export default function AjaxTablePagination({
               value={jumpPageInput}
               onChange={(e) => setJumpPageInput(e.target.value)}
               placeholder={String(page)}
-              className="w-14 px-1.5 py-1 text-xs border border-slate-300 rounded text-center focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+              className="pagination-select w-14 px-2 py-1 text-xs bg-slate-950 border border-slate-700 rounded-lg text-slate-100 font-mono font-bold text-center focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
             />
             <button
               type="submit"
               disabled={isLoading || !jumpPageInput}
-              className="px-2 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded text-slate-700 text-xs font-medium disabled:opacity-40 transition"
+              className="pagination-btn px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-200 hover:text-white text-xs font-bold disabled:opacity-40 transition cursor-pointer shadow-xs"
             >
               Go
             </button>

@@ -253,6 +253,101 @@ html:not(.light):not([data-theme="light"]) button[title="Close notification"]:ho
   background-color: rgba(255, 255, 255, 0.12) !important;
 }
 
+/* ========================================================================= */
+/* DATA TABLE PAGINATION & ENTRIES FONT STYLES                               */
+/* High-contrast font colors for "Showing X to Y of Z entries" & page sizes  */
+/* ========================================================================= */
+.pagination-container {
+  color: #cbd5e1;
+}
+
+/* Light Theme Pagination Contrast */
+html.light .pagination-container,
+html[data-theme="light"] .pagination-container {
+  background-color: #ffffff !important;
+  border-top-color: #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+html.light .pagination-label,
+html[data-theme="light"] .pagination-label {
+  color: #475569 !important;
+  font-weight: 500;
+}
+
+html.light .pagination-number,
+html[data-theme="light"] .pagination-number {
+  color: #4338ca !important; /* Bold deep indigo */
+  font-weight: 700;
+}
+
+html.light .pagination-total,
+html[data-theme="light"] .pagination-total {
+  color: #047857 !important; /* Rich deep emerald */
+  font-weight: 800;
+}
+
+html.light .pagination-select,
+html[data-theme="light"] .pagination-select {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  font-weight: 700;
+}
+
+html.light .pagination-btn,
+html[data-theme="light"] .pagination-btn {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light .pagination-btn:hover:not(:disabled),
+html[data-theme="light"] .pagination-btn:hover:not(:disabled) {
+  background-color: #f1f5f9 !important;
+  color: #4338ca !important;
+}
+
+/* Dark Theme Pagination Contrast */
+html:not(.light):not([data-theme="light"]) .pagination-container {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+  border-top-color: #1e293b !important;
+  color: #cbd5e1 !important;
+}
+
+html:not(.light):not([data-theme="light"]) .pagination-label {
+  color: #94a3b8 !important;
+  font-weight: 500;
+}
+
+html:not(.light):not([data-theme="light"]) .pagination-number {
+  color: #818cf8 !important; /* Luminous bright indigo */
+  font-weight: 700;
+}
+
+html:not(.light):not([data-theme="light"]) .pagination-total {
+  color: #34d399 !important; /* Luminous bright emerald */
+  font-weight: 800;
+}
+
+html:not(.light):not([data-theme="light"]) .pagination-select {
+  background-color: #020617 !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+  font-weight: 700;
+}
+
+html:not(.light):not([data-theme="light"]) .pagination-btn {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+
+html:not(.light):not([data-theme="light"]) .pagination-btn:hover:not(:disabled) {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+}
+
 /* Light mode subtle box shadows for cards */
 html.light .shadow-2xl {
   box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
