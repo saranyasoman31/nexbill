@@ -286,7 +286,7 @@ export default function InitialStockView() {
             <form onSubmit={handleSaveInitialStock} className="space-y-3 text-xs">
               <div className="space-y-1">
                 <label className="font-semibold text-slate-300 block">
-                  Receiving Warehouse <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  Receiving Warehouse <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                 </label>
                 <select
                   value={entryData.warehouseId}
@@ -303,7 +303,7 @@ export default function InitialStockView() {
 
               <div className="space-y-1">
                 <label className="font-semibold text-slate-300 block">
-                  Product <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  Product <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                 </label>
                 <select
                   value={entryData.productId}
@@ -321,7 +321,7 @@ export default function InitialStockView() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-semibold text-slate-300 block">
-                    Opening Quantity <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Opening Quantity <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <input
                     type="number"
@@ -335,7 +335,7 @@ export default function InitialStockView() {
 
                 <div className="space-y-1">
                   <label className="font-semibold text-slate-300 block">
-                    Valuation Cost Rate (₹) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Valuation Cost Rate (₹) <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <input
                     type="number"

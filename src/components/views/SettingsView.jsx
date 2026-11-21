@@ -745,7 +745,9 @@ export default function SettingsView({ initialSubTab = 'profile' }) {
             <form onSubmit={handleSaveProfile} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300 block">Full Name</label>
+                  <label className="font-semibold text-slate-300 block">
+                    Full Name <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
+                  </label>
                   <input
                     type="text"
                     required
@@ -756,7 +758,9 @@ export default function SettingsView({ initialSubTab = 'profile' }) {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300 block">Username</label>
+                  <label className="font-semibold text-slate-300 block">
+                    Username <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
+                  </label>
                   <input
                     type="text"
                     required
@@ -767,7 +771,9 @@ export default function SettingsView({ initialSubTab = 'profile' }) {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300 block">Email Address</label>
+                  <label className="font-semibold text-slate-300 block">
+                    Email Address <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
+                  </label>
                   <input
                     type="email"
                     required
@@ -1771,7 +1777,7 @@ export default function SettingsView({ initialSubTab = 'profile' }) {
                 <form onSubmit={handleCreateNewRole} className="space-y-3.5 text-xs">
                   <div className="space-y-1">
                     <label className="font-semibold text-slate-200 block text-xs">
-                      Role Name <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Role Name <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <input
                       type="text"
@@ -1794,7 +1800,7 @@ export default function SettingsView({ initialSubTab = 'profile' }) {
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <label className="font-semibold text-slate-200 block text-xs">
-                        Role Code <span className="text-rose-500 font-bold ml-0.5">*</span>
+                        Role Code <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                       </label>
                       <span className="text-[10px] text-slate-500 font-mono">Auto-generated</span>
                     </div>

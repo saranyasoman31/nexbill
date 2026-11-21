@@ -153,7 +153,9 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-3.5 text-xs">
             {/* Email / Username */}
             <div>
-              <label className="font-semibold text-slate-300 block mb-1">Username or Email</label>
+              <label className="font-semibold text-slate-300 block mb-1">
+                Username or Email <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
+              </label>
               <div className="relative">
                 <User className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
                 <input
@@ -169,7 +171,9 @@ export default function LoginPage() {
 
             {/* Password */}
             <div>
-              <label className="font-semibold text-slate-300 block mb-1">Password</label>
+              <label className="font-semibold text-slate-300 block mb-1">
+                Password <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
+              </label>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
                 <input
@@ -195,7 +199,8 @@ export default function LoginPage() {
               <label className="font-semibold text-slate-300 flex items-center justify-between mb-1.5">
                 <span className="flex items-center gap-1.5">
                   <KeyRound className="w-3.5 h-3.5 text-indigo-400" />
-                  Security Captcha Verification
+                  <span>Security Captcha Verification</span>
+                  <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                 </span>
                 <span className="text-[10px] text-slate-500">Case-Insensitive</span>
               </label>

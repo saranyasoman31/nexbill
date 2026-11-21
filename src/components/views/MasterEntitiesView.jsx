@@ -3014,7 +3014,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                   {/* Basic Identification */}
                   <div className="col-span-2 space-y-1">
                     <label className="font-semibold text-slate-300 block">
-                      Product Name <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Product Name <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <input
                       type="text"
@@ -3040,7 +3040,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                   <div className="space-y-1">
                     <label className="font-semibold text-slate-300 block">
-                      SKU Code <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      SKU Code <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <input
                       type="text"
@@ -3078,7 +3078,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                   {/* Main Category & Category under Main Category */}
                   <div className="space-y-1">
                     <label className="font-semibold text-slate-300 block">
-                      Main Category <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Main Category <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <select
                       value={formData.mainCategoryId || ''}
@@ -3111,7 +3111,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                   <div className="space-y-1">
                     <label className="font-semibold text-slate-300 block">
-                      Category (Under Main Category) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Category (Under Main Category) <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <select
                       value={formData.category || ''}
@@ -3163,7 +3163,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                     <MultiSelectDropdown
                       label={
                         <>
-                          Brands (Multiple Brand Selection) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                          Brands (Multiple Brand Selection) <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                         </>
                       }
                       placeholder="Select one or more brands..."
@@ -3245,7 +3245,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                   {/* Statutory & Taxation: HSN, Tax Type, Tax Rate, UOM */}
                   <div className="space-y-1">
                     <label className="font-semibold text-slate-300 block">
-                      HSN / SAC Code <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      HSN / SAC Code <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <input
                       type="text"
@@ -3265,7 +3265,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                   <div className="space-y-1">
                     <label className="font-semibold text-slate-300 block">
-                      Tax Type <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Tax Type <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <select
                       value={formData.taxType || 'inclusive'}
@@ -3290,7 +3290,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                       {formData.taxType === 'non-tax' ? (
                         'Tax Rate (Exempt)'
                       ) : (
-                        <>GST / Tax Rate (%) <span className="text-rose-500 font-bold ml-0.5">*</span></>
+                        <>GST / Tax Rate (%) <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span></>
                       )}
                     </label>
                     <select
@@ -3313,7 +3313,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                   <div className="space-y-1">
                     <label className="font-semibold text-slate-300 block">
-                      Unit of Measurement (UOM) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Unit of Measurement (UOM) <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <select
                       value={formData.uom || 'Pcs'}
@@ -3331,7 +3331,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                   {/* Stock & Operational Attributes */}
                   <div className="space-y-1">
                     <label className="font-semibold text-slate-300 block">
-                      Have Stock (Inventory Tracking) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Have Stock (Inventory Tracking) <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <select
                       value={formData.hasStock !== false ? 'yes' : 'no'}
@@ -3357,7 +3357,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                   <div className="space-y-1">
                     <label className="font-semibold text-slate-300 block">
-                      Saleable Status <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Saleable Status <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <select
                       value={formData.isSaleable !== false ? 'saleable' : 'non_saleable'}
@@ -3376,7 +3376,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                   <div className="space-y-1">
                     <label className="font-semibold text-slate-300 block">
-                      Expiry Date Tracking <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Expiry Date Tracking <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <select
                       disabled={formData.hasStock === false}
@@ -3402,7 +3402,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                   <div className="space-y-1">
                     <label className="font-semibold text-slate-300 block">
-                      Reorder Level (Min Stock Alert) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Reorder Level (Min Stock Alert) <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <input
                       type="number"
@@ -3438,7 +3438,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2 space-y-1">
                     <label className="font-semibold text-slate-300 block">
-                      Branch / Store Name <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Branch / Store Name <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <input
                       type="text"
@@ -3464,7 +3464,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                   <div className="space-y-1">
                     <label className="font-semibold text-slate-300 block">
-                      Branch Code <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Branch Code <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <input
                       type="text"
@@ -3501,7 +3501,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                   <div className="space-y-1">
                     <label className="font-semibold text-slate-300 block">
-                      State <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      State <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <select
                       value={formData.stateCode || '27'}
@@ -3574,7 +3574,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                   <div className="col-span-2 space-y-1">
                     <label className="font-semibold text-slate-300 block">
-                      Company Name <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Company Name <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <input
                       type="text"
@@ -3600,7 +3600,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                   <div className="space-y-1">
                     <label className="font-semibold text-slate-300 block">
-                      Company Code <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Company Code <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <input
                       type="text"
@@ -3756,7 +3756,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                     <div className="space-y-1">
                       <label className="font-semibold text-slate-300 block">
-                        {currentConfig.label} Name <span className="text-rose-500 font-bold ml-0.5">*</span>
+                        {currentConfig.label} Name <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                       </label>
                       <input
                         type="text"
@@ -3937,7 +3937,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1">
                             <label className="font-semibold text-slate-300 block">
-                              Main Category <span className="text-rose-500 font-bold ml-0.5">*</span>
+                              Main Category <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                             </label>
                             <select
                               value={formData.mainCategoryId || db.mainCategories?.[0]?.id || ''}
@@ -4047,7 +4047,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                     {activeEntity === 'payment_mode' && (
                       <div className="space-y-1">
                         <label className="font-semibold text-slate-300 block">
-                          Tender Type <span className="text-rose-500 font-bold ml-0.5">*</span>
+                          Tender Type <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                         </label>
                         <select
                           value={
@@ -4091,7 +4091,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                   {/* Regime Switcher */}
                   <div className="space-y-1.5">
                     <label className="font-semibold text-slate-300 block">
-                      Tax Regime / Model <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Tax Regime / Model <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
@@ -4159,7 +4159,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
                         <label className="font-semibold text-slate-200 block text-xs">
-                          Tax Rate Percentage (%) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                          Tax Rate Percentage (%) <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                         </label>
                         <span className="text-[11px] font-mono text-emerald-400 font-bold">
                           {formData.rate !== undefined && formData.rate !== '' ? `${formData.rate}%` : '0%'}
@@ -4422,7 +4422,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div className="md:col-span-2 space-y-1">
                           <label className="font-semibold text-slate-300 block text-xs">
-                            Staff Full Name <span className="text-rose-500 font-bold ml-0.5">*</span>
+                            Staff Full Name <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                           </label>
                           <input
                             type="text"
@@ -4459,7 +4459,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                         <div className="space-y-1">
                           <label className="font-semibold text-slate-300 block text-xs">
-                            Primary Mobile / Phone <span className="text-rose-500 font-bold ml-0.5">*</span>
+                            Primary Mobile / Phone <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                           </label>
                           <input
                             type="tel"
@@ -4557,7 +4557,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <label className="font-semibold text-slate-300 block text-xs">
-                            Employee / Staff Code <span className="text-rose-500 font-bold ml-0.5">*</span>
+                            Employee / Staff Code <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                           </label>
                           <input
                             type="text"
@@ -4571,7 +4571,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                         <div className="space-y-1">
                           <label className="font-semibold text-slate-300 block text-xs">
-                            Branch / Store Assignment <span className="text-rose-500 font-bold ml-0.5">*</span>
+                            Branch / Store Assignment <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                           </label>
                           <select
                             value={formData.storeId || ''}
@@ -4588,7 +4588,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                         <div className="space-y-1">
                           <label className="font-semibold text-slate-300 block text-xs">
-                            Designation / Job Title <span className="text-rose-500 font-bold ml-0.5">*</span>
+                            Designation / Job Title <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                           </label>
                           <input
                             type="text"
@@ -4602,7 +4602,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                         <div className="space-y-1">
                           <label className="font-semibold text-slate-300 block text-xs">
-                            Date of Joining <span className="text-rose-500 font-bold ml-0.5">*</span>
+                            Date of Joining <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                           </label>
                           <input
                             type="date"
@@ -4647,7 +4647,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <label className="font-semibold text-slate-300 block text-xs">
-                            Login Username <span className="text-rose-500 font-bold ml-0.5">*</span>
+                            Login Username <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                           </label>
                           <input
                             type="text"
@@ -4661,7 +4661,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                         <div className="space-y-1">
                           <label className="font-semibold text-slate-300 block text-xs">
-                            Official Login Email <span className="text-rose-500 font-bold ml-0.5">*</span>
+                            Official Login Email <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                           </label>
                           <input
                             type="email"
@@ -4675,7 +4675,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                         <div className="space-y-1">
                           <label className="font-semibold text-slate-300 block text-xs">
-                            Terminal Password <span className="text-rose-500 font-bold ml-0.5">*</span>
+                            Terminal Password <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                           </label>
                           <div className="relative">
                             <input
@@ -4698,7 +4698,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                         <div className="space-y-1">
                           <label className="font-semibold text-slate-300 block text-xs">
-                            Security Role & Privileges <span className="text-rose-500 font-bold ml-0.5">*</span>
+                            Security Role & Privileges <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                           </label>
                           <select
                             value={formData.roleId || 'ROLE_CASHIER'}
@@ -4873,7 +4873,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="md:col-span-2 space-y-1">
                         <label className="font-semibold text-slate-300 block text-xs">
-                          Supplier Name <span className="text-rose-500 font-bold ml-0.5">*</span>
+                          Supplier Name <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                         </label>
                         <input
                           type="text"
@@ -4909,7 +4909,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
 
                       <div className="space-y-1">
                         <label className="font-semibold text-slate-300 block text-xs">
-                          Mobile Number <span className="text-rose-500 font-bold ml-0.5">*</span>
+                          Mobile Number <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                         </label>
                         <div className="relative">
                           <input
@@ -5007,7 +5007,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                       {/* Local or Interstate Selector */}
                       <div className="md:col-span-2 space-y-1.5">
                         <label className="font-semibold text-slate-300 block text-xs">
-                          Local / Interstate <span className="text-rose-500 font-bold ml-0.5">*</span>
+                          Local / Interstate <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                         </label>
                         <div className="grid grid-cols-2 gap-2">
                           <button
@@ -5067,7 +5067,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
                       {/* State Dropdown */}
                       <div className="space-y-1">
                         <label className="font-semibold text-slate-300 block text-xs">
-                          State <span className="text-rose-500 font-bold ml-0.5">*</span>
+                          State <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                         </label>
                         <select
                           value={formData.stateCode || '27'}
@@ -5221,7 +5221,7 @@ export default function MasterEntitiesView({ defaultEntity = 'product' }) {
               {/* Active / Inactive Status Selector for ALL Master Forms */}
               <div className="pt-2 border-t border-slate-800 space-y-1">
                 <label className="font-semibold text-slate-300 block">
-                  Status <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  Status <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                 </label>
                 <div className="flex items-center gap-2">
                   <button

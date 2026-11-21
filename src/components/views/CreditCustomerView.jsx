@@ -992,7 +992,7 @@ export default function CreditCustomerView() {
                 {/* Business Type Selector */}
                 <div className="col-span-2 space-y-1">
                   <label className="font-semibold text-slate-300 block">
-                    Business Type <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Business Type <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -1024,7 +1024,7 @@ export default function CreditCustomerView() {
 
                 <div className="col-span-2 space-y-1">
                   <label className="font-semibold text-slate-300 block">
-                    Customer Full Name <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Customer Full Name <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <input
                     type="text"
@@ -1039,7 +1039,7 @@ export default function CreditCustomerView() {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <label className="font-semibold text-slate-300 block">
-                      Mobile Number <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Mobile Number <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <span className="text-[10px] text-slate-400 font-mono">10 Digits</span>
                   </div>
@@ -1118,7 +1118,7 @@ export default function CreditCustomerView() {
                       {isNewB2B ? (
                         <>
                           <span>GSTIN (Tax ID)</span>
-                          <span className="text-rose-500 font-bold ml-0.5">*</span>
+                          <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                         </>
                       ) : (
                         <>
@@ -1198,7 +1198,7 @@ export default function CreditCustomerView() {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <label className="font-semibold text-slate-300 block">
-                      Customer State (Place of Supply) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Customer State (Place of Supply) <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <span className="text-xs text-slate-400 flex items-center gap-1.5">
                       <span>Customer State Code:</span>
@@ -1238,7 +1238,7 @@ export default function CreditCustomerView() {
                 {/* Local / Interstate */}
                 <div className="col-span-2 space-y-1">
                   <label className="font-semibold text-slate-300 block">
-                    Local / Interstate <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Local / Interstate <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -1270,7 +1270,7 @@ export default function CreditCustomerView() {
 
                 <div className="space-y-1">
                   <label className="font-semibold text-slate-300 block">
-                    Approved Credit Limit (₹) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Approved Credit Limit (₹) <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <input
                     type="number"
@@ -1308,7 +1308,7 @@ export default function CreditCustomerView() {
               {/* Active / Inactive Status Selector */}
               <div className="pt-2 border-t border-slate-800 space-y-1">
                 <label className="font-semibold text-slate-300 block">
-                  Status <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  Status <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                 </label>
                 <div className="flex items-center gap-2">
                   <button
@@ -1389,7 +1389,7 @@ export default function CreditCustomerView() {
                 {/* Business Type Selector */}
                 <div className="col-span-2 space-y-1">
                   <label className="font-semibold text-slate-300 block">
-                    Business Type <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Business Type <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -1421,7 +1421,7 @@ export default function CreditCustomerView() {
 
                 <div className="col-span-2 space-y-1">
                   <label className="font-semibold text-slate-300 block">
-                    Customer Full Name <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Customer Full Name <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <input
                     type="text"
@@ -1435,7 +1435,7 @@ export default function CreditCustomerView() {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <label className="font-semibold text-slate-300 block">
-                      Mobile Number <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Mobile Number <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <span className="text-[10px] text-slate-400 font-mono">10 Digits</span>
                   </div>
@@ -1514,7 +1514,7 @@ export default function CreditCustomerView() {
                       {isEditB2B ? (
                         <>
                           <span>GSTIN (Tax ID)</span>
-                          <span className="text-rose-500 font-bold ml-0.5">*</span>
+                          <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                         </>
                       ) : (
                         <>
@@ -1594,7 +1594,7 @@ export default function CreditCustomerView() {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <label className="font-semibold text-slate-300 block">
-                      Customer State (Place of Supply) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Customer State (Place of Supply) <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <span className="text-xs text-slate-400 flex items-center gap-1.5">
                       <span>Customer State Code:</span>
@@ -1634,7 +1634,7 @@ export default function CreditCustomerView() {
                 {/* Local / Interstate */}
                 <div className="col-span-2 space-y-1">
                   <label className="font-semibold text-slate-300 block">
-                    Local / Interstate <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Local / Interstate <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -1666,7 +1666,7 @@ export default function CreditCustomerView() {
 
                 <div className="space-y-1">
                   <label className="font-semibold text-slate-300 block">
-                    Approved Credit Limit (₹) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Approved Credit Limit (₹) <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <input
                     type="number"
@@ -1703,7 +1703,7 @@ export default function CreditCustomerView() {
               {/* Active / Inactive Status Selector */}
               <div className="pt-2 border-t border-slate-800 space-y-1">
                 <label className="font-semibold text-slate-300 block">
-                  Status <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  Status <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                 </label>
                 <div className="flex items-center gap-2">
                   <button
@@ -1802,7 +1802,7 @@ export default function CreditCustomerView() {
 
               <div className="space-y-1">
                 <label className="font-semibold text-slate-300 block">
-                  Payment Amount Received (₹) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  Payment Amount Received (₹) <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                 </label>
                 <input
                   type="number"

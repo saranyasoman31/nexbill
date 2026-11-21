@@ -1265,7 +1265,8 @@ export default function PurchasingView() {
                 {/* Document Number */}
                 <div>
                   <label className="font-semibold text-slate-300 block mb-1">
-                    {formData.isInitialStock ? 'Initial Stock Ref #' : 'Purchase No'}
+                    {formData.isInitialStock ? 'Initial Stock Ref #' : 'Purchase No'}{' '}
+                    <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <input
                     type="text"
@@ -1284,7 +1285,8 @@ export default function PurchasingView() {
                 {/* Date */}
                 <div>
                   <label className="font-semibold text-slate-300 block mb-1">
-                    {formData.isInitialStock ? 'Opening Cutover Date' : 'Purchase Date'}
+                    {formData.isInitialStock ? 'Opening Cutover Date' : 'Purchase Date'}{' '}
+                    <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <input
                     type="date"
@@ -1393,7 +1395,9 @@ export default function PurchasingView() {
 
                     {/* Vendor Invoice No */}
                     <div>
-                      <label className="font-semibold text-slate-300 block mb-1">Invoice No</label>
+                      <label className="font-semibold text-slate-300 block mb-1">
+                        Invoice No <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
+                      </label>
                       <input
                         type="text"
                         required

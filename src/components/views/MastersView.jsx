@@ -838,7 +838,7 @@ export default function MastersView() {
               <form onSubmit={handleSaveProduct} className="space-y-3 text-xs">
                 <div>
                   <label className="font-semibold text-slate-300 block mb-1">
-                    Product Name <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Product Name <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <input
                     type="text"
@@ -852,7 +852,7 @@ export default function MastersView() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="font-semibold text-slate-300 block mb-1">
-                      SKU <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      SKU <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <input
                       type="text"
@@ -865,7 +865,7 @@ export default function MastersView() {
                   </div>
                   <div>
                     <label className="font-semibold text-slate-300 block mb-1">
-                      Barcode <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Barcode <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <input
                       type="text"
@@ -915,7 +915,7 @@ export default function MastersView() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="font-semibold text-slate-300 block mb-1">
-                      Tax Type <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Tax Type <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <select
                       value={newProduct.taxType || 'inclusive'}
@@ -935,7 +935,7 @@ export default function MastersView() {
                   </div>
                   <div>
                     <label className="font-semibold text-slate-300 block mb-1">
-                      GST Rate (%) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      GST Rate (%) <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <select
                       value={newProduct.taxRate}
@@ -952,7 +952,7 @@ export default function MastersView() {
                 </div>
                 <div className="pt-2 border-t border-slate-800 space-y-1">
                   <label className="font-semibold text-slate-300 block">
-                    Status <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Status <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <div className="flex items-center gap-2">
                     <button
@@ -993,7 +993,7 @@ export default function MastersView() {
                 {/* Business Type Selector */}
                 <div className="space-y-1">
                   <label className="font-semibold text-slate-300 block">
-                    Business Type <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Business Type <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -1025,7 +1025,7 @@ export default function MastersView() {
 
                 <div>
                   <label className="font-semibold text-slate-300 block mb-1">
-                    Customer / Entity Name <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Customer / Entity Name <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <input
                     type="text"
@@ -1041,7 +1041,7 @@ export default function MastersView() {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="font-semibold text-slate-300 block">
-                        Mobile Number <span className="text-rose-500 font-bold ml-0.5">*</span>
+                        Mobile Number <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                       </label>
                       <span className="text-[10px] text-slate-400 font-mono">10 Digits</span>
                     </div>
@@ -1119,7 +1119,7 @@ export default function MastersView() {
                   <div>
                     <label className="font-semibold text-slate-300 block mb-1">
                       {newCustomer.businessType === 'B2B' ? (
-                        <>GSTIN (Tax ID) <span className="text-rose-500 font-bold ml-0.5">*</span></>
+                        <>GSTIN (Tax ID) <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span></>
                       ) : (
                         'GSTIN (Optional)'
                       )}
@@ -1165,7 +1165,7 @@ export default function MastersView() {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="font-semibold text-slate-300 block">
-                        State (Place of Supply) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                        State (Place of Supply) <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                       </label>
                       <span className="text-xs text-slate-400 flex items-center gap-1.5">
                         <span>State Code:</span>
@@ -1205,7 +1205,7 @@ export default function MastersView() {
                   {/* Local / Interstate */}
                   <div className="space-y-1">
                     <label className="font-semibold text-slate-300 block mb-1">
-                      Local / Interstate <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Local / Interstate <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
@@ -1237,7 +1237,7 @@ export default function MastersView() {
                 </div>
                 <div className="pt-2 border-t border-slate-800 space-y-1">
                   <label className="font-semibold text-slate-300 block">
-                    Status <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Status <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <div className="flex items-center gap-2">
                     <button
@@ -1277,7 +1277,7 @@ export default function MastersView() {
               <form onSubmit={handleSaveSupplier} className="space-y-3 text-xs">
                 <div>
                   <label className="font-semibold text-slate-300 block mb-1">
-                    Supplier Company Name <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Supplier Company Name <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <input
                     type="text"
@@ -1299,7 +1299,7 @@ export default function MastersView() {
                   </div>
                   <div>
                     <label className="font-semibold text-slate-300 block mb-1">
-                      Supplier GSTIN <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Supplier GSTIN <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </label>
                     <input
                       type="text"
@@ -1312,7 +1312,7 @@ export default function MastersView() {
                 </div>
                 <div className="space-y-1">
                   <label className="font-semibold text-slate-300 block mb-1">
-                    Local / Interstate <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Local / Interstate <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -1343,7 +1343,7 @@ export default function MastersView() {
                 </div>
                 <div className="pt-2 border-t border-slate-800 space-y-1">
                   <label className="font-semibold text-slate-300 block">
-                    Status <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Status <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <div className="flex items-center gap-2">
                     <button

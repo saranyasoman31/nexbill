@@ -833,7 +833,7 @@ export default function PurchaseReturnView() {
 
                 <div>
                   <label className="text-[11px] font-semibold text-slate-400 block mb-1">
-                    Return Date <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Return Date <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <input
                     type="date"
@@ -847,7 +847,7 @@ export default function PurchaseReturnView() {
 
               <div>
                 <label className="text-[11px] font-semibold text-slate-400 block mb-1">
-                  Source Branch (Warehouse) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  Source Branch (Warehouse) <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                 </label>
                 <div className="relative">
                   <Store className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
@@ -892,7 +892,7 @@ export default function PurchaseReturnView() {
               {formData.returnMode === 'AGAINST_PURCHASE' && (
                 <div>
                   <label className="text-[11px] font-semibold text-slate-400 block mb-1">
-                    Select Inward Purchase Invoice <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Select Inward Purchase Invoice <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <select
                     value={formData.selectedPurchaseId}
@@ -911,7 +911,7 @@ export default function PurchaseReturnView() {
 
               <div>
                 <label className="text-[11px] font-semibold text-slate-400 block mb-1">
-                  Supplier (Party to Debit) <span className="text-rose-500 font-bold ml-0.5">*</span>
+                  Supplier (Party to Debit) <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                 </label>
                 <select
                   disabled={formData.returnMode === 'AGAINST_PURCHASE' && !formData.supplierOverride}
@@ -1036,7 +1036,7 @@ export default function PurchaseReturnView() {
                     )}
                     <th className="py-2.5 px-2 text-center text-slate-300">Warehouse Stock</th>
                     <th className="py-2.5 px-3 text-center text-slate-300 font-bold w-28">
-                      Return Qty <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      Return Qty <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                     </th>
                     <th className="py-2.5 px-3 text-right w-24">Rate (₹)</th>
                     <th className="py-2.5 px-2 text-center w-20">GST %</th>
@@ -1151,7 +1151,7 @@ export default function PurchaseReturnView() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
                   <label className="text-[11px] font-semibold text-slate-400 block mb-1">
-                    Return Reason <span className="text-rose-500 font-bold ml-0.5">*</span>
+                    Return Reason <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <select
                     value={formData.reason}

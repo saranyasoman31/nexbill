@@ -24,6 +24,37 @@
 }
 
 /* ========================================================================= */
+/* MANDATORY / REQUIRED FIELD ASTERISK (*) - VIBRANT RED STYLING            */
+/* ========================================================================= */
+.mandatory-star,
+.mandatory-asterisk,
+span[data-mandatory="true"],
+.mandatory-star-sign {
+  color: #ef4444 !important; /* Pure vibrant Red-500 in dark mode */
+  font-weight: 700 !important;
+  display: inline-block;
+}
+
+html.light .mandatory-star,
+html.light .mandatory-asterisk,
+html.light span[data-mandatory="true"],
+html.light .mandatory-star-sign,
+html[data-theme="light"] .mandatory-star,
+html[data-theme="light"] .mandatory-asterisk,
+html[data-theme="light"] span[data-mandatory="true"],
+html[data-theme="light"] .mandatory-star-sign {
+  color: #dc2626 !important; /* Deep vibrant Red-600 in light mode for crisp contrast */
+  font-weight: 700 !important;
+  display: inline-block;
+}
+
+/* Fallback: any span with red-500 / rose-500 representing an asterisk */
+span.text-red-500,
+span.text-rose-500 {
+  font-weight: 700;
+}
+
+/* ========================================================================= */
 /* LIGHT MODE ENTERPRISE THEME (High Contrast & Professional Visibility)      */
 /* ========================================================================= */
 html.light,

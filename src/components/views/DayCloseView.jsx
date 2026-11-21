@@ -270,7 +270,7 @@ export default function DayCloseView() {
               <div className="space-y-3 text-xs">
                 <div>
                   <label className="font-semibold text-slate-300 block mb-1">
-                    Counted Physical Cash in Drawer (₹)
+                    Counted Physical Cash in Drawer (₹) <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
                   </label>
                   <input
                     type="number"
@@ -415,7 +415,7 @@ export default function DayCloseView() {
 
             <div className="space-y-2 text-xs">
               <label className="font-semibold text-slate-300 block">
-                Statutory Justification Reason <span className="text-rose-500 font-bold ml-0.5">*</span>
+                Statutory Justification Reason <span className="text-red-500 font-bold ml-0.5 mandatory-star" data-mandatory="true">*</span>
               </label>
               <textarea
                 rows="3"
